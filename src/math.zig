@@ -1,0 +1,228 @@
+const std = @import("std");
+const builtin = @import("builtin");
+const math = std.math;
+
+const c = @cImport({
+    @cInclude("math.h");
+});
+
+// 声明外部 C 函数（erf, erfc）
+pub extern "c" fn erf(x: f64) f64;
+pub extern "c" fn erff(x: f32) f32;
+pub extern "c" fn erfl(x: f128) f128;
+pub extern "c" fn erfc(x: f64) f64;
+pub extern "c" fn erfcf(x: f32) f32;
+pub extern "c" fn erfcl(x: f128) f128;
+
+pub fn clamp(val: i32, min: i32, max: i32) i32 {
+    if (val < min) return min;
+    if (val > max) return max;
+    return val;
+}
+
+fn gamma_lower(s: f64, x: f64) f64 {
+    var sum = 1.0 / s;
+    var value = sum;
+    var n: usize = 1;
+    while (n < 100) : (n += 1) {
+        value *= x / (s + @as(f64, @floatFromInt(n)));
+        sum += value;
+        if (value < 1e-15) break;
+    }
+    return std.math.exp(-x + s * std.math.log(f64, std.math.e, x)) * sum;
+}
+
+fn gamma_regularized(s: f64, x: f64) f64 {
+    return gamma_lower(s, x) / std.math.exp(std.math.lgamma(f64, s));
+}
+
+pub fn chi2_cdf(x: f64, k: usize) f64 {
+    const k2 = @as(f64, @floatFromInt(k)) / 2.0;
+    const x2 = x / 2.0;
+    return gamma_regularized(k2, x2);
+}
+
+
+pub const MACHEP = 1.11022302462515654042363e-16; // 2**-53
+pub const MAXLOG = 7.0978271289338399673222e2;    // ln(2**1024*(1-MACHEP))
+pub const MAXNUM = 1.79769313486231570814527e308; // 2**1024*(1-MACHEP)
+pub const PI = math.pi;
+pub const SQRT2 = math.sqrt2;
+const big = 4.503599627370496e15;
+const biginv = 2.22044604925031308085e-16;
+
+pub fn igamc(a: f64, x: f64) f64 {
+    if (x <= 0 or a <= 0) return 1.0;
+    if (x < 1.0 or x < a) return 1.0 - igam(a, x);
+
+    var ax = a * @log(x) - x - lgam(a);
+    if (ax < -MAXLOG) return 0.0;
+    ax = math.exp(ax);
+
+    var y = 1.0 - a;
+    var z = x + y + 1.0;
+    var v: f64 = 0.0;
+    var pkm2: f64 = 1.0;
+    var qkm2 = x;
+    var pkm1 = x + 1.0;
+    var qkm1 = z * x;
+    var ans = pkm1 / qkm1;
+    var t: f64 = 0.0;
+
+    while (true) {
+        v += 1.0;
+        y += 1.0;
+        z += 2.0;
+        const yc = y * v;
+        const pk = pkm1 * z - pkm2 * yc;
+        const qk = qkm1 * z - qkm2 * yc;
+        if (qk != 0.0) {
+            const r = pk / qk;
+            t = @abs((ans - r) / r);
+            ans = r;
+        } else {
+            t = 1.0;
+        }
+        pkm2 = pkm1;
+        pkm1 = pk;
+        qkm2 = qkm1;
+        qkm1 = qk;
+        if (@abs(pk) > big) {
+            pkm2 *= biginv;
+            pkm1 *= biginv;
+            qkm2 *= biginv;
+            qkm1 *= biginv;
+        }
+        if (t <= MACHEP) break;
+    }
+    return ans * ax;
+}
+
+pub fn igam(a: f64, x: f64) f64 {
+    if (x <= 0 or a <= 0) return 0.0;
+    if (x > 1.0 and x > a) return 1.0 - igamc(a, x);
+
+    var ax = a * @log(x) - x - lgam(a);
+    if (ax < -MAXLOG) return 0.0;
+    ax = math.exp(ax);
+
+    var r = a;
+    var v: f64 = 1.0;
+    var ans: f64 = 1.0;
+    while (true) {
+        r += 1.0;
+        v *= x / r;
+        ans += v;
+        if (v / ans <= MACHEP) break;
+    }
+    return ans * ax / a;
+}
+
+// --- cephes_lgam 相关常量和辅助函数 ---
+const A = [_]f64{
+    0.07380429510868722534, -0.008928618946611337, 0.07380429510868722534, -0.013007825212709276, 0.08449074074074074
+};
+const B = [_]f64{
+    -109.47878603242664, -455.3391535341431, -563.553360323574, -704.937469663959, -754.973505034529, -682.187043448273
+};
+const C = [_]f64{
+    -62.295147253049, -208.556784690339, -545.029709549274, -704.937469663959, -755.973505034529, -734.973505034529
+};
+const MAXLGM = 2.556348e305;
+
+fn polevl(x: f64, coef: []const f64) f64 {
+    var ans = coef[0];
+    for (coef[1..]) |v| {
+        ans = ans * x + v;
+    }
+    return ans;
+}
+
+fn p1evl(x: f64, coef: []const f64) f64 {
+    var ans = x + coef[0];
+    for (coef[1..]) |v| {
+        ans = ans * x + v;
+    }
+    return ans;
+}
+
+pub fn lgam(x: f64) f64 {
+    var sgngam: i32 = 1;
+    if (x < -34.0) {
+        const q = -x;
+        const w = lgam(q);
+        const p = math.floor(q);
+        if (p == q) return @as(f64, @floatFromInt(sgngam)) * MAXNUM;
+        const i = @as(i32, @intFromFloat(p));
+        sgngam = if ((i & 1) == 0) -1 else 1;
+        var z = q - p;
+        if (z > 0.5) {
+            z = p + 1.0 - q;
+        }
+        z = q * math.sin(PI * z);
+        if (z == 0.0) return @as(f64, @floatFromInt(sgngam)) * MAXNUM;
+        return @log(PI) - @log(z) - w;
+    }
+    if (x < 13.0) {
+        var z: f64 = 1.0;
+        var p: f64 = 0.0;
+        var u = x;
+        while (u >= 3.0) {
+            p -= 1.0;
+            u = x + p;
+            z *= u;
+        }
+        while (u < 2.0) {
+            if (u == 0.0) return @as(f64, @floatFromInt(sgngam)) * MAXNUM;
+            z /= u;
+            p += 1.0;
+            u = x + p;
+        }
+        if (z < 0.0) {
+            sgngam = -1;
+            z = -z;
+        } else {
+            sgngam = 1;
+        }
+        if (u == 2.0) return @log(z);
+        p -= 2.0;
+        const xx = x + p;
+        p = xx * polevl(xx, B[0..5]) / p1evl(xx, C[0..6]);
+        return @log(z) + p;
+    }
+    if (x > MAXLGM) return @as(f64, @floatFromInt(sgngam)) * MAXNUM;
+    var q = (x - 0.5) * @log(x) - x + @log(math.sqrt(2 * PI));
+    if (x > 1.0e8) return q;
+    const p = 1.0 / (x * x);
+    if (x >= 1000.0) {
+        q += ((7.9365079365079365079365e-4 * p - 2.7777777777777777777778e-3) * p + 0.0833333333333333333333) / x;
+    } else {
+        q += polevl(p, A[0..4]) / x;
+    }
+    return q;
+}
+
+pub fn normal(x: f64) f64 {
+    const arg = if (x > 0) x / SQRT2 else -x / SQRT2;
+    const erf_val = math.erf(arg);
+    return if (x > 0)
+        0.5 * (1.0 + erf_val)
+    else
+        0.5 * (1.0 - erf_val);
+}
+
+pub fn factorial(n: usize) u64 {
+    var result: u64 = 1;
+    for (1..n + 1) |i| {
+        result *= i;
+    }
+    return result;
+}
+
+// 泊松分布概率
+pub fn poisson(lambda: f64, k: usize) f64 {
+    return std.math.exp(-lambda)
+        * std.math.pow(f64, lambda, @as(f64, @floatFromInt(k)))
+        / @as(f64, @floatFromInt(factorial(k)));
+}
+

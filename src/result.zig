@@ -1,4 +1,3 @@
-
 const detect = @import("detect.zig");
 
 pub fn analyzeResults(results: []const detect.DetectResult) void {
