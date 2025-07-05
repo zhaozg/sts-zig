@@ -20,8 +20,9 @@ fn autocorrelation_iterate(self: *detect.StatDetect, data: []const u8) detect.De
     if (n <= d) {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = null,
         };
@@ -31,8 +32,9 @@ fn autocorrelation_iterate(self: *detect.StatDetect, data: []const u8) detect.De
     var bit_arr = std.heap.page_allocator.alloc(u8, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = err,
         };
@@ -54,8 +56,9 @@ fn autocorrelation_iterate(self: *detect.StatDetect, data: []const u8) detect.De
 
     return detect.DetectResult{
         .passed = passed,
+        .v_value = S,
         .p_value = p_value,
-        .stat_value = S,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

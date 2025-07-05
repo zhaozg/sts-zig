@@ -20,8 +20,9 @@ fn approx_entropy_iterate(self: *detect.StatDetect, data: []const u8) detect.Det
     if (n < 10) {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = null,
         };
@@ -33,8 +34,9 @@ fn approx_entropy_iterate(self: *detect.StatDetect, data: []const u8) detect.Det
     var bit_arr = std.heap.page_allocator.alloc(u8, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = err,
         };
@@ -87,8 +89,9 @@ fn approx_entropy_iterate(self: *detect.StatDetect, data: []const u8) detect.Det
 
     return detect.DetectResult{
         .passed = passed,
+        .v_value = chi2,
         .p_value = p_value,
-        .stat_value = chi2,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

@@ -38,8 +38,9 @@ pub const DetectParam = struct {
 pub const DetectResult = struct {
     passed: bool,
 
+    v_value: f64,
     p_value: f64,
-    stat_value: f64,
+    q_value: f64,
 
     errno: ?anyerror,
 

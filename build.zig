@@ -12,4 +12,19 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     b.installArtifact(exe);
+
+   // 创建模块
+    const zsts_module = b.addModule("zsts", .{
+        .root_source_file = b.path("src/zsts.zig"),
+    });
+    const test_step = b.step("test", "Run unit tests");
+
+    const unit_tests = b.addTest(.{
+        .root_source_file = b.path("test/GMT0005_test.zig"),
+        .target = target,
+    });
+    unit_tests.root_module.addImport("zsts", zsts_module);
+
+    const run_unit_tests = b.addRunArtifact(unit_tests);
+    test_step.dependOn(&run_unit_tests.step);
 }

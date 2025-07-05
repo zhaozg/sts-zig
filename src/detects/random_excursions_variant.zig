@@ -19,8 +19,9 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, data: []const u8)
     if (n < 100) {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = null,
         };
@@ -30,8 +31,9 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, data: []const u8)
     var bit_arr = std.heap.page_allocator.alloc(u8, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = err,
         };
@@ -46,7 +48,7 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, data: []const u8)
         return detect.DetectResult{
             .passed = false,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .v_value = 0.0,
             .extra = null,
             .errno = err,
         };
@@ -70,7 +72,7 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, data: []const u8)
         return detect.DetectResult{
             .passed = false,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .v_value = 0.0,
             .extra = null,
             .errno = null,
         };
@@ -113,8 +115,9 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, data: []const u8)
 
     return detect.DetectResult{
         .passed = passed,
+        .v_value = min_z_value,
         .p_value = min_p_value,
-        .stat_value = min_z_value,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

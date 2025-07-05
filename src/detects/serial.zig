@@ -44,8 +44,9 @@ fn serial_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResul
     if (n < 10) {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = null,
         };
@@ -55,8 +56,9 @@ fn serial_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResul
     var bit_arr = std.heap.page_allocator.alloc(u8, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = err,
         };
@@ -70,8 +72,9 @@ fn serial_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResul
     const psi2_m   = psi2(bit_arr, n, m) catch |err| {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = err,
         };
@@ -80,8 +83,9 @@ fn serial_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResul
     const psi2_m1  = psi2(bit_arr, n, m - 1) catch |err| {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = err,
         };
@@ -90,8 +94,9 @@ fn serial_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResul
     const psi2_m2  = psi2(bit_arr, n, m - 2) catch |err| {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = err,
         };
@@ -106,8 +111,9 @@ fn serial_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResul
 
     return detect.DetectResult{
         .passed = passed,
+        .v_value = delta1,
         .p_value = if (p_value1 < p_value2) p_value1 else p_value2,
-        .stat_value = delta1,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

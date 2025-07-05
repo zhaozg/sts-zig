@@ -34,8 +34,9 @@ fn cumulative_sums_iterate(self: *detect.StatDetect, data: []const u8) detect.De
 
     return detect.DetectResult{
         .passed = passed,
+        .v_value = z,
         .p_value = p_value,
-        .stat_value = z,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

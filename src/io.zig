@@ -171,6 +171,14 @@ pub const BitStream = struct {
         return @intCast(bit);
     }
 
+    pub fn get(self: *BitStream, idx: usize) ?u1 {
+        if (idx >= self.len) return null;
+
+        const byte_index = idx / 8;
+        const bit_in_byte: u3 = @intCast(7 - (idx % 8)); // 高位优先
+        return @intCast((self.data[byte_index] >> bit_in_byte) & 0x1);
+    }
+
     pub fn fetchBits(self: *BitStream, n: u8) ?u64 {
         if (n > 64) return null;
         var value: u64 = 0;
@@ -182,3 +190,29 @@ pub const BitStream = struct {
         return value;
     }
 };
+
+pub fn convertAscii2Byte(allocator: std.mem.Allocator, data: []const u8) ![]u8 {
+    var byte_array = try allocator.alloc(u8, (data.len + 7) / 8);
+    var byte_index: usize = 0;
+    var bit_index: u8 = 0;
+
+    for(byte_array) |*byte| {
+        byte.* = 0; // 初始化为 0
+    }
+
+    for (data) |bit| {
+        if (bit == '1') {
+            byte_array[byte_index] |= (@as(u8, 1) << @as(u3, (7 - @as(u3, @truncate(bit_index)))));
+        } else if (bit != '0') {
+            return error.InvalidCharacter; // 只允许 '0' 和 '1'
+        }
+        bit_index += 1;
+        if (bit_index == 8) {
+            byte_index += 1;
+            bit_index = 0;
+        }
+    }
+
+    return byte_array;
+}
+

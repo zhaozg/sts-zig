@@ -53,8 +53,9 @@ fn linear_complexity_iterate(self: *detect.StatDetect, data: []const u8) detect.
     if (N == 0) {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = null,
         };
@@ -63,8 +64,9 @@ fn linear_complexity_iterate(self: *detect.StatDetect, data: []const u8) detect.
     var bit_arr = std.heap.page_allocator.alloc(u8, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = err,
         };
@@ -103,8 +105,9 @@ fn linear_complexity_iterate(self: *detect.StatDetect, data: []const u8) detect.
 
     return detect.DetectResult{
         .passed = passed,
+        .v_value = chi2,
         .p_value = p_value,
-        .stat_value = chi2,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

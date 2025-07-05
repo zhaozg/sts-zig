@@ -16,8 +16,9 @@ fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult
     if (!(m == 2 or m == 4 or m == 8)) {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .errno = error.InvalidArgument,
             .extra = null
         };
@@ -29,8 +30,9 @@ fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult
         _ = err catch {};
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = error.OutOfMemory,
         };
@@ -72,8 +74,9 @@ fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult
 
     return detect.DetectResult{
         .passed = passed,
+        .v_value = X,
         .p_value = p_value,
-        .stat_value = X,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

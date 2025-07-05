@@ -25,8 +25,9 @@ fn maurer_universal_iterate(self: *detect.StatDetect, data: []const u8) detect.D
     if (total_blocks <= Q + 1) {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = null,
         };
@@ -72,8 +73,9 @@ fn maurer_universal_iterate(self: *detect.StatDetect, data: []const u8) detect.D
 
     return detect.DetectResult{
         .passed = passed,
+        .v_value = f,
         .p_value = p_value,
-        .stat_value = f,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

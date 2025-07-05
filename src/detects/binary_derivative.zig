@@ -19,8 +19,9 @@ fn binary_derivative_iterate(self: *detect.StatDetect, data: []const u8) detect.
     if (n < 2) {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = null,
         };
@@ -30,8 +31,9 @@ fn binary_derivative_iterate(self: *detect.StatDetect, data: []const u8) detect.
     var bit_arr = std.heap.page_allocator.alloc(u8, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = err,
         };
@@ -54,8 +56,9 @@ fn binary_derivative_iterate(self: *detect.StatDetect, data: []const u8) detect.
 
     return detect.DetectResult{
         .passed = passed,
+        .v_value = P,
         .p_value = p_value,
-        .stat_value = P,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

@@ -14,8 +14,9 @@ fn dft_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
     if (n < 100) {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = null,
         };
@@ -24,8 +25,9 @@ fn dft_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
     var x = std.heap.page_allocator.alloc(f64, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = err,
         };
@@ -39,8 +41,9 @@ fn dft_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
     var mag = std.heap.page_allocator.alloc(f64, N) catch |err| {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = err,
         };
@@ -69,8 +72,9 @@ fn dft_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
     const passed = p_value > 0.01;
     return detect.DetectResult{
         .passed = passed,
+        .v_value = diff,
         .p_value = p_value,
-        .stat_value = diff,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

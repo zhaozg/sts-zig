@@ -55,8 +55,9 @@ fn rank_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult 
     if (N == 0) {
         return detect.DetectResult{
             .passed = false,
+            .v_value = 0.0,
             .p_value = 0.0,
-            .stat_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = null,
         };
@@ -99,8 +100,9 @@ fn rank_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult 
 
     return detect.DetectResult{
         .passed = passed,
+        .v_value = chi2,
         .p_value = p_value,
-        .stat_value = chi2,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

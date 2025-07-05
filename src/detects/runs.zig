@@ -47,8 +47,9 @@ fn runs_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult 
 
     const result = detect.DetectResult{
         .passed = passed,
+        .v_value = stat,
         .p_value = p_value,
-        .stat_value = stat,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

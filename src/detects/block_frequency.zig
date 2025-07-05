@@ -36,8 +36,9 @@ fn block_frequency_iterate(self: *detect.StatDetect, data: []const u8) detect.De
     const passed = p_value > 0.01;
     return detect.DetectResult{
         .passed = passed,
+        .v_value = chi2,
         .p_value = p_value,
-        .stat_value = chi2,
+        .q_value = 0.0,
         .extra = null,
         .errno = null,
     };

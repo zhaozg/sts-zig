@@ -19,7 +19,7 @@ fn frequency_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectRe
 
     var n: isize = 0;
 
-    // Step 1: compute S_n
+    // Step 2: compute S_n
     while (bits.fetchBit()) |bit| {
         if (bit == 1) {
             n += 1;
@@ -28,17 +28,23 @@ fn frequency_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectRe
         }
     }
 
-    // Step 2: compute the test statistic
-    const S: f64 = @as(f64, @floatFromInt(@abs(n))) / @as(f64, @sqrt(@as(f64, @floatFromInt(bits.len))));
+    // Step 3: compute the test statistic
+    const V: f64 = @as(f64, @floatFromInt(n)) / @as(f64, @sqrt(@as(f64, @floatFromInt(bits.len))));
 
-    // Step 3: compute the test P-value
-    const p_value = math.erfc(S / std.math.sqrt(2.0));
-    const passed = p_value > 0.01;
+    // Step 4: compute the test P-value
+    const P = math.erfc(@abs(V) / @sqrt(2.0));
+
+    // Step 5: compute the Q-value
+    const Q = math.erfc(V / @sqrt(2.0)) / 2;
+
+    const passed = P > 0.01;
 
     const result = detect.DetectResult{
         .passed = passed,
-        .p_value = p_value,
-        .stat_value = S,
+        .v_value = V,
+        .p_value = P,
+        .q_value = Q,
+
         .extra = null,
         .errno = null,
     };
@@ -99,3 +105,4 @@ pub fn frequencyDetectStatDetect(allocator: std.mem.Allocator, param: detect.Det
 
     return freq_ptr;
 }
+
