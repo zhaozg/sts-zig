@@ -41,7 +41,7 @@ pub const DetectSuite = struct {
         try self.detects.append(pok);
         const run = try runs.runsDetectStatDetect(self.allocator, param);
         try self.detects.append(run);
-        const block_freq = try block_frequency.blockFrequencyDetectStatDetect(self.allocator, param);
+        const block_freq = try block_frequency.blockFrequencyDetectStatDetect(self.allocator, param, 10);
         try self.detects.append(block_freq);
 
         const sumsums = try cumulativeSums.cumulativeSumsDetectStatDetect(self.allocator, param);

@@ -3,6 +3,12 @@ const io = @import("../io.zig");
 const math = @import("../math.zig");
 const std = @import("std");
 
+const DEFAULT_BLOCK_SIZE = 128; // 默认块大小
+
+pub const BlockFrequencyParam= struct {
+    m: u8,
+};
+
 fn block_frequency_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = self;
     _ = param;
@@ -13,43 +19,70 @@ fn block_frequency_destroy(self: *detect.StatDetect) void {
 }
 
 fn block_frequency_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    _ = self;
+    const param = self.param;
 
     var bits = io.BitStream{ .data = data, .bit_index = 0, .len = data.len * 8 };
-    const block_size = 128;
+    var block_size: u8 = DEFAULT_BLOCK_SIZE;
+    if (param.extra != null) {
+        const blockParam = @as(*BlockFrequencyParam, @ptrCast(param.extra));
+        if (blockParam.m > 0) {
+            // 如果 m 参数存在且大于 0，则使用 m 作为块大小
+            block_size = blockParam.m;
+        }
+    }
+
+    // Step 1: N 个比特序列
     const N = bits.len / block_size;
+
     var sum: f64 = 0.0;
+    var i: u8 = 0;
 
     for (0..N) |_| {
+        // Step 2: 块内 1 计数
         var ones: usize = 0;
+        i = 0;
 
         while (bits.fetchBit()) |bit| {
             ones += bit;
+            i += 1;
+            if (i >= block_size) {
+                break; // 达到块大小，停止计数
+            }
         }
 
         const pi = @as(f64, @floatFromInt(ones)) / @as(f64, @floatFromInt(block_size));
         sum += (pi - 0.5) * (pi - 0.5);
     }
 
-    const chi2 = 4.0 * @as(f64, @floatFromInt(N)) * sum;
-    const p_value = 1.0 - math.igamc(@as(f64, @floatFromInt(N)) / 2.0, chi2 / 2.0);
-    const passed = p_value > 0.01;
+    // Step 3: 计算统计量
+    const V = 4.0 * @as(f64, @floatFromInt(block_size)) * sum;
+
+    // 计算 P 值
+    const P = 1.0 - math.igamc(@as(f64, @floatFromInt(N)) / 2.0, V / 2.0);
+
+    const passed = P > 0.01;
     return detect.DetectResult{
         .passed = passed,
-        .v_value = chi2,
-        .p_value = p_value,
-        .q_value = 0.0,
+        .v_value = V,
+        .p_value = P,
+        .q_value = P, // Q 值与 P 值相同
         .extra = null,
         .errno = null,
     };
 }
 
 
-pub fn blockFrequencyDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam) !*detect.StatDetect {
+pub fn blockFrequencyDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam, m: u8) !*detect.StatDetect {
     const ptr = try allocator.create(detect.StatDetect);
     const param_ptr = try allocator.create(detect.DetectParam);
     param_ptr.* = param;
-    param_ptr.*.type = detect.DetectType.General;
+    param_ptr.*.type = detect.DetectType.BlockFrequency;
+    const mParam = try allocator.create(BlockFrequencyParam);
+    mParam.* = BlockFrequencyParam{
+        .m = m,
+    };
+    param_ptr.*.extra = mParam;
+
     ptr.* = detect.StatDetect{
         .name = "BlockFrequency",
         .param = param_ptr,
