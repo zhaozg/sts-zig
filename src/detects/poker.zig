@@ -11,7 +11,7 @@ fn poker_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
 
 fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
     const param: *PokerParam = @ptrCast(self.param.extra);
-    const m = @as(u6, @intCast(param.m));
+    const m = @as(u4, @intCast(param.m));
 
     if (!(m == 2 or m == 4 or m == 8)) {
         return detect.DetectResult{
@@ -23,7 +23,7 @@ fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult
             .extra = null
         };
     }
-    const num_patterns = @as(usize, 1) << m;
+    const num_patterns = @as(u16, 1) << m;
 
     var counts = std.heap.page_allocator.alloc(usize, num_patterns) catch |err| {
         //std.debug.print("Poker Test: allocation failed: {}\n", .{err});
@@ -43,40 +43,78 @@ fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult
         c.* = 0;
     }
 
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = data.len * 8 };
-    var N: usize = 0;
-    while (true) {
+    var bits = io.BitStream.init(data);
+
+    // 解读公式：$ V = \frac{2^m}{N} \sum_{i=1}^{2^m} n_i^2 - N $
+
+    // ### 1. **公式结构**
+    // $$
+    // V = \frac{2^m}{N} \sum_{i=1}^{2^m} n_i^2 - N
+    // $$
+    //
+    // - $ V $：最终计算得到的统计量。
+    // - $ 2^m $：表示序列的长度或分组数量，其中 $ m $ 是一个正整数。
+    // - $ N $：总样本数量或序列长度。
+    // - $ n_i $：第 $ i $ 个分组或元素的计数值。
+    // - $ \sum_{i=1}^{2^m} n_i^2 $：对所有 $ n_i $ 的平方求和。
+    // - 如果 $ m = 3 $，则 $ 2^m = 8 $，表示将序列分为 8 个分组。
+    // - 这种分组方式常见于频率测试（Frequency Test）或块频率测试（Block Frequency Test），用于分析二进制序列的分布特性。
+
+    // #### (2) **$ n_i $**
+    // - $ n_i $ 表示第 $ i $ 个分组中 `'1'` 或 `'0'` 的计数值。
+    // - 例如，在频率测试中，$ n_i $ 可以是某个区间内 `'1'` 的个数。
+
+    // #### (3) **$ \sum_{i=1}^{2^m} n_i^2 $**
+    // - 对每个分组的计数值 $ n_i $ 求平方，并对所有分组的平方值求和。
+    // - 这一步是为了衡量每个分组的偏差程度，平方操作可以放大偏离平均值较大的分组的影响。
+    //
+    // #### (4) **$ \frac{2^m}{N} $**
+    // - $ \frac{2^m}{N} $ 是一个缩放因子，用于调整公式的结果范围。
+    // - $ N $ 是总样本数量，通常是序列的长度。
+    // - $ \frac{2^m}{N} $ 的作用是根据序列长度和分组数量进行归一化，确保结果具有可比性。
+    //
+    // #### (5) **$ - N $**
+    // - 最后减去 $ N $，这是为了进一步调整公式的结果，使其符合特定的统计分布（如标准正态分布）。
+
+    // Step 1: 计算 N
+    const N: usize = bits.len / m;
+
+    // Step 2.1: 子序列计数
+    var Ni: usize = 0;
+    while (Ni < N) {
+
         var value: u8 = 0;
-        var valid = true;
+
         for (0..m) |i| {
             _ = i;
             if (bits.fetchBit()) |bit| {
                 value = (value << 1) | @as(u8, @intCast(bit));
-            } else {
-                valid = false;
-                break;
             }
         }
-        if (!valid) break;
+
         counts[value] += 1;
-        N += 1;
+
+        Ni += 1;
     }
 
+    // Step 2.2: 计算统计值
     var sum: f64 = 0.0;
     for (counts) |c| {
         sum += @as(f64, @floatFromInt(c)) * @as(f64, @floatFromInt(c));
     }
 
-    const X = (@as(f64, @floatFromInt(num_patterns)) * sum / @as(f64, @floatFromInt(N))) - @as(f64, @floatFromInt(N));
+    const V = @as(f64, @floatFromInt(num_patterns)) * sum / @as(f64, @floatFromInt(N))
+            - @as(f64, @floatFromInt(N));
+
     // 卡方分布自由度为 num_patterns-1
-    const p_value = 1.0 - math.chi2_cdf(X, num_patterns - 1);
-    const passed = p_value > 0.01;
+    const P = 1.0 - math.igamc(( @as(f64, @floatFromInt(num_patterns)) - 1) / 2, V / 2 );
+    const passed = P > 0.01;
 
     return detect.DetectResult{
         .passed = passed,
-        .v_value = X,
-        .p_value = p_value,
-        .q_value = 0.0,
+        .v_value = V,
+        .p_value = P,
+        .q_value = P,
         .extra = null,
         .errno = null,
     };
@@ -91,7 +129,7 @@ const PokerParam = struct {
     m: u8, // m = 2, 4, or 8,
 };
 
-pub fn pokerDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam) !*detect.StatDetect {
+pub fn pokerDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam, m: u8) !*detect.StatDetect {
     const poker_ptr = try allocator.create(detect.StatDetect);
 
     const param_ptr = try allocator.create(detect.DetectParam);
@@ -101,7 +139,7 @@ pub fn pokerDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectP
     param_ptr.*.extra = null; // 目前没有额外参数
     //
     const poker_param: *PokerParam = try allocator.create(PokerParam);
-    poker_param.* = PokerParam{ .m = 2 };
+    poker_param.* = PokerParam{ .m = m };
     param_ptr.extra = poker_param;
 
     poker_ptr.* = detect.StatDetect{

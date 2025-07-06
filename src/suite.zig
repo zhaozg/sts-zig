@@ -37,12 +37,15 @@ pub const DetectSuite = struct {
     pub fn registerAll(self: *DetectSuite, param: detect.DetectParam) !void {
         const freq = try frequency.frequencyDetectStatDetect(self.allocator, param);
         try self.detects.append(freq);
-        const pok = try poker.pokerDetectStatDetect(self.allocator, param);
-        try self.detects.append(pok);
-        const run = try runs.runsDetectStatDetect(self.allocator, param);
-        try self.detects.append(run);
+
         const block_freq = try block_frequency.blockFrequencyDetectStatDetect(self.allocator, param, 10);
         try self.detects.append(block_freq);
+
+        const pok = try poker.pokerDetectStatDetect(self.allocator, param, 4);
+        try self.detects.append(pok);
+
+        const run = try runs.runsDetectStatDetect(self.allocator, param);
+        try self.detects.append(run);
 
         const sumsums = try cumulativeSums.cumulativeSumsDetectStatDetect(self.allocator, param);
         try self.detects.append(sumsums);
