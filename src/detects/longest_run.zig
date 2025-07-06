@@ -3,6 +3,12 @@ const io = @import("../io.zig");
 const math = @import("../math.zig");
 const std = @import("std");
 
+const DEFAULT_BLOCK_SIZE = 128; // 默认块大小
+
+pub const LongestRunParam= struct {
+    m: u16,
+};
+
 fn longest_run_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = self;
     _ = param;
@@ -12,14 +18,64 @@ fn longest_run_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    _ = self;
+fn selectSet(m: u16, r: u16) u3 {
+    if (m == 8) {
+        return switch (r) {
+            0 => 0, // <=1
+            1 => 0, // ==2
+            2 => 1, // ==3
+            3 => 2,
+            else => 3, // >=4
+        };
+    } else if (m == 128) {
+        return switch (r) {
+            0 => 0,
+            1 => 0,
+            2 => 0,
+            3 => 0,
+            4 => 0, // <=4
+            5 => 1,
+            6 => 2,
+            7 => 3,
+            8 => 4,
+            else => 5, // >= 9
+        };
+    } else if (m == 10000) {
+        if ( r <= 10)
+          return 0;
+        if (r >= 16)
+          return 6;
+        return @as(u3, @intCast(r-10));
+    }
+    return 0;
+}
 
-    // 固定块大小 M=8
-    const M = 8;
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = data.len * 8 };
-    const N = bits.len / M;
-    if (N == 0) {
+fn selectPi(m: u16, i: u3) f16 {
+    if (m == 8) {
+        const list = [_]f16{ 0.2148, 0.3672, 0.2305, 0.1875 };
+        return list[i];
+    } else if (m == 128) {
+        const list = [_]f16{ 0.1174, 0.2430, 0.2494, 0.1752, 0.0127, 0.1124 };
+        return list[i];
+    } else if (m == 10000) {
+        const list = [_]f16{ 0.086632, 0.208201, 0.248419, 0.193913,
+                                     0.121458, 0.068011, 0.073366 };
+        return list[i];
+    }
+    return 0.0; // 默认值
+}
+
+fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
+
+    var M: u16 = DEFAULT_BLOCK_SIZE; // 默认块大小
+    if (self.param.extra != null) {
+        const longestParam: *LongestRunParam = @alignCast(@ptrCast(self.param.extra));
+        if (longestParam.m > 0) {
+            // 如果 m 参数存在且大于 0，则使用 m 作为块大小
+            M = longestParam.m;
+        }
+    }
+    if (M != 8 and M != 128 and M != 10000) {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -30,55 +86,76 @@ fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.Detect
         };
     }
 
-    // 区间：<=1, 2, 3, >=4
-    var v = [_]usize{0} ** 4;
+    var bits = io.BitStream.init(data);
+
+    // Step 1: N 个比特序列
+    const N = bits.len / M;
+
+    // Step 2:  K + 1 个集合
+    const K: u3 = if (M == 8) 3 else if (M == 128) 5 else 6;
+
+    // K + 1 个集合
+    var v = [_]usize{0} ** 7;
+
+
+    var i: u16 = 0;
 
     for (0..N) |_| {
-        var run: usize = 0;
-        var max_run: usize = 0;
-        for (0..M) |_| {
-            if (bits.fetchBit()) |bit| {
-                if (bit == 1) {
-                    run += 1;
-                    if (run > max_run) max_run = run;
-                } else {
-                    run = 0;
-                }
+        // Step 2: 块内 1 计数
+        var run: u16 = 0;
+        var max_run: u16 = 0;
+        i = 0;
+
+     while (bits.fetchBit()) |bit| {
+            if (bit == 1) {
+                run += 1;
+                if (run > max_run) max_run = run;
+            } else {
+                run = 0;
+            }
+            i += 1;
+            if (i >= M) {
+                break; // 达到块大小，停止计数
             }
         }
-        if (max_run <= 1) v[0] += 1
-        else if (max_run == 2) v[1] += 1
-        else if (max_run == 3) v[2] += 1
-        else v[3] += 1;
+
+        v[selectSet(M, max_run)] += 1;
     }
 
-    // 理论概率（NIST SP800-22, M=8）
-    const pi = [_]f64{ 0.2148, 0.3672, 0.2305, 0.1875 };
+    // Step 3: 计算统计量
+    var V: f64 = 0.0;
+    for (0..K + 1) |n| {
+        const pi = selectPi(M, @as(u3, @intCast(n)));
 
-    var chi2: f64 = 0.0;
-    for (0..4) |i| {
-        const exp = pi[i] * @as(f64, @floatFromInt(N));
-        chi2 += ( @as(f64, @floatFromInt(v[i])) - exp ) * ( @as(f64, @floatFromInt(v[i])) - exp ) / exp;
+        const f = @as(f64, @floatFromInt(v[n])) - @as(f64, @floatFromInt(N)) * pi;
+        V += (f * f ) / (@as(f64, @floatFromInt(N)) * pi);
     }
-
-    const p_value = math.igamc(1.5, chi2 / 2.0);
-    const passed = p_value > 0.01;
+    const P = math.igamc(@as(f64, @floatFromInt(K)) / 2.0, V / 2.0);
+    const passed = P > 0.01;
 
     return detect.DetectResult{
         .passed = passed,
-        .v_value = chi2,
-        .p_value = p_value,
-        .q_value = 0.0,
+        .v_value = V,
+        .p_value = P,
+        .q_value = P,
         .extra = null,
         .errno = null,
     };
 }
 
-pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam) !*detect.StatDetect {
+pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam, m: u16) !*detect.StatDetect {
     const ptr = try allocator.create(detect.StatDetect);
     const param_ptr = try allocator.create(detect.DetectParam);
     param_ptr.* = param;
-    param_ptr.*.type = detect.DetectType.General;
+    param_ptr.*.type = detect.DetectType.LongestRun;
+
+    const longestParam = try allocator.create(LongestRunParam);
+    longestParam.* = LongestRunParam{
+        .m = m,
+    };
+
+    param_ptr.*.extra = longestParam;
+
     ptr.* = detect.StatDetect{
         .name = "LongestRun",
         .param = param_ptr,

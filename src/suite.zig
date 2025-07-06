@@ -53,7 +53,7 @@ pub const DetectSuite = struct {
         const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param);
         try self.detects.append(univ);
 
-        const longest = try longestRun.longestRunDetectStatDetect(self.allocator, param);
+        const longest = try longestRun.longestRunDetectStatDetect(self.allocator, param, 128);
         try self.detects.append(longest);
 
         const rnk = try rank.rankDetectStatDetect(self.allocator, param);
