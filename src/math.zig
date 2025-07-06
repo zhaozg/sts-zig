@@ -1,18 +1,73 @@
 const std = @import("std");
-const builtin = @import("builtin");
 const math = std.math;
 
-const c = @cImport({
-    @cInclude("math.h");
-});
-
 // 声明外部 C 函数（erf, erfc）
-pub extern "c" fn erf(x: f64) f64;
-pub extern "c" fn erff(x: f32) f32;
-pub extern "c" fn erfl(x: f128) f128;
-pub extern "c" fn erfc(x: f64) f64;
-pub extern "c" fn erfcf(x: f32) f32;
-pub extern "c" fn erfcl(x: f128) f128;
+const rel_error = 1e-12;
+const two_sqrtpi = 1.128379167095512574;
+const one_sqrtpi = 0.564189583547756287;
+
+pub const MACHEP = 1.11022302462515654042363e-16; // 2**-53
+pub const MAXLOG = 7.0978271289338399673222e2;    // ln(2**1024*(1-MACHEP))
+pub const MAXNUM = 1.79769313486231570814527e308; // 2**1024*(1-MACHEP)
+
+pub const PI = math.pi;
+pub const SQRT2 = math.sqrt2;
+
+const big = 4.503599627370496e15;
+const biginv = 2.22044604925031308085e-16;
+
+
+pub fn erf(x: f64) f64 {
+    if (@abs(x) > 2.2) {
+        return 1.0 - erfc(x);
+    }
+    var sum = x;
+    var term = x;
+    const xsqr = x * x;
+    var j: f64 = 1.0;
+
+    while (true) {
+        term *= xsqr / j;
+        sum -= term / (2.0 * j + 1.0);
+        j += 1.0;
+        term *= xsqr / j;
+        sum += term / (2.0 * j + 1.0);
+        j += 1.0;
+        if (@abs(term) / @abs(sum) <= rel_error) break;
+    }
+    return two_sqrtpi * sum;
+}
+
+pub fn erfc(x: f64) f64 {
+    if (@abs(x) < 2.2) {
+        return 1.0 - erf(x);
+    }
+    if (x < 0.0) {
+        return 2.0 - erfc(-x);
+    }
+    var a: f64 = 1.0;
+    var b: f64 = x;
+    var c: f64 = x;
+    var d: f64 = x * x + 0.5;
+    var q1: f64 = 0.0;
+    var q2: f64 = b / d;
+    var n: f64 = 1.0;
+    var t: f64 = 0.0;
+
+    while (true) {
+        t = a * n + b * x;
+        a = b;
+        b = t;
+        t = c * n + d * x;
+        c = d;
+        d = t;
+        n += 0.5;
+        q1 = q2;
+        q2 = b / d;
+        if (@abs(q1 - q2) / @abs(q2) <= rel_error) break;
+    }
+    return one_sqrtpi * std.math.exp(-x * x) * q2;
+}
 
 pub fn clamp(val: i32, min: i32, max: i32) i32 {
     if (val < min) return min;
@@ -41,15 +96,6 @@ pub fn chi2_cdf(x: f64, k: usize) f64 {
     const x2 = x / 2.0;
     return gamma_regularized(k2, x2);
 }
-
-
-pub const MACHEP = 1.11022302462515654042363e-16; // 2**-53
-pub const MAXLOG = 7.0978271289338399673222e2;    // ln(2**1024*(1-MACHEP))
-pub const MAXNUM = 1.79769313486231570814527e308; // 2**1024*(1-MACHEP)
-pub const PI = math.pi;
-pub const SQRT2 = math.sqrt2;
-const big = 4.503599627370496e15;
-const biginv = 2.22044604925031308085e-16;
 
 pub fn igamc(a: f64, x: f64) f64 {
     if (x <= 0 or a <= 0) return 1.0;
