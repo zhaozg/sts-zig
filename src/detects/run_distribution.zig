@@ -12,83 +12,94 @@ fn run_distribution_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-// 理论概率（p=0.5, NIST推荐）
-fn prob(k: usize, K: usize) f64 {
-    if (k < K-1)
-        return std.math.pow(f64, 0.5, @as(f64, @floatFromInt(k+1)));
-    return std.math.pow(f64, 0.5, @as(f64, @floatFromInt(K))) * 2.0;
+fn calcK(n: usize) usize {
+
+    for (1..n+1) |k| {
+        const e: f64 = @as(f64, @floatFromInt(n - k + 3))
+                     / @as(f64, @floatFromInt(std.math.pow(u64,2, k+2)));
+        if (e < 5.0)
+            return k - 1;
+    }
+    return 64;
 }
 
 fn run_distribution_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
     _ = self;
 
-    const n = data.len * 8;
-    if (n < 10) {
-        return detect.DetectResult{
-            .passed = false,
-            .v_value = 0.0,
-            .p_value = 0.0,
-            .q_value = 0.0,
-            .extra = null,
-            .errno = null,
-        };
-    }
+    var bits = io.BitStream.init(data);
 
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = n };
-    var bit_arr = std.heap.page_allocator.alloc(u8, n) catch |err| {
-        return detect.DetectResult{
-            .passed = false,
-            .v_value = 0.0,
-            .p_value = 0.0,
-            .q_value = 0.0,
-            .extra = null,
-            .errno = err,
-        };
-    };
-    defer std.heap.page_allocator.free(bit_arr);
-    for (0..n) |i| {
-        bit_arr[i] = if (bits.fetchBit()) |b| b else 0;
-    }
+    // Step 1: 计算 k 游程长度
+    const k = calcK(bits.len);
 
-    // 区间：长度1,2,3,4,>=5，分别统计0-run和1-run
-    const K = 5;
-    var v0 = [_]usize{0} ** K;
-    var v1 = [_]usize{0} ** K;
 
-    var curr: u8 = bit_arr[0];
-    var run: usize = 1;
-    for (1..n) |i| {
-        if (bit_arr[i] == curr) {
-            run += 1;
+    // Step 2: 分别统计0-run和1-run
+    var v0: [64]usize = [_]usize{0} ** 64;
+    var v1: [64]usize = [_]usize{0} ** 64;
+    var e: [64]f64= [_]f64{0.0} ** 64;
+
+    var l0: usize = 1;
+    var l1: usize = 1;
+    var prev: u1 = bits.fetchBit() orelse 0; // 获取第一个比特
+
+    while (bits.fetchBit()) |bit|{
+        if (bit == prev) {
+            if (prev == 0) l0 += 1 else l1 += 1;
         } else {
-            const idx = if (run >= K) K-1 else run-1;
-            if (curr == 0) v0[idx] += 1 else v1[idx] += 1;
-            curr = bit_arr[i];
-            run = 1;
+            if (prev == 0) {
+                if (l0 >= k) l0 = k;
+                v0[l0] += 1;
+            } else {
+                if (l1 >= k) l1 = k;
+                v1[l1] += 1;
+            }
+            l0 = 1;
+            l1 = 1;
+            prev = bit;
         }
     }
-    // 处理最后一个run
-    const idx = if (run >= K) K-1 else run-1;
-    if (curr == 0) v0[idx] += 1 else v1[idx] += 1;
 
-    var pi = [_]f64{0} ** K;
-    for (0..K) |k| pi[k] = prob(k, K);
-
-    var chi2: f64 = 0.0;
-    for (0..K) |i| {
-        const exp = pi[i] * @as(f64, @floatFromInt(n-1));
-        chi2 += ( @as(f64, @floatFromInt(v0[i])) - exp ) * ( @as(f64, @floatFromInt(v0[i])) - exp ) / exp;
-        chi2 += ( @as(f64, @floatFromInt(v1[i])) - exp ) * ( @as(f64, @floatFromInt(v1[i])) - exp ) / exp;
+    if (prev == 0) {
+        if (l0 >= k) l0 = k;
+        v0[l0] += 1;
+    } else {
+        if (l1 >= k) l1 = k;
+        v1[l1] += 1;
     }
 
-    const p_value = math.igamc(4.0, chi2 / 2.0);
-    const passed = p_value > 0.01;
+    // Step 3: 计算 T
+    var T: usize = 0;
+    for (1..k+1) |i| {
+        T += v0[i] + v1[i];
+    }
+
+    // Step 4: 计算 e
+    for (1..k+1) |i| {
+        if (i == k) {
+            e[i] = @as(f64, @floatFromInt(T)) / @as(f64, @floatFromInt(std.math.pow(u64, 2, k)));
+        } else {
+            e[i] = @as(f64, @floatFromInt(T)) / @as(f64, @floatFromInt(std.math.pow(u64, 2, i + 1)));
+        }
+    }
+
+    // Step 5: 计算 V
+    var V: f64 = 0.0;
+    for (1..k+1) |i| {
+        const f0: f64 = @as(f64, @floatFromInt(v0[i]));
+        const f1: f64 = @as(f64, @floatFromInt(v1[i]));
+        const fe = e[i];
+
+        V += ( f0 - fe ) * ( f0 - fe ) / fe + (f1 - fe) * (f1 - fe) / fe;
+    }
+
+    // Step 6: 计算 P 值
+    const P = math.igamc(@as(f64, @floatFromInt(k-1)), V / 2.0);
+    const passed = P > 0.01;
 
     return detect.DetectResult{
         .passed = passed,
-        .v_value = chi2,
-        .p_value = p_value,
-        .q_value = 0.0,
+        .v_value = V,
+        .p_value = P,
+        .q_value = P,
         .extra = null,
         .errno = null,
     };
