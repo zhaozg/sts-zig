@@ -199,6 +199,37 @@ test "Longest Run" {
     try std.testing.expect(result.q_value <= 0.127565);
 }
 
+test "Binary Derivative" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    const bytes = io.convertAscii2Byte(allocator, epsilon) catch |err| {
+        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
+        return err;
+    };
+    defer allocator.free(bytes);
+
+    const param = detect.DetectParam{
+        .type = detect.DetectType.BinaryDerivative,
+        .n = bytes.len, // 测试数据长度
+        .num_bitstreams = bytes.len * 8, // 每个字节8位
+        .extra = null, // 这里可以设置额外参数
+    };
+
+    const stat = try zsts.binaryDerivative.binaryDerivativeDetectStatDetect(allocator, param, 3);
+    stat.init(&param);
+    const result = stat.iterate(bytes);
+
+    std.debug.print("binaryDerivative: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
+        .{result.passed, result.v_value, result.p_value, result.q_value});
+
+    try std.testing.expect(result.passed == true);
+    try std.testing.expect(result.v_value >= 0.357770);
+    try std.testing.expect(result.p_value >= 0.720514);
+    try std.testing.expect(result.q_value <= 0.360258);
+}
+
+
 test "autocorrelation" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();

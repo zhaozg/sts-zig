@@ -65,7 +65,7 @@ pub const DetectSuite = struct {
         const approx = try approximateEntropy.approxEntropyDetectStatDetect(self.allocator, param);
         try self.detects.append(approx);
 
-        const binary = try binaryDerivative.binaryDerivativeDetectStatDetect(self.allocator, param);
+        const binary = try binaryDerivative.binaryDerivativeDetectStatDetect(self.allocator, param, 3);
         try self.detects.append(binary);
 
         const linear = try linearComplexity.linearComplexityDetectStatDetect(self.allocator, param);
