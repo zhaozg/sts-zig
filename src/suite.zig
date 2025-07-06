@@ -59,7 +59,7 @@ pub const DetectSuite = struct {
         const rnk = try rank.rankDetectStatDetect(self.allocator, param);
         try self.detects.append(rnk);
 
-        const corr = try autocorrelation.autocorrelationDetectStatDetect(self.allocator, param);
+        const corr = try autocorrelation.autocorrelationDetectStatDetect(self.allocator, param, 1);
         try self.detects.append(corr);
 
         const approx = try approximateEntropy.approxEntropyDetectStatDetect(self.allocator, param);

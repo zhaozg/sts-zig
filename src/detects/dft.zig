@@ -88,7 +88,7 @@ pub fn dftDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectPar
     const ptr = try allocator.create(detect.StatDetect);
     const param_ptr = try allocator.create(detect.DetectParam);
     param_ptr.* = param;
-    param_ptr.*.type = detect.DetectType.General;
+    param_ptr.*.type = detect.DetectType.Dft;
     ptr.* = detect.StatDetect{
         .name = "DFT",
         .param = param_ptr,
