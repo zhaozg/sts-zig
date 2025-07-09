@@ -3,6 +3,10 @@ const io = @import("../io.zig");
 const math = @import("../math.zig");
 const std = @import("std");
 
+const OverlappingSequencyParam = struct {
+    m: u8, // m = 3, 5, or 7,
+};
+
 fn overlapping_sequency_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = self;
     _ = param;
@@ -13,28 +17,18 @@ fn overlapping_sequency_destroy(self: *detect.StatDetect) void {
 }
 
 fn overlapping_sequency_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    _ = self;
 
-    const m = 3;
-    const M = 1032;
-    const n = data.len * 8;
-    const N = n / M;
-    if (N == 0) {
-        return detect.DetectResult{
-            .passed = false,
-            .v_value = 0.0,
-            .p_value = 0.0,
-            .q_value = 0.0,
-            .extra = null,
-            .errno = null,
-        };
+    var m : u8 = 3;
+    if(self.param.extra != null) {
+        const osParam: *OverlappingSequencyParam = @ptrCast(self.param.extra);
+        m = osParam.*.m;
     }
+    var bits = io.BitStream.init(data);
+    const allocator = std.heap.page_allocator;
 
-    // 固定模板 "111"
-    const template = [_]u8{1, 1, 1};
+    const n = bits.len;
 
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = n };
-    var bit_arr = std.heap.page_allocator.alloc(u8, n) catch |err| {
+    var arr: []u1 = allocator.alloc(u1, n + m - 1) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -44,74 +38,107 @@ fn overlapping_sequency_iterate(self: *detect.StatDetect, data: []const u8) dete
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(bit_arr);
-    for (0..n) |i| {
-        bit_arr[i] = if (bits.fetchBit()) |b| b else 0;
+
+    defer std.heap.page_allocator.free(arr);
+
+    var n_arr: [1<<8]usize = [_]usize{0}**(1<<8);
+    var n1_arr: [1<<8]usize = [_]usize{0}**(1<<8);
+    var n2_arr: [1<<8]usize = [_]usize{0}**(1<<8);
+
+    var i: usize = 0;
+
+    while(bits.fetchBit())|b| {
+        arr[i] = b;
+        i+=1;
+    }
+    for (0..m-1) |j| {
+        arr[n+j] = arr[j];
     }
 
-    // λ = (M - m + 1) / 2^m
-    const lambda = @as(f64, @floatFromInt(M - m + 1)) / 8.0;
 
-    // 统计每块模板出现次数
-    const K = 5;
-    var v = [_]usize{0} ** K;
-    for (0..N) |blk| {
-        const offset = blk * M;
-        var count: usize = 0;
-        var i: usize = 0;
-        while (i + m <= M) : (i += 1) {
-            var match = true;
-            for (0..m) |j| {
-                if (bit_arr[offset + i + j] != template[j]) {
-                    match = false;
-                    break;
-                }
-            }
-            if (match) count += 1;
+    for(0..n)|k| {
+        var M: u8 = 0;
+        for(0..m) |j| {
+            M = (M << 1) | arr[k+j];
         }
-        if (count <= 1) v[0] += 1
-        else if (count == 2) v[1] += 1
-        else if (count == 3) v[2] += 1
-        else if (count == 4) v[3] += 1
-        else v[4] += 1;
+        n_arr[M] += 1;
     }
 
-    const pi = [_]f64{
-        math.poisson(lambda, 0) + math.poisson(lambda, 1),
-        math.poisson(lambda, 2),
-        math.poisson(lambda, 3),
-        math.poisson(lambda, 4),
-        1.0 - (math.poisson(lambda, 0)
-            + math.poisson(lambda, 1)
-            + math.poisson(lambda, 2)
-            + math.poisson(lambda, 3)
-            + math.poisson(lambda, 4)),
-    };
-
-    var chi2: f64 = 0.0;
-    for (0..K) |i| {
-        const exp = pi[i] * @as(f64, @floatFromInt(N));
-        chi2 += ( @as(f64, @floatFromInt(v[i])) - exp ) * ( @as(f64, @floatFromInt(v[i])) - exp ) / exp;
+    for(0..n)|k| {
+        var M: u8 = 0;
+        for(0..m - 1) |j| {
+            M = (M << 1) | arr[k+j];
+        }
+        n1_arr[M] += 1;
     }
 
-    const p_value = math.igamc(2.0, chi2 / 2.0);
-    const passed = p_value > 0.01;
+    if (m > 2) {
+        for(0..n)|k| {
+            var M: u8 = 0;
+            for(0..m - 2) |j| {
+                M = (M << 1) | arr[k+j];
+            }
+            n2_arr[M] += 1;
+        }
+    }
+
+    // 步骤3: 计算Ψ^2统计量
+    var psi2_m : f64 = 0;
+    var psi2_m1 : f64 = 0;
+    var psi2_m2 : f64 = 0;
+
+    for(0 .. (@as(usize, 1) << @as(u3, @intCast(m))))|j| {
+        psi2_m += @as(f64, @floatFromInt(n_arr[j])) * @as(f64, @floatFromInt(n_arr[j]));
+    }
+
+    psi2_m = (   @as(f64, @floatFromInt(@as(usize, 1) << @as(u3, @intCast(m))))
+               / @as(f64, @floatFromInt(bits.len)) ) * psi2_m
+           - @as(f64, @floatFromInt(bits.len));
+
+    for(0 .. (@as(usize, 1) << @as(u3, @intCast(m-1))))|j| {
+        psi2_m1 += @as(f64, @floatFromInt(n1_arr[j])) * @as(f64, @floatFromInt(n1_arr[j]));
+    }
+
+    psi2_m1 = (   @as(f64, @floatFromInt(@as(usize, 1) << @as(u3, @intCast(m-1))))
+                / @as(f64, @floatFromInt(bits.len)) ) * psi2_m1
+           - @as(f64, @floatFromInt(bits.len));
+
+    if ( m > 2 ) {
+        for(0 .. (@as(usize, 1) << @as(u3, @intCast(m-2))))|j| {
+            psi2_m2 += @as(f64, @floatFromInt(n2_arr[j])) * @as(f64, @floatFromInt(n2_arr[j]));
+        }
+        psi2_m2 = (   @as(f64, @floatFromInt(@as(usize, 1) << @as(u3, @intCast(m-2))))
+        / @as(f64, @floatFromInt(bits.len)) ) * psi2_m2
+        - @as(f64, @floatFromInt(bits.len));
+    }
+
+    const nabla1: f64 = psi2_m - psi2_m1;
+    const nabla2: f64 = psi2_m - 2 * psi2_m1 + psi2_m2;
+
+    const P1 = math.igamc(std.math.pow(f64,2.0, @as(f64, @floatFromInt(m-2))), nabla1 / 2.0);
+    const P2 = math.igamc(std.math.pow(f64,2.0, @as(f64, @floatFromInt(m))-3), nabla2 / 2.0);
+
+    const passed = P1 > 0.01 and P2 > 0.01;
 
     return detect.DetectResult{
         .passed = passed,
-        .v_value = chi2,
-        .p_value = p_value,
-        .q_value = 0.0,
+        .v_value = nabla1,
+        .p_value = P1,
+        .q_value = P2,
         .extra = null,
         .errno = null,
     };
 }
 
-pub fn overlappingSequencyDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam) !*detect.StatDetect {
+pub fn overlappingSequencyDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam, m: u8) !*detect.StatDetect {
     const ptr = try allocator.create(detect.StatDetect);
     const param_ptr = try allocator.create(detect.DetectParam);
     param_ptr.* = param;
-    param_ptr.*.type = detect.DetectType.General;
+    param_ptr.*.type = detect.DetectType.OverlappingSequency;
+    const osParam : *OverlappingSequencyParam = try allocator.create(OverlappingSequencyParam);
+    osParam.*.m = m;
+    param_ptr.*.extra = @ptrCast(osParam);
+
     ptr.* = detect.StatDetect{
         .name = "OverlappingSequency",
         .param = param_ptr,

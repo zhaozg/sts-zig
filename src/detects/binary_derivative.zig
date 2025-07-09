@@ -26,7 +26,7 @@ fn binary_derivative_iterate(self: *detect.StatDetect, data: []const u8) detect.
     var bits = io.BitStream.init(data);
     const n = bits.len;
 
-    var bit_arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
+    var arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -36,18 +36,21 @@ fn binary_derivative_iterate(self: *detect.StatDetect, data: []const u8) detect.
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(bit_arr);
-    for (0..n) |i| {
-        bit_arr[i] = bits.fetchBit() orelse 0;
+    defer std.heap.page_allocator.free(arr);
+
+  for (0..n) |i| {
+        arr[i] = bits.fetchBit() orelse 0;
     }
 
-    // 计算一次二进制差分序列
-    var S: isize = 0;
-
-    for (1..k+1) |_k| {
-        for (0..n) |i| {
-            S += if (bit_arr[i] ^ bit_arr[(i + _k) % n] == 1) 1 else -1;
+    for (0..k) |i| {
+        for (0..n-i-1) |j| {
+            arr[j] = arr[j] ^ arr[j+1];
         }
+    }
+
+    var S: isize = 0;
+    for (0..n-k) |i| {
+        S += if (arr[i]==1) 1 else -1;
     }
 
     const V = @as(f64, @floatFromInt(S)) / @sqrt(@as(f64, @floatFromInt(n - k)));

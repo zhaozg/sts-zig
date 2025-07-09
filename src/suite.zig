@@ -74,7 +74,7 @@ pub const DetectSuite = struct {
         const non_overlapping = try nonOverlappingTemplate.nonOverlappingTemplateDetectStatDetect(self.allocator, param);
         try self.detects.append(non_overlapping);
 
-        const overseq = try overlappingseq.overlappingSequencyDetectStatDetect(self.allocator, param);
+        const overseq = try overlappingseq.overlappingSequencyDetectStatDetect(self.allocator, param, 3);
         try self.detects.append(overseq);
 
         const overlapping = try overlappingTemplate.overlappingTemplateDetectStatDetect(self.allocator, param);

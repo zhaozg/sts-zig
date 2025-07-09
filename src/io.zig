@@ -154,6 +154,10 @@ pub const BitStream = struct {
         };
     }
 
+    pub fn reset(self: *BitStream) void {
+        self.bit_index = 0;
+    }
+
     pub fn setLength(self: *BitStream, length: usize) void {
         if (length > self.data.len * 8) {
             std.debug.panic("Length exceeds data size");

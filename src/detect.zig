@@ -5,7 +5,7 @@ pub const DetectType = enum {
     General,
 
     ApproxEntropy,
-    Autocorrelation,
+    AutoCorrelation,
     BinaryDerivative,
     BlockFrequency,
     CumulativeSums,

@@ -31,7 +31,6 @@ fn run_distribution_iterate(self: *detect.StatDetect, data: []const u8) detect.D
     // Step 1: 计算 k 游程长度
     const k = calcK(bits.len);
 
-
     // Step 2: 分别统计0-run和1-run
     var v0: [64]usize = [_]usize{0} ** 64;
     var v1: [64]usize = [_]usize{0} ** 64;
@@ -75,9 +74,11 @@ fn run_distribution_iterate(self: *detect.StatDetect, data: []const u8) detect.D
     // Step 4: 计算 e
     for (1..k+1) |i| {
         if (i == k) {
-            e[i] = @as(f64, @floatFromInt(T)) / @as(f64, @floatFromInt(std.math.pow(u64, 2, k)));
+            e[i] = @as(f64, @floatFromInt(T))
+                 / @as(f64, @floatFromInt(std.math.pow(u64, 2, k)));
         } else {
-            e[i] = @as(f64, @floatFromInt(T)) / @as(f64, @floatFromInt(std.math.pow(u64, 2, i + 1)));
+            e[i] = @as(f64, @floatFromInt(T))
+                 / @as(f64, @floatFromInt(std.math.pow(u64, 2, i + 1)));
         }
     }
 

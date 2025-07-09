@@ -4,7 +4,7 @@ const math = @import("../math.zig");
 const std = @import("std");
 
 const AutoCorrelationParam = struct {
-    m: u8, // m = 3, 5, or 7,
+    d: u8, // m = 3, 5, or 7,
 };
 
 fn autocorrelation_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
@@ -21,7 +21,7 @@ fn autocorrelation_iterate(self: *detect.StatDetect, data: []const u8) detect.De
     var d: u8 = 1;
     if (self.param.extra) |extra| {
         const autocorrParam: *AutoCorrelationParam = @ptrCast(extra);
-        d = autocorrParam.m;
+        d = autocorrParam.d;
     }
 
     var bits = io.BitStream.init(data);
@@ -41,6 +41,9 @@ fn autocorrelation_iterate(self: *detect.StatDetect, data: []const u8) detect.De
     }
 
     var I: usize = 0;
+    const n = bits.len;
+
+    // 逻辑左移 d  位
     while(bits.fetchBit()) |b| {
         // 将比特流转换为 u1 数组
         bit_arr[I] = b;
@@ -48,12 +51,13 @@ fn autocorrelation_iterate(self: *detect.StatDetect, data: []const u8) detect.De
     }
 
     var V: usize = 0;
-    for (0..(bit_arr.len - d)) |i| {
-        if (bit_arr[i] == bit_arr[i + d]) V += 1;
+    for (0..n - d) |i| {
+        // 逻辑左移 d 位
+        V += bit_arr[i]^bit_arr[i + d];
     }
 
-    const nf = @as(f64, @floatFromInt(bit_arr.len - d));
-    const S = 2.0 * (@as(f64, @floatFromInt(V)) - nf / 2.0) / @sqrt(nf);
+    const nf = @as(f64, @floatFromInt(n - d));
+    const S = (2.0 * @as(f64, @floatFromInt(V)) - nf) / @sqrt(nf);
     const P = math.erfc(@abs(S) / @sqrt(2.0));
     const Q: f64 = 0.5 * math.erfc(S / @sqrt(2.0));
     const passed = P > 0.01;
@@ -75,7 +79,7 @@ pub fn autocorrelationDetectStatDetect(allocator: std.mem.Allocator, param: dete
     param_ptr.*.type = detect.DetectType.General;
 
     const autocorrParam: *AutoCorrelationParam = try allocator.create(AutoCorrelationParam);
-    autocorrParam.*.m = d;
+    autocorrParam.*.d = d;
     param_ptr.*.extra = @ptrCast(autocorrParam);
 
     ptr.* = detect.StatDetect{

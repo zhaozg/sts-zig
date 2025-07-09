@@ -3,10 +3,8 @@ const io = @import("../io.zig");
 const math = @import("../math.zig");
 const std = @import("std");
 
-const DEFAULT_BLOCK_SIZE = 128; // 默认块大小
-
 pub const LongestRunParam= struct {
-    m: u16,
+    mode: u8
 };
 
 fn longest_run_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
@@ -16,6 +14,18 @@ fn longest_run_init(self: *detect.StatDetect, param: *const detect.DetectParam) 
 
 fn longest_run_destroy(self: *detect.StatDetect) void {
     _ = self;
+}
+
+fn selectM(n: usize) u16 {
+    return if (n >= 75000)
+        10000
+    else if (n >= 6272)
+        128
+    else if (n >= 128)
+        8
+    else
+        0;
+    //FIXME: return zsts.errors.Error.InvalidBlockSize;
 }
 
 fn selectSet(m: u16, r: u16) u3 {
@@ -66,15 +76,16 @@ fn selectPi(m: u16, i: u3) f16 {
 }
 
 fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-
-    var M: u16 = DEFAULT_BLOCK_SIZE; // 默认块大小
+    var mode: u1 = 1;
     if (self.param.extra != null) {
         const longestParam: *LongestRunParam = @alignCast(@ptrCast(self.param.extra));
-        if (longestParam.m > 0) {
-            // 如果 m 参数存在且大于 0，则使用 m 作为块大小
-            M = longestParam.m;
-        }
+        mode = @as(u1, @intCast(longestParam.mode));
     }
+
+    var bits = io.BitStream.init(data);
+
+    const M: u16 = selectM(bits.len);
+
     if (M != 8 and M != 128 and M != 10000) {
         return detect.DetectResult{
             .passed = false,
@@ -86,8 +97,6 @@ fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.Detect
         };
     }
 
-    var bits = io.BitStream.init(data);
-
     // Step 1: N 个比特序列
     const N = bits.len / M;
 
@@ -97,24 +106,24 @@ fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.Detect
     // K + 1 个集合
     var v = [_]usize{0} ** 7;
 
-
-    var i: u16 = 0;
-
     for (0..N) |_| {
-        // Step 2: 块内 1 计数
+        // Step 2: 块内计数
         var run: u16 = 0;
         var max_run: u16 = 0;
-        i = 0;
+        var i: u16 = 0;
 
-     while (bits.fetchBit()) |bit| {
-            if (bit == 1) {
+        while (bits.fetchBit()) |bit| {
+            if (bit == mode) {
                 run += 1;
-                if (run > max_run) max_run = run;
             } else {
+                if (run > max_run) max_run = run;
+
                 run = 0;
             }
+
             i += 1;
             if (i >= M) {
+                if (run > max_run) max_run = run;
                 break; // 达到块大小，停止计数
             }
         }
@@ -126,9 +135,10 @@ fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.Detect
     var V: f64 = 0.0;
     for (0..K + 1) |n| {
         const pi = selectPi(M, @as(u3, @intCast(n)));
-
         const f = @as(f64, @floatFromInt(v[n])) - @as(f64, @floatFromInt(N)) * pi;
-        V += (f * f ) / (@as(f64, @floatFromInt(N)) * pi);
+        const x = ( f * f ) / (@as(f64, @floatFromInt(N)) * pi);
+
+        V += x;
     }
     const P = math.igamc(@as(f64, @floatFromInt(K)) / 2.0, V / 2.0);
     const passed = P > 0.01;
@@ -143,7 +153,7 @@ fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.Detect
     };
 }
 
-pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam, m: u16) !*detect.StatDetect {
+pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam, mode: u8) !*detect.StatDetect {
     const ptr = try allocator.create(detect.StatDetect);
     const param_ptr = try allocator.create(detect.DetectParam);
     param_ptr.* = param;
@@ -151,7 +161,7 @@ pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.De
 
     const longestParam = try allocator.create(LongestRunParam);
     longestParam.* = LongestRunParam{
-        .m = m,
+        .mode = mode, // 默认模式为 1
     };
 
     param_ptr.*.extra = longestParam;
