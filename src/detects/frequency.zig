@@ -5,17 +5,13 @@ const io = @import("../io.zig");
 const math = @import("../math.zig");
 
 fn frequency_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
-    const Param: *FrequencyParam = @ptrCast(self.param.extra);
-    _ = Param;
-
+    _ = self;
     _ = param;
 }
 
 fn frequency_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    const Param: *FrequencyParam = @ptrCast(self.param.extra);
-    _ = Param;
-
     var bits = io.BitStream{ .data = data, .bit_index = 0, .len = data.len * 8 };
+    bits.setLength(self.param.num_bitstreams);
 
     var n: isize = 0;
 
@@ -52,33 +48,22 @@ fn frequency_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectRe
 }
 
 fn frequency_metrics(self: *detect.StatDetect, result: *const detect.DetectResult) void {
-    const Param: *FrequencyParam = @ptrCast(self.param.extra);
-    _ = Param;
-
-    std.debug.print("Frequency Test Metrics: p_value={}\n", .{result.p_value});
+    _ = self;
+    _ = result;
 }
 
 fn frequency_destroy(self: *detect.StatDetect) void {
-    const Param: *FrequencyParam = @ptrCast(self.param.extra);
-    _ = Param;
-
-    // 清理
+    _ = self;
 }
 
 fn frequency_summary(self: *detect.StatDetect, result: *const detect.DetectResult) void {
-    const Param: *FrequencyParam = @ptrCast(self.param.extra);
-    _ = Param;
+    _ = self;
     _ = result;
 }
 
 fn frequency_reset(self: *detect.StatDetect) void {
-    const Param: *FrequencyParam = @ptrCast(self.param.extra);
-    _ = Param;
+    _ = self;
 }
-
-const FrequencyParam = struct {
-    dummy: u8,
-};
 
 pub fn frequencyDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam) !*detect.StatDetect {
     const freq_ptr = try allocator.create(detect.StatDetect);
@@ -86,9 +71,6 @@ pub fn frequencyDetectStatDetect(allocator: std.mem.Allocator, param: detect.Det
 
     param_ptr.* = param;
     param_ptr.*.type = detect.DetectType.Frequency; // 确保类型正确
-    const freq_param: *FrequencyParam = try allocator.create(FrequencyParam);
-    freq_param.* = FrequencyParam{ .dummy = 0 };
-    param_ptr.extra = freq_param;
 
     freq_ptr.* = detect.StatDetect{
         .name = "Frequency",

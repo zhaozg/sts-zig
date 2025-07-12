@@ -10,6 +10,17 @@ fn poker_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
 }
 
 fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
+    if (self.param.extra == null) {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .errno = error.InvalidArgument,
+            .extra = null
+        };
+    }
+
     const param: *PokerParam = @ptrCast(self.param.extra);
     const m = @as(u4, @intCast(param.m));
 
@@ -44,6 +55,7 @@ fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult
     }
 
     var bits = io.BitStream.init(data);
+    bits.setLength(self.param.num_bitstreams);
 
     // 解读公式：$ V = \frac{2^m}{N} \sum_{i=1}^{2^m} n_i^2 - N $
 
@@ -84,9 +96,7 @@ fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult
     while (Ni < N) {
 
         var value: u8 = 0;
-
-        for (0..m) |i| {
-            _ = i;
+        for (0..m) |_| {
             if (bits.fetchBit()) |bit| {
                 value = (value << 1) | @as(u8, @intCast(bit));
             }
@@ -107,7 +117,7 @@ fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult
             - @as(f64, @floatFromInt(N));
 
     // 卡方分布自由度为 num_patterns-1
-    const P = 1.0 - math.igamc(( @as(f64, @floatFromInt(num_patterns)) - 1) / 2, V / 2 );
+    const P = math.igamc(( @as(f64, @floatFromInt(num_patterns)) - 1) / 2, V / 2 );
     const passed = P > 0.01;
 
     return detect.DetectResult{

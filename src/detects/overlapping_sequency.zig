@@ -114,9 +114,10 @@ fn overlapping_sequency_iterate(self: *detect.StatDetect, data: []const u8) dete
 
     const nabla1: f64 = psi2_m - psi2_m1;
     const nabla2: f64 = psi2_m - 2 * psi2_m1 + psi2_m2;
+    std.debug.print("nabla1: {}, nabla2: {}\n", .{nabla1, nabla2});
 
     const P1 = math.igamc(std.math.pow(f64,2.0, @as(f64, @floatFromInt(m-2))), nabla1 / 2.0);
-    const P2 = math.igamc(std.math.pow(f64,2.0, @as(f64, @floatFromInt(m))-3), nabla2 / 2.0);
+    const P2 = math.igamc(std.math.pow(f64,2.0, @as(f64, @floatFromInt(@as(i8,  @intCast(m))-3))), nabla2 / 2.0);
 
     const passed = P1 > 0.01 and P2 > 0.01;
 

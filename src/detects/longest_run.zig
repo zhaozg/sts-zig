@@ -83,6 +83,7 @@ fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.Detect
     }
 
     var bits = io.BitStream.init(data);
+    bits.setLength(self.param.num_bitstreams);
 
     const M: u16 = selectM(bits.len);
 
@@ -98,7 +99,7 @@ fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.Detect
     }
 
     // Step 1: N 个比特序列
-    const N = bits.len / M;
+    const N: usize = @divTrunc(bits.len, M);
 
     // Step 2:  K + 1 个集合
     const K: u3 = if (M == 8) 3 else if (M == 128) 5 else 6;
@@ -110,21 +111,16 @@ fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.Detect
         // Step 2: 块内计数
         var run: u16 = 0;
         var max_run: u16 = 0;
-        var i: u16 = 0;
 
-        while (bits.fetchBit()) |bit| {
+        for (0 .. M) |_| {
+            const bit = bits.fetchBit() orelse 0;
             if (bit == mode) {
                 run += 1;
+                if (run > max_run) max_run = run;
             } else {
                 if (run > max_run) max_run = run;
 
                 run = 0;
-            }
-
-            i += 1;
-            if (i >= M) {
-                if (run > max_run) max_run = run;
-                break; // 达到块大小，停止计数
             }
         }
 
@@ -158,7 +154,6 @@ pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.De
     const param_ptr = try allocator.create(detect.DetectParam);
     param_ptr.* = param;
     param_ptr.*.type = detect.DetectType.LongestRun;
-
     const longestParam = try allocator.create(LongestRunParam);
     longestParam.* = LongestRunParam{
         .mode = mode, // 默认模式为 1

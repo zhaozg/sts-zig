@@ -21,18 +21,16 @@ fn block_frequency_destroy(self: *detect.StatDetect) void {
 fn block_frequency_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
     const param = self.param;
 
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = data.len * 8 };
-    var block_size: u8 = DEFAULT_BLOCK_SIZE;
+    var M: u8 = DEFAULT_BLOCK_SIZE;
     if (param.extra != null) {
-        const blockParam = @as(*BlockFrequencyParam, @ptrCast(param.extra));
-        if (blockParam.m > 0) {
-            // 如果 m 参数存在且大于 0，则使用 m 作为块大小
-            block_size = blockParam.m;
-        }
+        M = @as(*BlockFrequencyParam, @ptrCast(param.extra)).m;
     }
 
+    var bits = io.BitStream.init(data);
+    bits.setLength(self.param.num_bitstreams);
+
     // Step 1: N 个比特序列
-    const N = bits.len / block_size;
+    const N: usize = bits.len / M;
 
     var sum: f64 = 0.0;
     var i: u8 = 0;
@@ -45,20 +43,22 @@ fn block_frequency_iterate(self: *detect.StatDetect, data: []const u8) detect.De
         while (bits.fetchBit()) |bit| {
             ones += bit;
             i += 1;
-            if (i >= block_size) {
+            if (i >= M) {
                 break; // 达到块大小，停止计数
             }
         }
 
-        const pi = @as(f64, @floatFromInt(ones)) / @as(f64, @floatFromInt(block_size));
+        const pi = @as(f64, @floatFromInt(ones)) / @as(f64, @floatFromInt(M));
         sum += (pi - 0.5) * (pi - 0.5);
     }
 
     // Step 3: 计算统计量
-    const V = 4.0 * @as(f64, @floatFromInt(block_size)) * sum;
+    const V: f64 = 4.0 * @as(f64, @floatFromInt(M)) * sum;
 
     // 计算 P 值
-    const P = 1.0 - math.igamc(@as(f64, @floatFromInt(N)) / 2.0, V / 2.0);
+    const P = math.igamc(
+        @as(f64, @floatFromInt(N)) / 2.0,
+        V / 2.0);
 
     const passed = P > 0.01;
     return detect.DetectResult{
