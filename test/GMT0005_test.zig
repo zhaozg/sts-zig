@@ -14,10 +14,7 @@ const epsilon =
 
 const epsilon100 = "11001001000011111101101010100010001000010110100011" ++
                    "00001000110100110001001100011001100010100010111000";
-
-fn almostEqual(a: f64, b: f64) bool {
-    return @abs(a - b) <= 0.000001;
-}
+const tolerance = 0.000001;
 
 test "frequency" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -45,9 +42,9 @@ test "frequency" {
         .{result.passed, result.v_value, result.p_value, result.q_value});
 
     try std.testing.expect(result.passed == true);
-    try std.testing.expect(almostEqual(result.v_value, -1.237437));
-    try std.testing.expect(almostEqual(result.p_value, 0.215925));
-    try std.testing.expect(almostEqual(result.q_value, 0.892038));
+    try std.testing.expectApproxEqAbs(result.v_value, -1.237437, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.215925, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.892038, tolerance);
 }
 
 test "block frequency" {
@@ -76,9 +73,9 @@ test "block frequency" {
         .{result.passed, result.v_value, result.p_value, result.q_value});
 
     try std.testing.expect(result.passed == true);
-    try std.testing.expect(almostEqual(result.v_value, 7.2));
-    try std.testing.expect(almostEqual(result.p_value, 0.706438));
-    try std.testing.expect(almostEqual(result.q_value, 0.706438));
+    try std.testing.expectApproxEqAbs(result.v_value, 7.2, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.706438, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.706438, tolerance);
 }
 
 test "poker" {
@@ -107,10 +104,9 @@ test "poker" {
         .{m, result.passed, result.v_value, result.p_value, result.q_value});
 
     try std.testing.expect(result.passed == true);
-    try std.testing.expect(almostEqual(result.v_value, 19.000000));
-    // FIXME: 与 0005 附录 C 不一致, igamc 大参数支持的缺陷引起的
-    // try std.testing.expect(almostEqual(result.p_value, 0.213734));
-    // try std.testing.expect(almostEqual(result.q_value, 0.213734));
+    try std.testing.expectApproxEqAbs(result.v_value, 19.000000, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.213734, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.213734, tolerance);
 }
 
 test "Overlapping Subsequence" {
@@ -140,10 +136,9 @@ test "Overlapping Subsequence" {
 
     try std.testing.expect(result.passed == true);
 
-    try std.testing.expect(almostEqual(result.v_value, 1.656250));
-    try std.testing.expect(almostEqual(result.p_value, 0.436868));
-    // FIXME: 与 0005 附录 C 不一致, 算法 igamc 负参数支持的缺陷引起的
-    // try std.testing.expect(almostEqual(result.q_value, 0.723674));
+    try std.testing.expectApproxEqAbs(result.v_value, 1.656250, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.436868, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.723674, tolerance);
 }
 
 test "Runs" {
@@ -172,9 +167,9 @@ test "Runs" {
         .{result.passed, result.v_value, result.p_value, result.q_value});
 
     try std.testing.expect(result.passed == true);
-    try std.testing.expect(almostEqual(result.v_value, 0.494817));
-    try std.testing.expect(almostEqual(result.p_value, 0.620729));
-    try std.testing.expect(almostEqual(result.q_value, 0.310364));
+    try std.testing.expectApproxEqAbs(result.v_value, 0.494817, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.620729, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.310364, tolerance);
 }
 
 test "Run Distribution" {
@@ -202,9 +197,9 @@ test "Run Distribution" {
         .{result.passed, result.v_value, result.p_value, result.q_value});
 
     try std.testing.expect(result.passed == true);
-    try std.testing.expect(almostEqual(result.v_value, 0.060606));
-    try std.testing.expect(almostEqual(result.p_value, 0.970152));
-    try std.testing.expect(almostEqual(result.q_value, 0.970152));
+    try std.testing.expectApproxEqAbs(result.v_value, 0.060606, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.970152, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.970152, tolerance);
 }
 
 test "Longest Run" {
@@ -233,9 +228,9 @@ test "Longest Run" {
 
     try std.testing.expect(result.passed == true);
     // FIXME: 这里的结果与 0005 附录 C 不一致, 统计值稍有偏差
-    // try std.testing.expect(almostEqual(result.v_value, 4.882605));
-    // try std.testing.expect(almostEqual(result.p_value,  0.180598));
-    // try std.testing.expect(almostEqual(result.q_value,  0.180598));
+    // try std.testing.expectApproxEqAbs(result.v_value, 4.882605, tolerance);
+    // try std.testing.expectApproxEqAbs(result.p_value, 0.180598, tolerance);
+    // try std.testing.expectApproxEqAbs(result.q_value, 0.180598, tolerance);
 
     stat = try zsts.longestRun.longestRunDetectStatDetect(allocator, param, 0);
     stat.init(&param);
@@ -246,9 +241,9 @@ test "Longest Run" {
 
     try std.testing.expect(result.passed == true);
     // FIXME: 这里的结果与 0005 附录 C 不一致, 统计值稍有偏差
-    // try std.testing.expect(almostEqual(result.v_value, 0.842410));
-    // try std.testing.expect(almostEqual(result.p_value,  0.839299));
-    // try std.testing.expect(almostEqual(result.q_value,  0.839299));
+    // try std.testing.expectApproxEqAbs(result.v_value, 0.842410, tolerance);
+    // try std.testing.expectApproxEqAbs(result.p_value, 0.839299, tolerance);
+    // try std.testing.expectApproxEqAbs(result.q_value, 0.839299, tolerance);
 }
 
 test "Binary Derivative" {
@@ -276,9 +271,9 @@ test "Binary Derivative" {
         .{result.passed, result.v_value, result.p_value, result.q_value});
 
     try std.testing.expect(result.passed == true);
-    try std.testing.expect(almostEqual(result.v_value, -2.057183));
-    try std.testing.expect(almostEqual(result.p_value, 0.039669));
-    try std.testing.expect(almostEqual(result.q_value, 0.980166));
+    try std.testing.expectApproxEqAbs(result.v_value, -2.057183, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.039669, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.980166, tolerance);
 }
 
 test "autocorrelation" {
@@ -307,9 +302,9 @@ test "autocorrelation" {
 
     try std.testing.expect(result.passed == true);
 
-    try std.testing.expect(almostEqual(result.v_value, 0.266207));
-    try std.testing.expect(almostEqual(result.p_value, 0.790080));
-    try std.testing.expect(almostEqual(result.q_value, 0.395040));
+    try std.testing.expectApproxEqAbs(result.v_value, 0.266207, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.790080, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.395040, tolerance);
 }
 
 test "Rank" {
@@ -339,9 +334,9 @@ test "Rank" {
 
     try std.testing.expect(result.passed == true);
 
-    try std.testing.expect(almostEqual(result.v_value, 2.358278));
-    try std.testing.expect(almostEqual(result.p_value, 0.307543));
-    try std.testing.expect(almostEqual(result.q_value, 0.307543));
+    try std.testing.expectApproxEqAbs(result.v_value, 2.358278, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.307543, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.307543, tolerance);
 }
 
 test "cumulative_sums" {
@@ -370,9 +365,9 @@ test "cumulative_sums" {
 
     try std.testing.expect(result.passed == true);
 
-    try std.testing.expect(almostEqual(result.v_value, 0.0));
-    try std.testing.expect(almostEqual(result.p_value, 0.219194));
-    try std.testing.expect(almostEqual(result.q_value, 0.219194));
+    try std.testing.expectApproxEqAbs(result.v_value, 0.0, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.219194, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.219194, tolerance);
 
     stat = try zsts.cumulativeSums.cumulativeSumsDetectStatDetect(allocator, param, false);
     stat.init(&param);
@@ -383,9 +378,9 @@ test "cumulative_sums" {
 
     try std.testing.expect(result.passed == true);
 
-    try std.testing.expect(almostEqual(result.v_value, 0.0));
-    try std.testing.expect(almostEqual(result.p_value, 0.114866));
-    try std.testing.expect(almostEqual(result.q_value, 0.114866));
+    try std.testing.expectApproxEqAbs(result.v_value, 0.0, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.114866, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.114866, tolerance);
 }
 
 test "ApproxEntropy" {
@@ -414,9 +409,9 @@ test "ApproxEntropy" {
 
     try std.testing.expect(result.passed == true);
 
-    try std.testing.expect(almostEqual(result.v_value, 5.550792));
-    try std.testing.expect(almostEqual(result.p_value, 0.235301));
-    try std.testing.expect(almostEqual(result.q_value, 0.235301));
+    try std.testing.expectApproxEqAbs(result.v_value, 5.550792, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.235301, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.235301, tolerance);
 }
 
 test "Maurer Universal" {
@@ -443,9 +438,9 @@ test "Maurer Universal" {
         .{result.passed, result.v_value, result.p_value, result.q_value});
 
     try std.testing.expect(result.passed == true);
-    try std.testing.expect(almostEqual(result.v_value, 1.074569));
-    try std.testing.expect(almostEqual(result.p_value, 0.282568));
-    try std.testing.expect(almostEqual(result.q_value, 0.141284));
+    try std.testing.expectApproxEqAbs(result.v_value, 1.074569, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.282568, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.141284, tolerance);
 }
 
 test "DFT" {
@@ -474,7 +469,7 @@ test "DFT" {
 
     try std.testing.expect(result.passed == true);
 
-    try std.testing.expect(almostEqual(result.v_value, 0.447214));
-    try std.testing.expect(almostEqual(result.p_value, 0.654721));
-    try std.testing.expect(almostEqual(result.q_value, 0.327360));
+    try std.testing.expectApproxEqAbs(result.v_value, 0.447214, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.654721, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.327360, tolerance);
 }

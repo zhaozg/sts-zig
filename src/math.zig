@@ -1,6 +1,14 @@
 const std = @import("std");
 const math = std.math;
 
+// 通过 Zig 调用 GSL 的 igamc
+pub fn igamc(a: f64, x: f64) f64 {
+    const c = @cImport({
+        @cInclude("gsl/gsl_sf.h");
+    });
+    return c.gsl_sf_gamma_inc_Q(a, x);
+}
+
 // 声明外部 C 函数（erf, erfc）
 const rel_error = 1e-12;
 const two_sqrtpi = 1.128379167095512574;
@@ -97,72 +105,6 @@ pub fn chi2_cdf(x: f64, k: usize) f64 {
     return gamma_regularized(k2, x2);
 }
 
-pub fn igamc(a: f64, x: f64) f64 {
-    if (x <= 0 or a <= 0) return 1.0;
-    if (x < 1.0 or x < a) return 1.0 - igam(a, x);
-
-    var ax = a * @log(x) - x - lgam(a);
-    if (ax < -MAXLOG) return 0.0;
-    ax = math.exp(ax);
-
-    var y = 1.0 - a;
-    var z = x + y + 1.0;
-    var v: f64 = 0.0;
-    var pkm2: f64 = 1.0;
-    var qkm2 = x;
-    var pkm1 = x + 1.0;
-    var qkm1 = z * x;
-    var ans = pkm1 / qkm1;
-    var t: f64 = 0.0;
-
-    while (true) {
-        v += 1.0;
-        y += 1.0;
-        z += 2.0;
-        const yc = y * v;
-        const pk = pkm1 * z - pkm2 * yc;
-        const qk = qkm1 * z - qkm2 * yc;
-        if (qk != 0.0) {
-            const r = pk / qk;
-            t = @abs((ans - r) / r);
-            ans = r;
-        } else {
-            t = 1.0;
-        }
-        pkm2 = pkm1;
-        pkm1 = pk;
-        qkm2 = qkm1;
-        qkm1 = qk;
-        if (@abs(pk) > big) {
-            pkm2 *= biginv;
-            pkm1 *= biginv;
-            qkm2 *= biginv;
-            qkm1 *= biginv;
-        }
-        if (t <= MACHEP) break;
-    }
-    return ans * ax;
-}
-
-pub fn igam(a: f64, x: f64) f64 {
-    if (x <= 0 or a <= 0) return 0.0;
-    if (x > 1.0 and x > a) return 1.0 - igamc(a, x);
-
-    var ax = a * @log(x) - x - lgam(a);
-    if (ax < -MAXLOG) return 0.0;
-    ax = math.exp(ax);
-
-    var r = a;
-    var v: f64 = 1.0;
-    var ans: f64 = 1.0;
-    while (true) {
-        r += 1.0;
-        v *= x / r;
-        ans += v;
-        if (v / ans <= MACHEP) break;
-    }
-    return ans * ax / a;
-}
 
 // --- cephes_lgam 相关常量和辅助函数 ---
 const A = [_]f64{

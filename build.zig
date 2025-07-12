@@ -12,7 +12,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.addIncludePath(.{ .cwd_relative = "/usr/local/opt/fftw/include" });
+    exe.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
     exe.linkSystemLibrary("fftw3");
+    exe.linkSystemLibrary("gsl");
     b.installArtifact(exe);
 
    // 创建模块
@@ -26,7 +28,9 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
     unit_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/fftw/include" });
+    unit_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
     unit_tests.linkSystemLibrary("fftw3");
+    unit_tests.linkSystemLibrary("gsl");
     unit_tests.root_module.addImport("zsts", zsts_module);
 
     const run_unit_tests = b.addRunArtifact(unit_tests);
