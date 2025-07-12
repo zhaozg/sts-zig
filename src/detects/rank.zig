@@ -2,6 +2,7 @@ const detect = @import("../detect.zig");
 const io = @import("../io.zig");
 const math = @import("../math.zig");
 const std = @import("std");
+const matrix = @import("../matrix.zig");
 
 fn rank_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = self;
@@ -12,46 +13,14 @@ fn rank_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-// 计算32x32二进制矩阵的秩（高斯消元）
-fn binary_matrix_rank(matrix: *[32]u32) usize {
-    var rank: usize = 0;
-    var rows = matrix.*;
-
-    for (0..32) |C| {
-        const col:u5 = @as(u5, @intCast(C));
-
-        var pivot_row: ?usize = null;
-        for (rank..32) |row| {
-            if ((rows[row] >> (31 - col)) & 1 == 1) {
-                pivot_row = row;
-                break;
-            }
-        }
-        if (pivot_row) |pr| {
-            if (pr != rank) {
-                const tmp = rows[rank];
-                rows[rank] = rows[pr];
-                rows[pr] = tmp;
-            }
-            for (0..32) |row| {
-                if (row != rank and ((rows[row] >> (31 - col)) & 1 == 1)) {
-                    rows[row] ^= rows[rank];
-                }
-            }
-            rank += 1;
-        }
-    }
-    return rank;
-}
-
 fn rank_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    _ = self;
 
     const M = 32;
     const Q = 32;
-    const block_bits = M * Q;
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = data.len * 8 };
-    const N = bits.len / block_bits;
+    var bits = io.BitStream.init(data);
+    bits.setLength(self.param.num_bitstreams);
+    const N = bits.len / (M*Q);
+
     if (N == 0) {
         return detect.DetectResult{
             .passed = false,
@@ -63,24 +32,39 @@ fn rank_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult 
         };
     }
 
+    var mat = matrix.createMatrix(M, Q) catch |err| {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
+
     var freq = [_]usize{0} ** 3; // 32, 31, <31
 
     for (0..N) |_| {
-        var matrix = [_]u32{0} ** 32;
-        for (0..M) |row| {
-            var val: u32 = 0;
-            for (0..Q) |_| {
-                if (bits.fetchBit()) |bit| {
-                    val = (val << 1) | bit;
-                }
+        matrix.resetMatrix(mat);
+
+
+        for (0..M) |x| {
+            for (0..Q) |y| {
+                mat[x][y] = bits.fetchBit() orelse 0;
             }
-            matrix[row] = val;
         }
-        const r = binary_matrix_rank(&matrix);
-        if (r == 32) freq[0] += 1
-        else if (r == 31) freq[1] += 1
-        else freq[2] += 1;
+        const r = matrix.computeRank(mat, M, Q);
+
+        if (r == 32)
+           freq[0] += 1
+        else if (r == 31)
+           freq[1] += 1
+        else
+           freq[2] += 1;
     }
+
+    //std.debug.print("F1={d:.6}, F2={d:.6}, F3 = {d:.6}\n", .{freq[0], freq[1], freq[2]});
 
     // 理论概率（NIST SP800-22, 32x32）
     const p32 = 0.2888;
@@ -92,17 +76,19 @@ fn rank_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult 
     var chi2: f64 = 0.0;
     for (0..3) |i| {
         const exp = pi[i] * @as(f64, @floatFromInt(N));
-        chi2 += ( @as(f64, @floatFromInt(freq[i])) - exp ) * ( @as(f64, @floatFromInt(freq[i])) - exp ) / exp;
+        chi2 += ( @as(f64, @floatFromInt(freq[i])) - exp )
+              * ( @as(f64, @floatFromInt(freq[i])) - exp )
+              / exp;
     }
 
-    const p_value = math.igamc(1.0, chi2 / 2.0);
-    const passed = p_value > 0.01;
+    const P = math.igamc(1.0, chi2 / 2.0);
+    const passed = P > 0.01;
 
     return detect.DetectResult{
         .passed = passed,
         .v_value = chi2,
-        .p_value = p_value,
-        .q_value = 0.0,
+        .p_value = P,
+        .q_value = P,
         .extra = null,
         .errno = null,
     };
@@ -112,7 +98,7 @@ pub fn rankDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectPa
     const ptr = try allocator.create(detect.StatDetect);
     const param_ptr = try allocator.create(detect.DetectParam);
     param_ptr.* = param;
-    param_ptr.*.type = detect.DetectType.General;
+    param_ptr.*.type = detect.DetectType.Rank;
     ptr.* = detect.StatDetect{
         .name = "Rank",
         .param = param_ptr,

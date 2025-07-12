@@ -11,6 +11,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    exe.addIncludePath(.{ .cwd_relative = "/usr/local/opt/fftw/include" });
+    exe.linkSystemLibrary("fftw3");
     b.installArtifact(exe);
 
    // 创建模块
@@ -23,6 +25,8 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("test/GMT0005_test.zig"),
         .target = target,
     });
+    unit_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/fftw/include" });
+    unit_tests.linkSystemLibrary("fftw3");
     unit_tests.root_module.addImport("zsts", zsts_module);
 
     const run_unit_tests = b.addRunArtifact(unit_tests);

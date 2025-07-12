@@ -160,7 +160,7 @@ pub const BitStream = struct {
 
     pub fn setLength(self: *BitStream, length: usize) void {
         if (length > self.data.len * 8) {
-            std.debug.panic("Length exceeds data size");
+            return;
         }
         self.len = length;
     }
@@ -218,5 +218,40 @@ pub fn convertAscii2Byte(allocator: std.mem.Allocator, data: []const u8) ![]u8 {
     }
 
     return byte_array;
+}
+
+pub fn loadFile(allocator: std.mem.Allocator, path: []const u8, len: usize) ![]u8{
+    const file = try std.fs.cwd().openFile(path, .{});
+    defer file.close();
+
+    var arr: []u8 = try allocator.alloc(u8, len);
+    var off: usize = 0;
+    var bi: u4 = 0;
+    for(arr) |*bit| {
+        bit.* = 0; // 初始化为 0
+    }
+
+    const reader = file.reader();
+
+    var buf: [1024]u8 = undefined;
+    while (try reader.readUntilDelimiterOrEof(&buf, '\n')) |line| {
+        for (line) |bit| {
+            if (bit == '1') {
+                arr[off] |= (@as(u8, 1) << @as(u3, (7 - @as(u3, @truncate(bi)))));
+                bi += 1;
+            }else if(bit == '0') {
+                bi += 1;
+            }
+            if (bi == 8) {
+                off += 1;
+                bi = 0;
+            }
+            if (off == len)
+                break;
+        }
+        if (off == len)
+            break;
+    }
+    return arr[0..off];
 }
 

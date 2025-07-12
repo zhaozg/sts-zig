@@ -47,10 +47,10 @@ pub const DetectSuite = struct {
         const run = try runs.runsDetectStatDetect(self.allocator, param);
         try self.detects.append(run);
 
-        const sumsums = try cumulativeSums.cumulativeSumsDetectStatDetect(self.allocator, param);
+        const sumsums = try cumulativeSums.cumulativeSumsDetectStatDetect(self.allocator, param, true);
         try self.detects.append(sumsums);
 
-        const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param);
+        const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param, 3, 7);
         try self.detects.append(univ);
 
         const longest = try longestRun.longestRunDetectStatDetect(self.allocator, param, 128);
@@ -62,7 +62,7 @@ pub const DetectSuite = struct {
         const corr = try autocorrelation.autocorrelationDetectStatDetect(self.allocator, param, 1);
         try self.detects.append(corr);
 
-        const approx = try approximateEntropy.approxEntropyDetectStatDetect(self.allocator, param);
+        const approx = try approximateEntropy.approxEntropyDetectStatDetect(self.allocator, param, 2);
         try self.detects.append(approx);
 
         const binary = try binaryDerivative.binaryDerivativeDetectStatDetect(self.allocator, param, 3);

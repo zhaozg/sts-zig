@@ -310,3 +310,169 @@ test "autocorrelation" {
     try std.testing.expect(almostEqual(result.q_value, 0.395040));
 }
 
+test "Rank" {
+    const allocator = std.heap.page_allocator;
+
+    const bytes = io.loadFile(allocator, "data/data.e", 125000) catch |err| {
+        std.debug.print("Error loading file: {}\n", .{err});
+        return err;
+    };
+    defer allocator.free(bytes);
+
+    const n = 1000000; // 100000 字节
+
+    const param = detect.DetectParam{
+        .type = detect.DetectType.Rank,
+        .n = bytes.len, // 测试数据长度
+        .num_bitstreams = n, // 每个字节8位
+        .extra = null, // 这里可以设置额外参数
+    };
+
+    const stat = try zsts.rank.rankDetectStatDetect(allocator, param);
+    stat.init(&param);
+    const result = stat.iterate(bytes);
+
+    std.debug.print("Rank: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
+        .{result.passed, result.v_value, result.p_value, result.q_value});
+
+    try std.testing.expect(result.passed == true);
+
+    try std.testing.expect(almostEqual(result.v_value, 2.358278));
+    try std.testing.expect(almostEqual(result.p_value, 0.307543));
+    try std.testing.expect(almostEqual(result.q_value, 0.307543));
+}
+
+test "cumulative_sums" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    const bytes = io.convertAscii2Byte(allocator, epsilon100) catch |err| {
+        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
+        return err;
+    };
+    defer allocator.free(bytes);
+
+    const param = detect.DetectParam{
+        .type = detect.DetectType.CumulativeSums,
+        .n = bytes.len, // 测试数据长度
+        .num_bitstreams = 100,
+        .extra = null, // 这里可以设置额外参数
+    };
+
+    var stat = try zsts.cumulativeSums.cumulativeSumsDetectStatDetect(allocator, param, true);
+    stat.init(&param);
+    var result = stat.iterate(bytes);
+
+    std.debug.print("cumSums(Forward): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
+        .{result.passed, result.v_value, result.p_value, result.q_value});
+
+    try std.testing.expect(result.passed == true);
+
+    try std.testing.expect(almostEqual(result.v_value, 0.0));
+    try std.testing.expect(almostEqual(result.p_value, 0.219194));
+    try std.testing.expect(almostEqual(result.q_value, 0.219194));
+
+    stat = try zsts.cumulativeSums.cumulativeSumsDetectStatDetect(allocator, param, false);
+    stat.init(&param);
+    result = stat.iterate(bytes);
+
+    std.debug.print("cumSums(Backup): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
+        .{result.passed, result.v_value, result.p_value, result.q_value});
+
+    try std.testing.expect(result.passed == true);
+
+    try std.testing.expect(almostEqual(result.v_value, 0.0));
+    try std.testing.expect(almostEqual(result.p_value, 0.114866));
+    try std.testing.expect(almostEqual(result.q_value, 0.114866));
+}
+
+test "ApproxEntropy" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    const bytes = io.convertAscii2Byte(allocator, epsilon100) catch |err| {
+        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
+        return err;
+    };
+    defer allocator.free(bytes);
+
+    const param = detect.DetectParam{
+        .type = detect.DetectType.ApproxEntropy,
+        .n = bytes.len, // 测试数据长度
+        .num_bitstreams = 100,
+        .extra = null, // 这里可以设置额外参数
+    };
+
+    var stat = try zsts.approximateEntropy.approxEntropyDetectStatDetect(allocator, param, 2);
+    stat.init(&param);
+    const result = stat.iterate(bytes);
+
+    std.debug.print("approximateEntropy: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
+        .{result.passed, result.v_value, result.p_value, result.q_value});
+
+    try std.testing.expect(result.passed == true);
+
+    try std.testing.expect(almostEqual(result.v_value, 5.550792));
+    try std.testing.expect(almostEqual(result.p_value, 0.235301));
+    try std.testing.expect(almostEqual(result.q_value, 0.235301));
+}
+
+test "Maurer Universal" {
+    const allocator = std.heap.page_allocator;
+
+    const bytes = io.loadFile(allocator, "data/data.e", 125000) catch |err| {
+        std.debug.print("Error loading file: {}\n", .{err});
+        return err;
+    };
+    defer allocator.free(bytes);
+
+    const param = detect.DetectParam{
+        .type = detect.DetectType.MaurerUniversal,
+        .n = bytes.len, // 测试数据长度
+        .num_bitstreams = 1000000, // 每个字节8位
+        .extra = null, // 这里可以设置额外参数
+    };
+
+    const stat = try zsts.maurerUniversal.maurerUniversalDetectStatDetect(allocator, param, 7, 1280);
+    stat.init(&param);
+    const result = stat.iterate(bytes);
+
+    std.debug.print("maurerUniversal: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
+        .{result.passed, result.v_value, result.p_value, result.q_value});
+
+    try std.testing.expect(result.passed == true);
+    try std.testing.expect(almostEqual(result.v_value, 1.074569));
+    try std.testing.expect(almostEqual(result.p_value, 0.282568));
+    try std.testing.expect(almostEqual(result.q_value, 0.141284));
+}
+
+test "DFT" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    const bytes = io.convertAscii2Byte(allocator, epsilon100) catch |err| {
+        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
+        return err;
+    };
+    defer allocator.free(bytes);
+
+    const param = detect.DetectParam{
+        .type = detect.DetectType.Dft,
+        .n = bytes.len, // 测试数据长度
+        .num_bitstreams = 100,
+        .extra = null, // 这里可以设置额外参数
+    };
+
+    var stat = try zsts.dft.dftDetectStatDetect(allocator, param);
+    stat.init(&param);
+    const result = stat.iterate(bytes);
+
+    std.debug.print("DFT: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
+        .{result.passed, result.v_value, result.p_value, result.q_value});
+
+    try std.testing.expect(result.passed == true);
+
+    try std.testing.expect(almostEqual(result.v_value, 0.447214));
+    try std.testing.expect(almostEqual(result.p_value, 0.654721));
+    try std.testing.expect(almostEqual(result.q_value, 0.327360));
+}

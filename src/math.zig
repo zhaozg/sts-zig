@@ -250,7 +250,7 @@ pub fn lgam(x: f64) f64 {
 
 pub fn normal(x: f64) f64 {
     const arg = if (x > 0) x / SQRT2 else -x / SQRT2;
-    const erf_val = math.erf(arg);
+    const erf_val = erf(arg);
     return if (x > 0)
         0.5 * (1.0 + erf_val)
     else

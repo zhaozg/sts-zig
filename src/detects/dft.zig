@@ -3,25 +3,19 @@ const io = @import("../io.zig");
 const std = @import("std");
 const math = @import("../math.zig");
 
+const c = @cImport({
+    @cInclude("fftw3.h");
+});
+
 fn dft_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = self;
     _ = param;
 }
 
 fn dft_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    _ = self;
-    const n = data.len * 8;
-    if (n < 100) {
-        return detect.DetectResult{
-            .passed = false,
-            .v_value = 0.0,
-            .p_value = 0.0,
-            .q_value = 0.0,
-            .extra = null,
-            .errno = null,
-        };
-    }
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = n };
+    var bits = io.BitStream.init(data);
+    const n = self.param.num_bitstreams;
+
     var x = std.heap.page_allocator.alloc(f64, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
@@ -33,12 +27,14 @@ fn dft_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
         };
     };
     defer std.heap.page_allocator.free(x);
+
     for (0..n) |i| {
         x[i] = if (bits.fetchBit()) |b| if (b == 1) 1.0 else -1.0 else -1.0;
     }
-    // 计算 DFT 幅值谱
-    const N = n / 2;
-    var mag = std.heap.page_allocator.alloc(f64, N) catch |err| {
+
+    // FFTW 输出长度为 n/2+1 个复数
+    const out_len = n / 2 + 1;
+    const fft_out = std.heap.page_allocator.alloc(c.fftw_complex, out_len) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -48,33 +44,64 @@ fn dft_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(mag);
-    for (0..N) |k| {
-        var sum_re: f64 = 0.0;
-        var sum_im: f64 = 0.0;
-        for (0..n) |t| {
-            const angle = 2.0 * std.math.pi * @as(f64, @floatFromInt(k * t)) / @as(f64, @floatFromInt(n));
-            sum_re += x[t] * std.math.cos(angle);
-            sum_im -= x[t] * std.math.sin(angle);
-        }
-        mag[k] = std.math.sqrt(sum_re * sum_re + sum_im * sum_im);
+    defer std.heap.page_allocator.free(fft_out);
+
+    // 创建 FFTW 计划
+    const plan = c.fftw_plan_dft_r2c_1d(
+        @as(c_int, @intCast(n)),
+        @as([*]f64, @ptrCast(x.ptr)),
+        @as([*]c.fftw_complex, @ptrCast(fft_out.ptr)),
+        c.FFTW_ESTIMATE,
+    );
+    defer c.fftw_destroy_plan(plan);
+
+    c.fftw_execute(plan);
+
+    // 计算幅值谱
+    var fft_m = std.heap.page_allocator.alloc(f64, out_len) catch |err| {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
+    defer std.heap.page_allocator.free(fft_m);
+
+    for (0..out_len) |i| {
+        const re = fft_out[i][0];
+        const im = fft_out[i][1];
+        fft_m[i] = std.math.sqrt(re * re + im * im);
     }
+
+    // 理论期望 N0
+    const N0 = 0.95 / 2.0 * @as(f64, @floatFromInt(n));
+
     // 阈值
-    const threshold = std.math.sqrt(@log(1.0 / 0.05) * @as(f64, @floatFromInt(n)));
-    var count: usize = 0;
-    for (0..N) |k| {
-        if (mag[k] > threshold) count += 1;
+    const threshold = std.math.sqrt(2.995732274 * @as(f64, @floatFromInt(n)));
+    // 统计低于阈值的峰值数量 N1
+    var N1: usize = 0;
+    for (0.. (n / 2)) |k| {
+        if (fft_m[k] < threshold) N1 += 1;
     }
-    const expected = 0.95 * @as(f64, @floatFromInt(N));
-    const diff = (@as(f64, @floatFromInt(count)) - expected) / std.math.sqrt(0.95 * 0.05 * @as(f64, @floatFromInt(N)) / 4.0);
-    // 双侧正态分布
-    const p_value = math.erfc(@abs(diff) / @sqrt(2.0));
-    const passed = p_value > 0.01;
+
+    // 标准差
+    const stddev = std.math.sqrt(0.95 * 0.05 * @as(f64, @floatFromInt(n)) / 3.8);
+
+    // 统计量 d
+    const d = (@as(f64, @floatFromInt(N1)) - N0) / stddev;
+    // p-value
+    const P = math.erfc(@abs(d) / @sqrt(2.0));
+    const Q = 0.5 * math.erfc(d / @sqrt(2.0));
+    const passed = P >= 0.01;
+
     return detect.DetectResult{
         .passed = passed,
-        .v_value = diff,
-        .p_value = p_value,
-        .q_value = 0.0,
+        .v_value = d,
+        .p_value = P,
+        .q_value = Q,
         .extra = null,
         .errno = null,
     };
