@@ -227,10 +227,9 @@ test "Longest Run" {
         .{result.passed, result.v_value, result.p_value, result.q_value});
 
     try std.testing.expect(result.passed == true);
-    // FIXME: 这里的结果与 0005 附录 C 不一致, 统计值稍有偏差
-    // try std.testing.expectApproxEqAbs(result.v_value, 4.882605, tolerance);
-    // try std.testing.expectApproxEqAbs(result.p_value, 0.180598, tolerance);
-    // try std.testing.expectApproxEqAbs(result.q_value, 0.180598, tolerance);
+    try std.testing.expectApproxEqAbs(result.v_value, 4.882605, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.180598, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.180598, tolerance);
 
     stat = try zsts.longestRun.longestRunDetectStatDetect(allocator, param, 0);
     stat.init(&param);
@@ -240,10 +239,9 @@ test "Longest Run" {
         .{result.passed, result.v_value, result.p_value, result.q_value});
 
     try std.testing.expect(result.passed == true);
-    // FIXME: 这里的结果与 0005 附录 C 不一致, 统计值稍有偏差
-    // try std.testing.expectApproxEqAbs(result.v_value, 0.842410, tolerance);
-    // try std.testing.expectApproxEqAbs(result.p_value, 0.839299, tolerance);
-    // try std.testing.expectApproxEqAbs(result.q_value, 0.839299, tolerance);
+    try std.testing.expectApproxEqAbs(result.v_value, 0.842410, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.839299, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.839299, tolerance);
 }
 
 test "Binary Derivative" {

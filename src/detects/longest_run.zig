@@ -60,16 +60,16 @@ fn selectSet(m: u16, r: u16) u3 {
     return 0;
 }
 
-fn selectPi(m: u16, i: u3) f16 {
+fn selectPi(m: u16, i: u3) f64 {
     if (m == 8) {
-        const list = [_]f16{ 0.2148, 0.3672, 0.2305, 0.1875 };
+        const list = [_]f64{ 0.2148, 0.3672, 0.2305, 0.1875 };
         return list[i];
     } else if (m == 128) {
-        const list = [_]f16{ 0.1174, 0.2430, 0.2494, 0.1752, 0.0127, 0.1124 };
+        const list = [_]f64{ 0.1174, 0.2430, 0.2494, 0.1752, 0.0127, 0.1124 };
         return list[i];
     } else if (m == 10000) {
-        const list = [_]f16{ 0.086632, 0.208201, 0.248419, 0.193913,
-                                     0.121458, 0.068011, 0.073366 };
+        const list = [_]f64{ 0.086632, 0.208201, 0.248419, 0.193913,
+                             0.121458, 0.068011, 0.073366 };
         return list[i];
     }
     return 0.0; // 默认值
@@ -130,7 +130,7 @@ fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.Detect
     // Step 3: 计算统计量
     var V: f64 = 0.0;
     for (0..K + 1) |n| {
-        const pi = selectPi(M, @as(u3, @intCast(n)));
+        const pi: f64 = selectPi(M, @as(u3, @intCast(n)));
         const f = @as(f64, @floatFromInt(v[n])) - @as(f64, @floatFromInt(N)) * pi;
         const x = ( f * f ) / (@as(f64, @floatFromInt(N)) * pi);
 
