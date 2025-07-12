@@ -3,9 +3,56 @@ const io = @import("../io.zig");
 const std = @import("std");
 const math = @import("../math.zig");
 
-const c = @cImport({
-    @cInclude("fftw3.h");
-});
+/// 执行实数到复数 FFT 并计算幅值谱
+pub fn compute_r2c_fft(
+    x: []const f64,          // 输入实数数据
+    fft_out: []f64,          // 输出复数数组 (交替存储 re, im)
+    fft_m: []f64,            // 输出幅值谱
+) !void {
+    const c = @cImport({
+        @cInclude("gsl/gsl_fft_real.h");
+        @cInclude("gsl/gsl_fft_halfcomplex.h");
+    });
+
+    const n = x.len;
+    const out_len = n / 2 + 1; // 复数输出的长度 (半复数格式)
+
+    // 1. 检查输出缓冲区大小
+    if (fft_out.len < 2 * out_len) return error.BufferTooSmall;
+    if (fft_m.len < out_len) return error.BufferTooSmall;
+
+    // 2. 复制输入数据到临时数组 (GSL 会原地修改数据)
+    const tmp = try std.heap.page_allocator.alloc(f64, n);
+    defer std.heap.page_allocator.free(tmp);
+    @memcpy(tmp, x);
+
+    // 3. 初始化 GSL FFT
+    const workspace = c.gsl_fft_real_workspace_alloc(n);
+    defer c.gsl_fft_real_workspace_free(workspace);
+    const wavetable = c.gsl_fft_real_wavetable_alloc(n);
+    defer c.gsl_fft_real_wavetable_free(wavetable);
+
+    // 4. 执行实数 FFT (结果以半复数格式存储在 tmp 中)
+    _ = c.gsl_fft_real_transform(tmp.ptr, 1, n, wavetable, workspace);
+
+    // 5. 转换为 FFTW 兼容的复数格式 (交替存储 re, im)
+    fft_out[0] = tmp[0]; // 直流分量 (纯实数)
+    fft_out[1] = 0.0;    // 对应的虚部为 0
+
+    for (1..out_len) |k| {
+        const re = tmp[2 * k - 1];
+        const im = if (k < n / 2) tmp[2 * k] else 0.0; // 处理 Nyquist 频率
+        fft_out[2 * k] = re;
+        fft_out[2 * k + 1] = im;
+    }
+
+    // 6. 计算幅值谱
+    for (0..out_len) |i| {
+        const re = fft_out[2 * i];
+        const im = fft_out[2 * i + 1];
+        fft_m[i] = std.math.sqrt(re * re + im * im);
+    }
+}
 
 fn dft_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = self;
@@ -32,9 +79,8 @@ fn dft_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
         x[i] = if (bits.fetchBit()) |b| if (b == 1) 1.0 else -1.0 else -1.0;
     }
 
-    // FFTW 输出长度为 n/2+1 个复数
-    const out_len = n / 2 + 1;
-    const fft_out = std.heap.page_allocator.alloc(c.fftw_complex, out_len) catch |err| {
+    // 申请实数存储空间
+    const fft_out = std.heap.page_allocator.alloc(f64, 2*n+1) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -46,19 +92,8 @@ fn dft_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
     };
     defer std.heap.page_allocator.free(fft_out);
 
-    // 创建 FFTW 计划
-    const plan = c.fftw_plan_dft_r2c_1d(
-        @as(c_int, @intCast(n)),
-        @as([*]f64, @ptrCast(x.ptr)),
-        @as([*]c.fftw_complex, @ptrCast(fft_out.ptr)),
-        c.FFTW_ESTIMATE,
-    );
-    defer c.fftw_destroy_plan(plan);
-
-    c.fftw_execute(plan);
-
-    // 计算幅值谱
-    var fft_m = std.heap.page_allocator.alloc(f64, out_len) catch |err| {
+    // 幅值谱存储空间
+    const fft_m = std.heap.page_allocator.alloc(f64, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -70,11 +105,17 @@ fn dft_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
     };
     defer std.heap.page_allocator.free(fft_m);
 
-    for (0..out_len) |i| {
-        const re = fft_out[i][0];
-        const im = fft_out[i][1];
-        fft_m[i] = std.math.sqrt(re * re + im * im);
-    }
+    // 执行 FFT
+    compute_r2c_fft(x, fft_out, fft_m) catch |err| {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
 
     // 理论期望 N0
     const N0 = 0.95 / 2.0 * @as(f64, @floatFromInt(n));
