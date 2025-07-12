@@ -84,14 +84,12 @@ pub fn binaryDerivativeDetectStatDetect(allocator: std.mem.Allocator, param: det
     ptr.* = detect.StatDetect{
         .name = "BinaryDerivative",
         .param = param_ptr,
+
         ._init = binary_derivative_init,
         ._iterate = binary_derivative_iterate,
         ._destroy = binary_derivative_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

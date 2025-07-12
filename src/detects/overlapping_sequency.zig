@@ -142,14 +142,12 @@ pub fn overlappingSequencyDetectStatDetect(allocator: std.mem.Allocator, param: 
     ptr.* = detect.StatDetect{
         .name = "OverlappingSequency",
         .param = param_ptr,
+
         ._init = overlapping_sequency_init,
         ._iterate = overlapping_sequency_iterate,
         ._destroy = overlapping_sequency_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

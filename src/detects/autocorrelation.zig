@@ -85,14 +85,12 @@ pub fn autocorrelationDetectStatDetect(allocator: std.mem.Allocator, param: dete
     ptr.* = detect.StatDetect{
         .name = "Autocorrelation",
         .param = param_ptr,
+
         ._init = autocorrelation_init,
         ._iterate = autocorrelation_iterate,
         ._destroy = autocorrelation_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

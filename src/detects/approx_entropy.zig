@@ -132,14 +132,12 @@ pub fn approxEntropyDetectStatDetect(allocator: std.mem.Allocator, param: detect
     ptr.* = detect.StatDetect{
         .name = "ApproxEntropy",
         .param = param_ptr,
+
         ._init = approx_entropy_init,
         ._iterate = approx_entropy_iterate,
         ._destroy = approx_entropy_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

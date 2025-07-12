@@ -81,10 +81,6 @@ pub const StatDetect = struct {
 
     _reset: ?*const fn (self: *StatDetect) void,
 
-    _summary: ?*const fn (self: *StatDetect, results: *const DetectResult) void,
-    _print: ?*const fn (self: *StatDetect, results: *const DetectResult) void,
-    _metrics: ?*const fn (self: *StatDetect, results: *const DetectResult) void,
-
     pub fn init(self: *StatDetect, param: *const DetectParam) void {
         self._init(self, param);
     }
@@ -100,27 +96,6 @@ pub const StatDetect = struct {
             return detectReset(self);
         }
         self._reset.?(self);
-    }
-
-    pub fn summary(self: *StatDetect, result: *const DetectResult) void {
-        if (self._summary == null) {
-            return detectSummary(self, result);
-        }
-        self._summary.?(self, result);
-    }
-
-    pub fn print(self: *StatDetect, result: *const DetectResult) void {
-        if (self._print == null) {
-            return detectPrint(self, result);
-        }
-        self._print.?(self, result);
-    }
-
-    pub fn metrics(self: *StatDetect, result: *const DetectResult) void {
-        if (self._metrics == null) {
-            return detectMetrics(self, result);
-        }
-        self._metrics.?(self, result);
     }
 };
 

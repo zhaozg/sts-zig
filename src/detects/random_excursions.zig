@@ -132,14 +132,12 @@ pub fn randomExcursionsDetectStatDetect(allocator: std.mem.Allocator, param: det
     ptr.* = detect.StatDetect{
         .name = "RandomExcursions",
         .param = param_ptr,
+
         ._init = random_excursions_init,
         ._iterate = random_excursions_iterate,
         ._destroy = random_excursions_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

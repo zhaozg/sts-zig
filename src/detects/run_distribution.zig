@@ -114,14 +114,12 @@ pub fn runDistributionDetectStatDetect(allocator: std.mem.Allocator, param: dete
     ptr.* = detect.StatDetect{
         .name = "RunDistribution",
         .param = param_ptr,
+
         ._init = run_distribution_init,
         ._iterate = run_distribution_iterate,
         ._destroy = run_distribution_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

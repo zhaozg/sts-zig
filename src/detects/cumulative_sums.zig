@@ -97,14 +97,12 @@ pub fn cumulativeSumsDetectStatDetect(allocator: std.mem.Allocator, param: detec
     ptr.* = detect.StatDetect{
         .name = "CumulativeSums",
         .param = param_ptr,
+
         ._init = cumulative_sums_init,
         ._iterate = cumulative_sums_iterate,
         ._destroy = cumulative_sums_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

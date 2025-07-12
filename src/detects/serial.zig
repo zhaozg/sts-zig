@@ -127,14 +127,12 @@ pub fn serialDetectStatDetect(allocator: std.mem.Allocator, param: detect.Detect
     ptr.* = detect.StatDetect{
         .name = "Serial",
         .param = param_ptr,
+
         ._init = serial_init,
         ._iterate = serial_iterate,
         ._destroy = serial_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

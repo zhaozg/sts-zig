@@ -115,14 +115,12 @@ pub fn overlappingTemplateDetectStatDetect(allocator: std.mem.Allocator, param: 
     ptr.* = detect.StatDetect{
         .name = "OverlappingTemplate",
         .param = param_ptr,
+
         ._init = overlapping_template_init,
         ._iterate = overlapping_template_iterate,
         ._destroy = overlapping_template_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

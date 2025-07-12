@@ -4,8 +4,7 @@ const std = @import("std");
 const math = @import("../math.zig");
 
 fn poker_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
-    const Param: *PokerParam = @ptrCast(self.param.extra);
-    _ = Param;
+    _ = self;
     _ = param;
 }
 
@@ -155,14 +154,12 @@ pub fn pokerDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectP
     poker_ptr.* = detect.StatDetect{
         .name = "Poker",
         .param = param_ptr,
+
         ._init = poker_init,
         ._iterate = poker_iterate,
         ._destroy = poker_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
 
     return poker_ptr;

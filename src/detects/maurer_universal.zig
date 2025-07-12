@@ -144,14 +144,12 @@ pub fn maurerUniversalDetectStatDetect(allocator: std.mem.Allocator,
     ptr.* = detect.StatDetect{
         .name = "MaurerUniversal",
         .param = param_ptr,
+
         ._init = maurer_universal_init,
         ._iterate = maurer_universal_iterate,
         ._destroy = maurer_universal_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

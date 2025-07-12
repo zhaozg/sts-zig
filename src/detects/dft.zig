@@ -119,14 +119,12 @@ pub fn dftDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectPar
     ptr.* = detect.StatDetect{
         .name = "DFT",
         .param = param_ptr,
+
         ._init = dft_init,
         ._iterate = dft_iterate,
         ._destroy = dft_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

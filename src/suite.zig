@@ -23,6 +23,15 @@ const randomExcursions = @import("detects/random_excursions.zig");
 const serial = @import("detects/serial.zig");
 const dft = @import("detects/dft.zig");
 
+pub fn detectPrint(self: *detect.StatDetect, result: *const detect.DetectResult) void {
+    if (result.passed) {
+        std.debug.print("Test {s>10}: passed={}, p_value={:10.6}\n",
+            .{ self.name,  result.passed, result.p_value });
+    } else {
+        std.debug.print("Test {s>10}: passed={}\n",
+            .{ self.name,  result.passed});
+    }
+}
 pub const DetectSuite = struct {
     allocator: std.mem.Allocator,
     detects: std.ArrayList(*detect.StatDetect),
@@ -97,8 +106,7 @@ pub const DetectSuite = struct {
         for (self.detects.items) |t| {
             t.init(t.param);
             const result = t.iterate(data);
-            t.metrics(&result);
-            t.print(&result);
+            detectPrint(t, &result);
             t.destroy();
         }
     }

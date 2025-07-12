@@ -5,8 +5,7 @@ const io = @import("../io.zig");
 const math = @import("../math.zig");
 
 fn runs_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
-    const Param: *RunsParam = @ptrCast(self.param.extra);
-    _ = Param;
+    _ = self;
     _ = param;
 }
 
@@ -81,14 +80,12 @@ pub fn runsDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectPa
     runs_ptr.* = detect.StatDetect{
         .name = "Runs",
         .param = param_ptr,
+
         ._init = runs_init,
         ._iterate = runs_iterate,
         ._destroy = runs_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
 
     return runs_ptr;

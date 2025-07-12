@@ -90,14 +90,12 @@ pub fn nonOverlappingTemplateDetectStatDetect(allocator: std.mem.Allocator, para
     ptr.* = detect.StatDetect{
         .name = "NonOverlappingTemplate",
         .param = param_ptr,
+
         ._init = non_overlapping_template_init,
         ._iterate = non_overlapping_template_iterate,
         ._destroy = non_overlapping_template_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

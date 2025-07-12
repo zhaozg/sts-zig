@@ -86,14 +86,12 @@ pub fn blockFrequencyDetectStatDetect(allocator: std.mem.Allocator, param: detec
     ptr.* = detect.StatDetect{
         .name = "BlockFrequency",
         .param = param_ptr,
+
         ._init = block_frequency_init,
         ._iterate = block_frequency_iterate,
         ._destroy = block_frequency_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }

@@ -164,14 +164,12 @@ pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.De
     ptr.* = detect.StatDetect{
         .name = "LongestRun",
         .param = param_ptr,
+
         ._init = longest_run_init,
         ._iterate = longest_run_iterate,
         ._destroy = longest_run_destroy,
 
         ._reset = detect.detectReset,
-        ._print = detect.detectPrint,
-        ._metrics = detect.detectMetrics,
-        ._summary = detect.detectSummary,
     };
     return ptr;
 }
