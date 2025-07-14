@@ -13,7 +13,7 @@ fn serial_destroy(self: *detect.StatDetect) void {
 }
 
 
-fn psi2(bit_arr: []u8, n: usize, m: u5) !f64 {
+fn psi2(bit_arr: []u1, n: usize, m: u5) !f64 {
     if (m == 0) return 0.0;
 
     const patterns: u32 = @as(u32, 1) << m;
@@ -36,11 +36,11 @@ fn psi2(bit_arr: []u8, n: usize, m: u5) !f64 {
     return (sum * @as(f64, @floatFromInt(patterns)) / @as(f64, @floatFromInt(n))) - @as(f64, @floatFromInt(n));
 }
 
-fn serial_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    _ = self;
+fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
 
     const m = 2;
-    const n = data.len * 8;
+    const n = self.param.n;
+
     if (n < 10) {
         return detect.DetectResult{
             .passed = false,
@@ -52,8 +52,8 @@ fn serial_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResul
         };
     }
 
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = n };
-    var bit_arr = std.heap.page_allocator.alloc(u8, n) catch |err| {
+
+    const arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -63,13 +63,20 @@ fn serial_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResul
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(bit_arr);
-    for (0..n) |i| {
-        bit_arr[i] = if (bits.fetchBit()) |b| b else 0;
+    defer std.heap.page_allocator.free(arr);
+
+    if (bits.fetchBits(arr) != n) {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = null,
+        };
     }
 
-
-    const psi2_m   = psi2(bit_arr, n, m) catch |err| {
+    const psi2_m   = psi2(arr, n, m) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -80,7 +87,7 @@ fn serial_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResul
         };
     };
 
-    const psi2_m1  = psi2(bit_arr, n, m - 1) catch |err| {
+    const psi2_m1  = psi2(arr, n, m - 1) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -91,7 +98,7 @@ fn serial_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResul
         };
     };
 
-    const psi2_m2  = psi2(bit_arr, n, m - 2) catch |err| {
+    const psi2_m2  = psi2(arr, n, m - 2) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,

@@ -20,23 +20,18 @@ test "frequency" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-
-    const bytes = io.convertAscii2Byte(allocator, epsilon) catch |err| {
-        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const bits = io.BitInputStream.fromAscii(epsilon);
+    defer bits.close();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.Frequency,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = 128, // 每个字节8位
+        .n = bits.len(), // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     const freq = try frequency.frequencyDetectStatDetect(allocator, param);
     freq.init(&param);
-    const result = freq.iterate(bytes);
+    const result = freq.iterate(&bits);
 
     std.debug.print("Frequency: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});
@@ -51,23 +46,19 @@ test "block frequency" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bytes = io.convertAscii2Byte(allocator, epsilon100) catch |err| {
-        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const bits = io.BitInputStream.fromAscii(epsilon100);
+    defer bits.close();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.BlockFrequency,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = 100, // 每个字节8位
+        .n = bits.len(), // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     const m: u8 = 10; // 块大小
     const freq = try block_frequency.blockFrequencyDetectStatDetect(allocator, param, m);
     freq.init(&param);
-    const result = freq.iterate(bytes);
+    const result = freq.iterate(&bits);
 
     std.debug.print("BlockFrequency: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});
@@ -82,23 +73,20 @@ test "poker" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bytes = io.convertAscii2Byte(allocator, epsilon) catch |err| {
-        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const bits = io.BitInputStream.fromAscii(epsilon);
+    defer bits.close();
 
+    try std.testing.expect(bits.len() == 128); // 确保长度是 4 的倍数
     const param = detect.DetectParam{
         .type = detect.DetectType.Poker,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = 128 ,
+        .n = bits.len(), // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     const m: u8 = 4; // 块大小
     const stat = try poker.pokerDetectStatDetect(allocator, param, m);
     stat.init(&param);
-    const result = stat.iterate(bytes);
+    const result = stat.iterate(&bits);
 
     std.debug.print("Poker(m={d}): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{m, result.passed, result.v_value, result.p_value, result.q_value});
@@ -113,23 +101,19 @@ test "Overlapping Subsequence" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bytes = io.convertAscii2Byte(allocator, epsilon) catch |err| {
-        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const bits = io.BitInputStream.fromAscii(epsilon);
+    defer bits.close();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.OverlappingSequency,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = bytes.len * 8, // 每个字节8位
+        .n = bits.len(), // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     const m: u8 = 2; // 块大小
     const stat = try zsts.overlappingseq.overlappingSequencyDetectStatDetect(allocator, param, m);
     stat.init(&param);
-    const result = stat.iterate(bytes);
+    const result = stat.iterate(&bits);
 
     std.debug.print("OverlappingSequence(m={d}): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{m, result.passed, result.v_value, result.p_value, result.q_value});
@@ -145,22 +129,18 @@ test "Runs" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bytes = io.convertAscii2Byte(allocator, epsilon) catch |err| {
-        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const bits = io.BitInputStream.fromAscii(epsilon);
+    defer bits.close();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.Runs,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = bytes.len * 8, // 每个字节8位
+        .n = bits.len(), // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     const stat = try zsts.runs.runsDetectStatDetect(allocator, param);
     stat.init(&param);
-    const result = stat.iterate(bytes);
+    const result = stat.iterate(&bits);
 
     try std.testing.expect(result.passed == true);
     std.debug.print("Runs: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
@@ -176,22 +156,18 @@ test "Run Distribution" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bytes = io.convertAscii2Byte(allocator, epsilon) catch |err| {
-        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const bits = io.BitInputStream.fromAscii(epsilon);
+    defer bits.close();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.RunDistribution,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = 128, // 每个字节8位
+        .n = bits.len(), // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     const stat = try zsts.runDist.runDistributionDetectStatDetect(allocator, param);
     stat.init(&param);
-    const result = stat.iterate(bytes);
+    const result = stat.iterate(&bits);
 
     std.debug.print("Run Distribution: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});
@@ -206,22 +182,18 @@ test "Longest Run" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bytes = io.convertAscii2Byte(allocator, epsilon) catch |err| {
-        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const bits = io.BitInputStream.fromAscii(epsilon);
+    defer bits.close();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.LongestRun,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = 128, // 每个字节8位
+        .n = bits.len(), // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     var stat = try zsts.longestRun.longestRunDetectStatDetect(allocator, param, 1);
     stat.init(&param);
-    var result = stat.iterate(bytes);
+    var result = stat.iterate(&bits);
 
     std.debug.print("LongestRun(1): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});
@@ -231,9 +203,10 @@ test "Longest Run" {
     try std.testing.expectApproxEqAbs(result.p_value, 0.180598, tolerance);
     try std.testing.expectApproxEqAbs(result.q_value, 0.180598, tolerance);
 
+    bits.reset();
     stat = try zsts.longestRun.longestRunDetectStatDetect(allocator, param, 0);
     stat.init(&param);
-    result = stat.iterate(bytes);
+    result = stat.iterate(&bits);
 
     std.debug.print("LongestRun(0): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});
@@ -248,22 +221,18 @@ test "Binary Derivative" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bytes = io.convertAscii2Byte(allocator, epsilon) catch |err| {
-        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const bits = io.BitInputStream.fromAscii(epsilon);
+    defer bits.close();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.BinaryDerivative,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = bytes.len * 8, // 每个字节8位
+        .n = bits.len(), // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     const stat = try zsts.binaryDerivative.binaryDerivativeDetectStatDetect(allocator, param, 3);
     stat.init(&param);
-    const result = stat.iterate(bytes);
+    const result = stat.iterate(&bits);
 
     std.debug.print("binaryDerivative: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});
@@ -278,22 +247,18 @@ test "autocorrelation" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bytes = io.convertAscii2Byte(allocator, epsilon) catch |err| {
-        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const bits = io.BitInputStream.fromAscii(epsilon);
+    defer bits.close();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.AutoCorrelation,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = bytes.len * 8, // 每个字节8位
+        .n = bits.len(), // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     const stat = try zsts.autocorrelation.autocorrelationDetectStatDetect(allocator, param, 1);
     stat.init(&param);
-    const result = stat.iterate(bytes);
+    const result = stat.iterate(&bits);
 
     std.debug.print("AutoCorrelation: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});
@@ -308,24 +273,23 @@ test "autocorrelation" {
 test "Rank" {
     const allocator = std.heap.page_allocator;
 
-    const bytes = io.loadFile(allocator, "data/data.e", 125000) catch |err| {
-        std.debug.print("Error loading file: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const file = try std.fs.cwd().openFile("data/data.e", .{});
+    defer file.close();
 
-    const n = 1000000; // 100000 字节
+    const n = 1000000; // 100000 比特
+    const inputStream = io.InputStream.fromFile(file);
+    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(inputStream, n);
+    defer bits.close();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.Rank,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = n, // 每个字节8位
+        .n = n, // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     const stat = try zsts.rank.rankDetectStatDetect(allocator, param);
     stat.init(&param);
-    const result = stat.iterate(bytes);
+    const result = stat.iterate(&bits);
 
     std.debug.print("Rank: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});
@@ -341,22 +305,18 @@ test "cumulative_sums" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bytes = io.convertAscii2Byte(allocator, epsilon100) catch |err| {
-        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const bits = io.BitInputStream.fromAscii(epsilon100);
+    defer bits.close();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.CumulativeSums,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = 100,
+        .n = bits.len(), // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     var stat = try zsts.cumulativeSums.cumulativeSumsDetectStatDetect(allocator, param, true);
     stat.init(&param);
-    var result = stat.iterate(bytes);
+    var result = stat.iterate(&bits);
 
     std.debug.print("cumSums(Forward): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});
@@ -367,9 +327,10 @@ test "cumulative_sums" {
     try std.testing.expectApproxEqAbs(result.p_value, 0.219194, tolerance);
     try std.testing.expectApproxEqAbs(result.q_value, 0.219194, tolerance);
 
+    bits.reset();
     stat = try zsts.cumulativeSums.cumulativeSumsDetectStatDetect(allocator, param, false);
     stat.init(&param);
-    result = stat.iterate(bytes);
+    result = stat.iterate(&bits);
 
     std.debug.print("cumSums(Backup): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});
@@ -385,22 +346,18 @@ test "ApproxEntropy" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bytes = io.convertAscii2Byte(allocator, epsilon100) catch |err| {
-        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const bits = io.BitInputStream.fromAscii(epsilon100);
+    defer bits.close();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.ApproxEntropy,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = 100,
+        .n = bits.len(), // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     var stat = try zsts.approximateEntropy.approxEntropyDetectStatDetect(allocator, param, 2);
     stat.init(&param);
-    const result = stat.iterate(bytes);
+    const result = stat.iterate(&bits);
 
     std.debug.print("approximateEntropy: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});
@@ -415,22 +372,23 @@ test "ApproxEntropy" {
 test "Maurer Universal" {
     const allocator = std.heap.page_allocator;
 
-    const bytes = io.loadFile(allocator, "data/data.e", 125000) catch |err| {
-        std.debug.print("Error loading file: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const file = try std.fs.cwd().openFile("data/data.e", .{});
+    defer file.close();
+
+    const n = 1000000; // 100000 比特
+    const inputStream = io.InputStream.fromFile(file);
+    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(inputStream, n);
+    defer bits.close();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.MaurerUniversal,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = 1000000, // 每个字节8位
+        .n = n, // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     const stat = try zsts.maurerUniversal.maurerUniversalDetectStatDetect(allocator, param, 7, 1280);
     stat.init(&param);
-    const result = stat.iterate(bytes);
+    const result = stat.iterate(&bits);
 
     std.debug.print("maurerUniversal: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});
@@ -445,22 +403,20 @@ test "DFT" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bytes = io.convertAscii2Byte(allocator, epsilon100) catch |err| {
-        std.debug.print("Error initializing DiscreteBitStream: {}\n", .{err});
-        return err;
-    };
-    defer allocator.free(bytes);
+    const bits = io.BitInputStream.fromAscii(epsilon100);
+    defer bits.close();
+
+    try std.testing.expect(bits.len() == 100);
 
     const param = detect.DetectParam{
         .type = detect.DetectType.Dft,
-        .n = bytes.len, // 测试数据长度
-        .num_bitstreams = 100,
+        .n = bits.len(), // 测试数据长度
         .extra = null, // 这里可以设置额外参数
     };
 
     var stat = try zsts.dft.dftDetectStatDetect(allocator, param);
     stat.init(&param);
-    const result = stat.iterate(bytes);
+    const result = stat.iterate(&bits);
 
     std.debug.print("DFT: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
         .{result.passed, result.v_value, result.p_value, result.q_value});

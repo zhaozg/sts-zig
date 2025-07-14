@@ -59,11 +59,14 @@ pub const DetectSuite = struct {
         const sumsums = try cumulativeSums.cumulativeSumsDetectStatDetect(self.allocator, param, true);
         try self.detects.append(sumsums);
 
-        const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param, 3, 7);
+        const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param, 2, 10*(1<<2));
         try self.detects.append(univ);
 
-        const longest = try longestRun.longestRunDetectStatDetect(self.allocator, param, 128);
-        try self.detects.append(longest);
+        const longest1 = try longestRun.longestRunDetectStatDetect(self.allocator, param, 1);
+        try self.detects.append(longest1);
+
+        const longest0 = try longestRun.longestRunDetectStatDetect(self.allocator, param, 0);
+        try self.detects.append(longest0);
 
         const rnk = try rank.rankDetectStatDetect(self.allocator, param);
         try self.detects.append(rnk);
@@ -102,10 +105,11 @@ pub const DetectSuite = struct {
         try self.detects.append(dft_detect);
     }
 
-    pub fn runAll(self: *DetectSuite, data: []const u8) !void {
+    pub fn runAll(self: *DetectSuite, bits: *const io.BitInputStream) !void {
         for (self.detects.items) |t| {
             t.init(t.param);
-            const result = t.iterate(data);
+            bits.reset();
+            const result = t.iterate(bits);
             detectPrint(t, &result);
             t.destroy();
         }

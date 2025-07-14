@@ -18,7 +18,7 @@ fn block_frequency_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-fn block_frequency_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
+fn block_frequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     const param = self.param;
 
     var M: u8 = DEFAULT_BLOCK_SIZE;
@@ -26,11 +26,8 @@ fn block_frequency_iterate(self: *detect.StatDetect, data: []const u8) detect.De
         M = @as(*BlockFrequencyParam, @ptrCast(param.extra)).m;
     }
 
-    var bits = io.BitStream.init(data);
-    bits.setLength(self.param.num_bitstreams);
-
     // Step 1: N 个比特序列
-    const N: usize = bits.len / M;
+    const N: usize = param.n / M;
 
     var sum: f64 = 0.0;
     var i: u8 = 0;

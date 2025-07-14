@@ -23,13 +23,11 @@ fn calcK(n: usize) usize {
     return 64;
 }
 
-fn run_distribution_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    _ = self;
-
-    var bits = io.BitStream.init(data);
+fn run_distribution_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
+    const n = self.param.n;
 
     // Step 1: 计算 k 游程长度
-    const k = calcK(bits.len);
+    const k = calcK(n);
 
     // Step 2: 分别统计0-run和1-run
     var v0: [64]usize = [_]usize{0} ** 64;
@@ -40,7 +38,7 @@ fn run_distribution_iterate(self: *detect.StatDetect, data: []const u8) detect.D
     var l1: usize = 1;
     var prev: u1 = bits.fetchBit() orelse 0; // 获取第一个比特
 
-    while (bits.fetchBit()) |bit|{
+    while (bits.fetchBit()) |bit| {
         if (bit == prev) {
             if (prev == 0) l0 += 1 else l1 += 1;
         } else {

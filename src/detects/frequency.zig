@@ -9,10 +9,7 @@ fn frequency_init(self: *detect.StatDetect, param: *const detect.DetectParam) vo
     _ = param;
 }
 
-fn frequency_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = data.len * 8 };
-    bits.setLength(self.param.num_bitstreams);
-
+fn frequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     var n: isize = 0;
 
     // Step 2: compute S_n
@@ -25,7 +22,8 @@ fn frequency_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectRe
     }
 
     // Step 3: compute the test statistic
-    const V: f64 = @as(f64, @floatFromInt(n)) / @as(f64, @sqrt(@as(f64, @floatFromInt(bits.len))));
+    const V: f64 = @as(f64, @floatFromInt(n))
+                 / @as(f64, @sqrt(@as(f64, @floatFromInt(self.param.n))));
 
     // Step 4: compute the test P-value
     const P = math.erfc(@abs(V) / @sqrt(2.0));

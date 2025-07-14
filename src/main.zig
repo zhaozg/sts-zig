@@ -8,7 +8,7 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator(); // 注意这里是方法调用
 
-    const data: []const u8 = &[_]u8{
+    const data = &[_]u8{
         0xdf, 0x7f, 0xee, 0xc3, 0x3e, 0x59, 0x34, 0xcc,
         0xc3, 0x6e, 0x60, 0x25, 0x50, 0xa8, 0x14, 0x42,
         0xd6, 0x84, 0x87, 0x98, 0x99, 0x33, 0x62, 0xcf,
@@ -27,25 +27,24 @@ pub fn main() !void {
         0x2c, 0x13, 0x3e, 0xa3, 0x9a, 0x44, 0xd1, 0x58,
     };
 
-    var input = io.createMemoryStream(data);
-
-    var buffer: [16]u8 = undefined;
-    while (input.hasMore()) {
-        const n = input.read(buffer[0..]);
-        std.debug.print("Read {d} bytes:\n", .{n});
-        for (buffer[0..n]) |b| {
+    const byteStream = io.InputStream.fromMemory(data);
+    var buffer: [16]u8 = [_]u8{0} ** 16;
+    while (byteStream.read(&buffer) > 0) {
+        std.debug.print("Read {d} bytes:\n", .{16});
+        for (buffer[0..]) |b| {
             std.debug.print("{x:0>2}", .{b});
         }
         std.debug.print("\n", .{});
     }
-    defer input.close();
+
+    const input = io.BitInputStream.fromByteInputStream(byteStream);
+   defer input.close();
 
     input.reset();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.General, // 假设的检测类型
-        .n = data.len, // 假设的参数
-        .num_bitstreams = data.len * 8, // 假设的参数
+        .n = data.len * 8,
         .extra = null, // 可扩展更多参数
     };
 
@@ -55,5 +54,5 @@ pub fn main() !void {
 
     try detect_suite.registerAll(param);
 
-    try detect_suite.runAll(data);
+    try detect_suite.runAll(&input);
 }

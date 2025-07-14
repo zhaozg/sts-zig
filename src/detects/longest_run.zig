@@ -4,7 +4,7 @@ const math = @import("../math.zig");
 const std = @import("std");
 
 pub const LongestRunParam= struct {
-    mode: u8
+    mode: u1
 };
 
 fn longest_run_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
@@ -75,17 +75,15 @@ fn selectPi(m: u16, i: u3) f64 {
     return 0.0; // 默认值
 }
 
-fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
+fn longest_run_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     var mode: u1 = 1;
+    const n = self.param.n;
     if (self.param.extra != null) {
         const longestParam: *LongestRunParam = @alignCast(@ptrCast(self.param.extra));
         mode = @as(u1, @intCast(longestParam.mode));
     }
 
-    var bits = io.BitStream.init(data);
-    bits.setLength(self.param.num_bitstreams);
-
-    const M: u16 = selectM(bits.len);
+    const M: u16 = selectM(n);
 
     if (M != 8 and M != 128 and M != 10000) {
         return detect.DetectResult{
@@ -99,7 +97,7 @@ fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.Detect
     }
 
     // Step 1: N 个比特序列
-    const N: usize = @divTrunc(bits.len, M);
+    const N: usize = @divTrunc(n, M);
 
     // Step 2:  K + 1 个集合
     const K: u3 = if (M == 8) 3 else if (M == 128) 5 else 6;
@@ -129,9 +127,9 @@ fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.Detect
 
     // Step 3: 计算统计量
     var V: f64 = 0.0;
-    for (0..K + 1) |n| {
-        const pi: f64 = selectPi(M, @as(u3, @intCast(n)));
-        const f = @as(f64, @floatFromInt(v[n])) - @as(f64, @floatFromInt(N)) * pi;
+    for (0..K + 1) |i| {
+        const pi: f64 = selectPi(M, @as(u3, @intCast(i)));
+        const f = @as(f64, @floatFromInt(v[i])) - @as(f64, @floatFromInt(N)) * pi;
         const x = ( f * f ) / (@as(f64, @floatFromInt(N)) * pi);
 
         V += x;
@@ -149,7 +147,7 @@ fn longest_run_iterate(self: *detect.StatDetect, data: []const u8) detect.Detect
     };
 }
 
-pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam, mode: u8) !*detect.StatDetect {
+pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam, mode: u1) !*detect.StatDetect {
     const ptr = try allocator.create(detect.StatDetect);
     const param_ptr = try allocator.create(detect.DetectParam);
     param_ptr.* = param;

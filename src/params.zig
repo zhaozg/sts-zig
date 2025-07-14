@@ -10,7 +10,6 @@ pub fn parseArgs(allocator: std.mem.Allocator, argv: [][*:0]u8) ![]const detect.
         .{
             .type = detect.DetectType.Frequency,
             .n = 1000000,
-            .num_bitstreams = 10,
             .extra = null, // 可扩展更多参数
         },
     };

@@ -16,31 +16,52 @@ fn cumulative_sums_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-fn cumulative_sums_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
+fn cumulative_sums_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     var forward: bool = true;
     if (self.param.extra) |extra| {
         const cumulativeSumsParam: *CumulativeSumsParam = @ptrCast(extra);
         forward = cumulativeSumsParam.forward;
     }
 
-    var bits = io.BitStream.init(data);
-    bits.setLength(self.param.num_bitstreams);
-
-    const n = bits.len;
+    const n = self.param.n;
     var sum: i64 = 0;
     var z: u64 = 0;
 
+    const arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
+    defer std.heap.page_allocator.free(arr);
+
+    if (bits.fetchBits(arr) != n) {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = null,
+        };
+    }
+
     if (forward) {
-        while (bits.fetchBit()) |bit| {
+        for (0..n) |i| {
+            const bit = arr[i];
             sum += if (bit == 1) 1 else -1;
             if (@abs(sum) > z) {
                 z = @abs(sum);
             }
         }
     } else {
-        var i: usize = bits.len;
+        var i: usize = n;
         while (i > 0) : (i -= 1) {
-            const bit = bits.get(i-1) orelse break;
+            const bit = arr[i-1];
             sum += if (bit == 1) 1 else -1;
             if (@abs(sum) > z) {
                 z = @abs(sum);

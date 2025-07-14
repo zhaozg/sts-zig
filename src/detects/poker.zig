@@ -8,7 +8,7 @@ fn poker_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = param;
 }
 
-fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
+fn poker_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     if (self.param.extra == null) {
         return detect.DetectResult{
             .passed = false,
@@ -33,9 +33,9 @@ fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult
             .extra = null
         };
     }
-    const num_patterns = @as(u16, 1) << m;
+    const M = @as(u16, 1) << m;
 
-    var counts = std.heap.page_allocator.alloc(usize, num_patterns) catch |err| {
+    var counts = std.heap.page_allocator.alloc(usize, M) catch |err| {
         //std.debug.print("Poker Test: allocation failed: {}\n", .{err});
         _ = err catch {};
         return detect.DetectResult{
@@ -52,9 +52,6 @@ fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult
     for (counts) |*c| {
         c.* = 0;
     }
-
-    var bits = io.BitStream.init(data);
-    bits.setLength(self.param.num_bitstreams);
 
     // 解读公式：$ V = \frac{2^m}{N} \sum_{i=1}^{2^m} n_i^2 - N $
 
@@ -88,7 +85,7 @@ fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult
     // - 最后减去 $ N $，这是为了进一步调整公式的结果，使其符合特定的统计分布（如标准正态分布）。
 
     // Step 1: 计算 N
-    const N: usize = bits.len / m;
+    const N: usize = bits.len() / m;
 
     // Step 2.1: 子序列计数
     var Ni: usize = 0;
@@ -112,11 +109,11 @@ fn poker_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult
         sum += @as(f64, @floatFromInt(c)) * @as(f64, @floatFromInt(c));
     }
 
-    const V = @as(f64, @floatFromInt(num_patterns)) * sum / @as(f64, @floatFromInt(N))
+    const V = @as(f64, @floatFromInt(M)) * sum / @as(f64, @floatFromInt(N))
             - @as(f64, @floatFromInt(N));
 
     // 卡方分布自由度为 num_patterns-1
-    const P = math.igamc(( @as(f64, @floatFromInt(num_patterns)) - 1) / 2, V / 2 );
+    const P = math.igamc(( @as(f64, @floatFromInt(M)) - 1) / 2, V / 2 );
     const passed = P > 0.01;
 
     return detect.DetectResult{

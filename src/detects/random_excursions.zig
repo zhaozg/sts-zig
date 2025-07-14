@@ -12,10 +12,8 @@ fn random_excursions_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-fn random_excursions_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    _ = self;
-
-    const n = data.len * 8;
+fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
+    const n = self.param.n;
     if (n < 100) {
         return detect.DetectResult{
             .passed = false,
@@ -29,8 +27,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, data: []const u8) detect.
 
     const allocator = std.heap.page_allocator;
 
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = n };
-    var bit_arr = allocator.alloc(u8, n) catch |err| {
+    var arr = allocator.alloc(u8, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -40,10 +37,10 @@ fn random_excursions_iterate(self: *detect.StatDetect, data: []const u8) detect.
             .errno = err,
         };
     };
-    defer allocator.free(bit_arr);
+    defer allocator.free(arr);
 
     for (0..n) |i| {
-        bit_arr[i] = if (bits.fetchBit()) |b| b else 0;
+        arr[i] = if (bits.fetchBit()) |b| b else 0;
     }
 
     // 累计和S
@@ -60,7 +57,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, data: []const u8) detect.
     defer allocator.free(S);
     S[0] = 0;
     for (0..n) |i| {
-        if (bit_arr[i] == 1) {
+        if (arr[i] == 1) {
             S[i + 1] = S[i] + 1;
         } else {
             S[i + 1] = S[i] - 1;

@@ -16,16 +16,14 @@ fn approx_entropy_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-fn approx_entropy_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
+fn approx_entropy_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     var m: u8 = 2;
     if(self.param.extra) |extra| {
         const approxEntropyParam: *ApproxEntropyParam = @ptrCast(extra);
         m = approxEntropyParam.m;
     }
 
-    var bits = io.BitStream.init(data);
-    bits.setLength(self.param.num_bitstreams);
-    const n = bits.len;
+    const n = self.param.n;
 
     // 读取所有位到数组，便于循环补齐
     var arr = std.heap.page_allocator.alloc(u8, n) catch |err| {

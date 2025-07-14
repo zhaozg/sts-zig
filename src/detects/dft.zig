@@ -59,9 +59,8 @@ fn dft_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = param;
 }
 
-fn dft_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    var bits = io.BitStream.init(data);
-    const n = self.param.num_bitstreams;
+fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
+    const n = self.param.n;
 
     var x = std.heap.page_allocator.alloc(f64, n) catch |err| {
         return detect.DetectResult{

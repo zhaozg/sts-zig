@@ -31,9 +31,10 @@ fn maurer_universal_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-fn maurer_universal_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
+fn maurer_universal_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     var L: u8 = 6;
-    var Q: usize = 1000;
+    var Q: usize = 10*(1<<6);
+    const n = self.param.n;
 
     if (self.param.extra) |extra| {
         const maruer: *MaurerUniversalParam = @alignCast(@ptrCast(extra));
@@ -41,10 +42,8 @@ fn maurer_universal_iterate(self: *detect.StatDetect, data: []const u8) detect.D
         Q = maruer.Q;
     }
 
-    var bits = io.BitStream.init(data);
-    bits.setLength(self.param.num_bitstreams);
+    const total_blocks = n / L;
 
-    const total_blocks = bits.len / L;
     if (total_blocks <= Q + 1) {
         return detect.DetectResult{
             .passed = false,
@@ -110,11 +109,17 @@ fn maurer_universal_iterate(self: *detect.StatDetect, data: []const u8) detect.D
              + (4 + 32 / @as(f64, @floatFromInt(L)))
              * std.math.pow(f64, @as(f64, @floatFromInt(K)), -3.0 / @as(f64, @floatFromInt(L))) / 15;
 
-    const sigma = c * @sqrt(variance[L] / @as(f64, @floatFromInt(K)));
-    const V = @abs(f - expected_value[L]) / sigma;
+    var V: f64 = 0.0;
+    var Pv: f64 = 0.0;
+    var Qv: f64 = 0.0;
 
-    const Pv = math.erfc(@abs(V)/@sqrt(2.0));
-    const Qv = 0.5 * math.erfc(V/@sqrt(2.0));
+    if (variance[L] > 0.0) {
+        const sigma = c * @sqrt(variance[L] / @as(f64, @floatFromInt(K)));
+        V = @abs(f - expected_value[L]) / sigma;
+
+        Pv = math.erfc(@abs(V)/@sqrt(2.0));
+        Qv = 0.5 * math.erfc(V/@sqrt(2.0));
+    }
 
     const passed = Pv > 0.01;
 

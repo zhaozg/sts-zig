@@ -16,17 +16,16 @@ fn overlapping_sequency_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-fn overlapping_sequency_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
+fn overlapping_sequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
 
     var m : u8 = 3;
     if(self.param.extra != null) {
         const osParam: *OverlappingSequencyParam = @ptrCast(self.param.extra);
         m = osParam.*.m;
     }
-    var bits = io.BitStream.init(data);
     const allocator = std.heap.page_allocator;
 
-    const n = bits.len;
+    const n = self.param.n;
 
     var arr: []u1 = allocator.alloc(u1, n + m - 1) catch |err| {
         return detect.DetectResult{
@@ -92,24 +91,24 @@ fn overlapping_sequency_iterate(self: *detect.StatDetect, data: []const u8) dete
     }
 
     psi2_m = (   @as(f64, @floatFromInt(@as(usize, 1) << @as(u3, @intCast(m))))
-               / @as(f64, @floatFromInt(bits.len)) ) * psi2_m
-           - @as(f64, @floatFromInt(bits.len));
+               / @as(f64, @floatFromInt(n)) ) * psi2_m
+           - @as(f64, @floatFromInt(n));
 
     for(0 .. (@as(usize, 1) << @as(u3, @intCast(m-1))))|j| {
         psi2_m1 += @as(f64, @floatFromInt(n1_arr[j])) * @as(f64, @floatFromInt(n1_arr[j]));
     }
 
     psi2_m1 = (   @as(f64, @floatFromInt(@as(usize, 1) << @as(u3, @intCast(m-1))))
-                / @as(f64, @floatFromInt(bits.len)) ) * psi2_m1
-           - @as(f64, @floatFromInt(bits.len));
+                / @as(f64, @floatFromInt(n)) ) * psi2_m1
+           - @as(f64, @floatFromInt(n));
 
     if ( m > 2 ) {
         for(0 .. (@as(usize, 1) << @as(u3, @intCast(m-2))))|j| {
             psi2_m2 += @as(f64, @floatFromInt(n2_arr[j])) * @as(f64, @floatFromInt(n2_arr[j]));
         }
         psi2_m2 = (   @as(f64, @floatFromInt(@as(usize, 1) << @as(u3, @intCast(m-2))))
-        / @as(f64, @floatFromInt(bits.len)) ) * psi2_m2
-        - @as(f64, @floatFromInt(bits.len));
+        / @as(f64, @floatFromInt(n)) ) * psi2_m2
+        - @as(f64, @floatFromInt(n));
     }
 
     const nabla1: f64 = psi2_m - psi2_m1;

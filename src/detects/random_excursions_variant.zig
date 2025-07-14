@@ -12,7 +12,7 @@ fn random_excursions_variant_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-fn random_excursions_variant_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
+fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     _ = self;
 
     const n = data.len * 8;

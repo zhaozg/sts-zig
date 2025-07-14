@@ -16,16 +16,15 @@ fn autocorrelation_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-fn autocorrelation_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-
+fn autocorrelation_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
+    const n = self.param.n;
     var d: u8 = 1;
     if (self.param.extra) |extra| {
         const autocorrParam: *AutoCorrelationParam = @ptrCast(extra);
         d = autocorrParam.d;
     }
 
-    var bits = io.BitStream.init(data);
-    var bit_arr = std.heap.page_allocator.alloc(u1, bits.len) catch |err| {
+    var arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -35,25 +34,32 @@ fn autocorrelation_iterate(self: *detect.StatDetect, data: []const u8) detect.De
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(bit_arr);
-    for (0..bits.len) |i| {
-        bit_arr[i] = 0;
+    defer std.heap.page_allocator.free(arr);
+
+    if (bits.fetchBits(arr) != n) {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = null,
+        };
     }
 
     var I: usize = 0;
-    const n = bits.len;
 
     // 逻辑左移 d  位
     while(bits.fetchBit()) |b| {
         // 将比特流转换为 u1 数组
-        bit_arr[I] = b;
+        arr[I] = b;
         I += 1;
     }
 
     var V: usize = 0;
     for (0..n - d) |i| {
         // 逻辑左移 d 位
-        V += bit_arr[i]^bit_arr[i + d];
+        V += arr[i]^arr[i + d];
     }
 
     const nf = @as(f64, @floatFromInt(n - d));

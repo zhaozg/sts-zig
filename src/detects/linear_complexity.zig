@@ -42,13 +42,12 @@ fn berlekamp_massey(seq: []const u8) usize {
     return L;
 }
 
-fn linear_complexity_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    _ = self;
+fn linear_complexity_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
 
     const M = 500;
     const K = 6;
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = data.len * 8 };
-    const n = bits.len;
+    const n = self.param.n;
+
     const N = n / M;
     if (N == 0) {
         return detect.DetectResult{

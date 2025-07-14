@@ -9,12 +9,8 @@ fn runs_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = param;
 }
 
-fn runs_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    _ = self;
-
-    var bits = io.BitStream.init(data);
-
-    const n: usize = bits.len;
+fn runs_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
+    const n: usize = self.param.n;
     var Vobs: usize = 0;
     var ones: usize = 0;
     var prev: u1 = 0;

@@ -16,15 +16,14 @@ fn binary_derivative_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-fn binary_derivative_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
+fn binary_derivative_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     var k: u8 = 1;
     if (self.param.extra) |extra| {
         const binaryDerivativeParam: *BinaryDerivativeParam = @ptrCast(extra);
         k = binaryDerivativeParam.k;
     }
 
-    var bits = io.BitStream.init(data);
-    const n = bits.len;
+    const n = self.param.n;
 
     var arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
@@ -38,8 +37,15 @@ fn binary_derivative_iterate(self: *detect.StatDetect, data: []const u8) detect.
     };
     defer std.heap.page_allocator.free(arr);
 
-  for (0..n) |i| {
-        arr[i] = bits.fetchBit() orelse 0;
+    if (bits.fetchBits(arr) != n) {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = null,
+        };
     }
 
     for (0..k) |i| {

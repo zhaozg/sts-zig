@@ -12,11 +12,10 @@ fn non_overlapping_template_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-fn non_overlapping_template_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
-    _ = self;
+fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
 
     const m = 3;
-    const n = data.len * 8;
+    const n = self.param.n;
     if (n < m) {
         return detect.DetectResult{
             .passed = false,
@@ -29,10 +28,8 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, data: []const u8) 
     }
 
     // 固定模板 "111"
-    const template = [_]u8{1, 1, 1};
-
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = n };
-    var bit_arr = std.heap.page_allocator.alloc(u8, n) catch |err| {
+    const template = [_]u1{1, 1, 1};
+    const arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -42,9 +39,17 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, data: []const u8) 
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(bit_arr);
-    for (0..n) |i| {
-        bit_arr[i] = if (bits.fetchBit()) |b| b else 0;
+    defer std.heap.page_allocator.free(arr);
+
+    if (bits.fetchBits(arr) != n) {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = null,
+        };
     }
 
     // 统计非重叠出现次数
@@ -53,7 +58,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, data: []const u8) 
     while (i + m <= n) {
         var match = true;
         for (0..m) |j| {
-            if (bit_arr[i + j] != template[j]) {
+            if (arr[i + j] != template[j]) {
                 match = false;
                 break;
             }

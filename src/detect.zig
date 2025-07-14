@@ -27,9 +27,8 @@ pub const DetectType = enum {
 };
 
 pub const DetectParam = struct {
-    type: DetectType,
-    n: usize,
-    num_bitstreams: usize,
+    type: DetectType,  // 检测类型
+    n: usize,   // 比特数目
 
     // 可扩展更多参数
     extra: ?*anyopaque, // 支持算法特有参数
@@ -76,7 +75,7 @@ pub const StatDetect = struct {
     param: *DetectParam,
 
     _init: *const fn (self: *StatDetect, param: *const DetectParam) void,
-    _iterate: *const fn (self: *StatDetect, data: []const u8) DetectResult,
+    _iterate: *const fn (self: *StatDetect, bitStream: *const io.BitInputStream) DetectResult,
     _destroy: *const fn (self: *StatDetect) void,
 
     _reset: ?*const fn (self: *StatDetect) void,
@@ -84,8 +83,8 @@ pub const StatDetect = struct {
     pub fn init(self: *StatDetect, param: *const DetectParam) void {
         self._init(self, param);
     }
-    pub fn iterate(self: *StatDetect, data: []const u8) DetectResult {
-        return self._iterate(self, data);
+    pub fn iterate(self: *StatDetect, bitStream: *const io.BitInputStream) DetectResult {
+        return self._iterate(self, bitStream);
     }
     pub fn destroy(self: *StatDetect) void {
         self._destroy(self);

@@ -13,13 +13,13 @@ fn rank_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-fn rank_iterate(self: *detect.StatDetect, data: []const u8) detect.DetectResult {
+fn rank_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
 
     const M = 32;
     const Q = 32;
-    var bits = io.BitStream.init(data);
-    bits.setLength(self.param.num_bitstreams);
-    const N = bits.len / (M*Q);
+    const n = self.param.n;
+
+    const N = n / (M*Q);
 
     if (N == 0) {
         return detect.DetectResult{
