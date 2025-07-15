@@ -24,13 +24,14 @@ const serial = @import("detects/serial.zig");
 const dft = @import("detects/dft.zig");
 
 pub fn detectPrint(self: *detect.StatDetect, result: *const detect.DetectResult) void {
-    if (result.passed) {
-        std.debug.print("Test {s>10}: passed={}, p_value={:10.6}\n",
-            .{ self.name,  result.passed, result.p_value });
-    } else {
-        std.debug.print("Test {s>10}: passed={}\n",
-            .{ self.name,  result.passed});
-    }
+    std.debug.print("Test {s:>22}: passed={s}, V={d:>14.6} P={d:<10.6} Q={d:<10.6}\n",
+    .{
+        self.name,
+        if(result.passed) "Yes" else "No ",
+        result.v_value,
+        result.p_value,
+        result.q_value,
+    });
 }
 pub const DetectSuite = struct {
     allocator: std.mem.Allocator,
@@ -59,7 +60,7 @@ pub const DetectSuite = struct {
         const sumsums = try cumulativeSums.cumulativeSumsDetectStatDetect(self.allocator, param, true);
         try self.detects.append(sumsums);
 
-        const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param, 2, 10*(1<<2));
+        const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param, 6, 10*(1<<6));
         try self.detects.append(univ);
 
         const longest1 = try longestRun.longestRunDetectStatDetect(self.allocator, param, 1);

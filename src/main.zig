@@ -4,47 +4,136 @@ const params = @import("params.zig");
 const io = @import("io.zig");
 const detect = @import("detect.zig");
 
+const Options = struct {
+    help: bool = false,
+    version: bool = false,
+    ascii: bool = false,
+    blocksize: usize = 1000000,
+    iterator: usize = 1,
+    output: ?[]const u8 = null,
+    input: ?[]const u8 = null,
+};
+
+const version_string = "zsts version 1.0";
+
+fn printHelp() void {
+    const help_text =
+        \\Usage: zsts [...] file
+        \\options:
+        \\  -h, --help     Print this help message
+        \\  -v, --version  Print version information
+        \\  -a, --ascii    Input ASCII characters
+        \\  -o  output     Output to file
+        \\  -b  blocksize  Input length of bits, default 1000000
+        \\  -i, iterator   Run iterator, default 1
+    ;
+    std.debug.print("{s}\n", .{help_text});
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator(); // 注意这里是方法调用
+    const allocator = gpa.allocator();
 
-    const data = &[_]u8{
-        0xdf, 0x7f, 0xee, 0xc3, 0x3e, 0x59, 0x34, 0xcc,
-        0xc3, 0x6e, 0x60, 0x25, 0x50, 0xa8, 0x14, 0x42,
-        0xd6, 0x84, 0x87, 0x98, 0x99, 0x33, 0x62, 0xcf,
-        0xc3, 0xca, 0x02, 0x7b, 0x30, 0x3f, 0xc3, 0xae,
-        0xd0, 0xf9, 0x8f, 0x17, 0xdf, 0xb9, 0x08, 0xed,
-        0x17, 0xad, 0x13, 0x41, 0x68, 0xe9, 0x9f, 0x4d,
-        0x68, 0xb2, 0xbb, 0xdf, 0x6f, 0x45, 0x4c, 0x2b,
-        0xd3, 0x6b, 0xc1, 0x9a, 0x11, 0x16, 0xb2, 0x0e,
-        0x7f, 0x59, 0xf8, 0xe0, 0xb7, 0x02, 0x5b, 0x10,
-        0xe8, 0x11, 0xd4, 0x27, 0x64, 0x44, 0x02, 0x31,
-        0x6a, 0xf7, 0xb0, 0xe5, 0x43, 0xc3, 0xf9, 0xa8,
-        0xd1, 0xa6, 0xab, 0x3d, 0x81, 0xd2, 0xad, 0x95,
-        0x90, 0x32, 0x74, 0x8b, 0x0e, 0xcb, 0x9f, 0x2b,
-        0x16, 0xa5, 0x7b, 0x93, 0xeb, 0xf1, 0x01, 0xd1,
-        0xfe, 0xfd, 0x51, 0x60, 0xe3, 0x94, 0x6d, 0x54,
-        0x2c, 0x13, 0x3e, 0xa3, 0x9a, 0x44, 0xd1, 0x58,
-    };
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
 
-    const byteStream = io.InputStream.fromMemory(data);
-    var buffer: [16]u8 = [_]u8{0} ** 16;
-    while (byteStream.read(&buffer) > 0) {
-        std.debug.print("Read {d} bytes:\n", .{16});
-        for (buffer[0..]) |b| {
-            std.debug.print("{x:0>2}", .{b});
+    var options = Options{};
+
+    var i: usize = 1; // 跳过程序名
+    while (i < args.len) {
+        const arg = args[i];
+
+        if (std.mem.startsWith(u8, arg, "-")) {
+            if (std.mem.eql(u8, arg, "-h") or std.mem.eql(u8, arg, "--help")) {
+                options.help = true;
+            }
+            else if (std.mem.eql(u8, arg, "-v") or std.mem.eql(u8, arg, "--version")) {
+                options.version = true;
+            }
+            else if (std.mem.eql(u8, arg, "-a") or std.mem.eql(u8, arg, "--ascii")) {
+                options.ascii = true;
+            }
+            else if (std.mem.eql(u8, arg, "-o")) {
+                i += 1;
+                if (i >= args.len) return error.MissingOutputFile;
+                options.output = args[i];
+            }
+            else if (std.mem.eql(u8, arg, "-b")) {
+                i += 1;
+                if (i >= args.len) {
+                    printHelp();
+                    return error.MissingBlockSize;
+                }
+                options.blocksize = std.fmt.parseInt(usize, args[i], 10) catch |err| {
+                    std.debug.print("Invalid block size: {s}\n", .{args[i]});
+                    return err;
+                };
+            }
+            else if (std.mem.eql(u8, arg, "-i")) {
+                i += 1;
+                if (i >= args.len) {
+                    printHelp();
+                    return error.MissingIterator;
+                }
+                options.iterator = std.fmt.parseInt(usize, args[i], 10) catch |err| {
+                    std.debug.print("Invalid iterators: {s}\n", .{args[i]});
+                    return err;
+                };
+            }
+            else {
+                std.debug.print("UnknownOption: {s}\n", .{arg});
+                return error.UnknownOption;
+            }
+        } else {
+            options.input = arg;
         }
-        std.debug.print("\n", .{});
+
+        i += 1;
     }
 
-    const input = io.BitInputStream.fromByteInputStream(byteStream);
-   defer input.close();
+    // 使用解析后的选项
+    if (options.help) {
+        printHelp();
+        return;
+    }
+
+    if (options.version) {
+        std.debug.print("{s}\n", .{version_string});
+
+        std.debug.print("\n", .{});
+        std.debug.print("Options:\n", .{});
+        std.debug.print("  blocksize: {d}\n", .{options.blocksize});
+        std.debug.print("   iterator: {d}\n", .{options.iterator});
+        std.debug.print("      ascii: {s}\n", .{if (options.ascii) "true" else "false"});
+        std.debug.print("      input: {s}\n", .{options.input orelse "stdin"});
+        std.debug.print("     output: {s}\n", .{options.output orelse "stdout"});
+        return;
+    }
+
+    var file: std.fs.File = undefined;
+
+    if (options.input == null) {
+        file = std.io.getStdIn();
+    } else {
+        file = std.fs.cwd().openFile(options.input.?, .{}) catch |err| {
+            std.debug.print("openFile failed: {}\n", .{err});
+            return err;
+        };
+    }
+
+    const byteStream = io.createFileStream(file);
+    const input = if(options.ascii)
+        io.BitInputStream.fromAsciiInputStreamWithLength(byteStream, options.blocksize)
+    else
+        io.BitInputStream.fromByteInputStreamWithLength(byteStream, options.blocksize);
+
+    defer input.close();
 
     input.reset();
 
     const param = detect.DetectParam{
         .type = detect.DetectType.General, // 假设的检测类型
-        .n = data.len * 8,
+        .n = options.blocksize,
         .extra = null, // 可扩展更多参数
     };
 

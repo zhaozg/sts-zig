@@ -106,7 +106,7 @@ fn linear_complexity_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
         .passed = passed,
         .v_value = chi2,
         .p_value = p_value,
-        .q_value = 0.0,
+        .q_value = p_value,
         .extra = null,
         .errno = null,
     };

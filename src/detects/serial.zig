@@ -119,8 +119,8 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
     return detect.DetectResult{
         .passed = passed,
         .v_value = delta1,
-        .p_value = if (p_value1 < p_value2) p_value1 else p_value2,
-        .q_value = 0.0,
+        .p_value = p_value1,
+        .q_value = p_value2,
         .extra = null,
         .errno = null,
     };

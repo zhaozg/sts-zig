@@ -108,14 +108,14 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
               * ( @as(f64, @floatFromInt( count[i] )) - exp ) / exp;
     }
 
-    const p_value = math.igamc(4.0, chi2 / 2.0);
-    const passed = p_value > 0.01;
+    const P = math.igamc(4.0, chi2 / 2.0);
+    const passed = P > 0.01;
 
     return detect.DetectResult{
         .passed = passed,
         .v_value = chi2,
-        .p_value = p_value,
-        .q_value = 0.0,
+        .p_value = P,
+        .q_value = P,
         .extra = null,
         .errno = null,
     };
