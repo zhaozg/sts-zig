@@ -20,7 +20,7 @@ test "frequency" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bits = io.BitInputStream.fromAscii(epsilon);
+    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -44,7 +44,7 @@ test "block frequency" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bits = io.BitInputStream.fromAscii(epsilon100);
+    const bits = io.BitInputStream.fromAscii(allocator, epsilon100);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -69,7 +69,7 @@ test "poker" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bits = io.BitInputStream.fromAscii(epsilon);
+    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     try std.testing.expect(bits.len() == 128); // 确保长度是 4 的倍数
@@ -95,7 +95,7 @@ test "Overlapping Subsequence" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bits = io.BitInputStream.fromAscii(epsilon);
+    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -120,7 +120,7 @@ test "Runs" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bits = io.BitInputStream.fromAscii(epsilon);
+    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -144,7 +144,7 @@ test "Run Distribution" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bits = io.BitInputStream.fromAscii(epsilon);
+    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -168,7 +168,7 @@ test "Longest Run" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bits = io.BitInputStream.fromAscii(epsilon);
+    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -204,7 +204,7 @@ test "Binary Derivative" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bits = io.BitInputStream.fromAscii(epsilon);
+    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -228,7 +228,7 @@ test "autocorrelation" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bits = io.BitInputStream.fromAscii(epsilon);
+    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -255,8 +255,8 @@ test "Rank" {
     defer file.close();
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(file);
-    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(inputStream, n);
+    const inputStream = io.InputStream.fromFile(allocator, file);
+    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -280,7 +280,7 @@ test "cumulative_sums" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bits = io.BitInputStream.fromAscii(epsilon100);
+    const bits = io.BitInputStream.fromAscii(allocator, epsilon100);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -311,7 +311,7 @@ test "ApproxEntropy" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bits = io.BitInputStream.fromAscii(epsilon100);
+    const bits = io.BitInputStream.fromAscii(allocator, epsilon100);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -338,8 +338,8 @@ test "Maurer Universal" {
     defer file.close();
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(file);
-    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(inputStream, n);
+    const inputStream = io.InputStream.fromFile(allocator, file);
+    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -363,7 +363,7 @@ test "DFT" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const bits = io.BitInputStream.fromAscii(epsilon100);
+    const bits = io.BitInputStream.fromAscii(allocator, epsilon100);
     defer bits.close();
 
     try std.testing.expect(bits.len() == 100);

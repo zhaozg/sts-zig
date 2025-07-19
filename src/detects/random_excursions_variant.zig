@@ -54,12 +54,10 @@ fn random_excursions_variant_init(self: *detect.StatDetect, param: *const detect
 fn random_excursions_variant_destroy(self: *detect.StatDetect) void {
     if (self.state == null) return;
     const result: *RandomExcursionsVariantResult = @alignCast(@ptrCast(self.state.?));
-    std.heap.page_allocator.destroy(result);
+    self.allocator.destroy(result);
 }
 
 fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
-    _ = self;
-
     const n = bits.len();
     if (n < 1000) {
         return detect.DetectResult{
@@ -72,7 +70,7 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.B
         };
     }
 
-    const arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
+    const arr = self.allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -82,7 +80,7 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.B
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(arr);
+    defer self.allocator.free(arr);
 
     if (bits.fetchBits(arr) != n) {
         return detect.DetectResult{
@@ -97,7 +95,7 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.B
 
     // 累计和S
     // S[0] = 0, S[i+1] = S[i] + (arr[i] == 1 ? 1 : -1)
-    var S = std.heap.page_allocator.alloc(i32, n + 1) catch |err| {
+    var S = self.allocator.alloc(i32, n + 1) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .p_value = 0.0,
@@ -107,9 +105,9 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.B
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(S);
+    defer self.allocator.free(S);
 
-    var cycle_idx = std.ArrayList(usize).init(std.heap.page_allocator);
+    var cycle_idx = std.ArrayList(usize).init(self.allocator);
     defer cycle_idx.deinit();
 
     // 计算累积、收集零交叉点
@@ -141,7 +139,7 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.B
         };
     }
 
-    var result: *RandomExcursionsVariantResult = std.heap.page_allocator.create(RandomExcursionsVariantResult) catch |err| {
+    var result: *RandomExcursionsVariantResult = self.allocator.create(RandomExcursionsVariantResult) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -211,6 +209,7 @@ pub fn randomExcursionsVariantDetectStatDetect(allocator: std.mem.Allocator, par
     ptr.* = detect.StatDetect{
         .name = "RandomExcursionsVariant",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = random_excursions_variant_init,
         ._iterate = random_excursions_variant_iterate,

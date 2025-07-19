@@ -26,7 +26,7 @@ fn approx_entropy_iterate(self: *detect.StatDetect, bits: *const io.BitInputStre
     const n = self.param.n;
 
     // 读取所有位到数组，便于循环补齐
-    var arr = std.heap.page_allocator.alloc(u8, n) catch |err| {
+    var arr = self.allocator.alloc(u8, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -37,12 +37,12 @@ fn approx_entropy_iterate(self: *detect.StatDetect, bits: *const io.BitInputStre
         };
     };
 
-    defer std.heap.page_allocator.free(arr);
+    defer self.allocator.free(arr);
     for (0..n) |i| {
         arr[i] = if (bits.fetchBit()) |b| b else 0;
     }
 
-    var V :[]usize = std.heap.page_allocator.alloc(usize, @as(usize, 1) << @as(u3, @intCast((m + 1)))) catch |err| {
+    var V :[]usize = self.allocator.alloc(usize, @as(usize, 1) << @as(u3, @intCast((m + 1)))) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -52,7 +52,7 @@ fn approx_entropy_iterate(self: *detect.StatDetect, bits: *const io.BitInputStre
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(V);
+    defer self.allocator.free(V);
     for(V)|*v|{
         v.* = 0; // 初始化
     }
@@ -130,6 +130,7 @@ pub fn approxEntropyDetectStatDetect(allocator: std.mem.Allocator, param: detect
     ptr.* = detect.StatDetect{
         .name = "ApproxEntropy",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = approx_entropy_init,
         ._iterate = approx_entropy_iterate,

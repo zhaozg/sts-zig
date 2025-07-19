@@ -121,11 +121,11 @@ pub fn main() !void {
         };
     }
 
-    const byteStream = io.createFileStream(file);
+    const byteStream = io.createFileStream(allocator, file);
     const input = if(options.ascii)
-        io.BitInputStream.fromAsciiInputStreamWithLength(byteStream, options.blocksize)
+        io.BitInputStream.fromAsciiInputStreamWithLength(allocator, byteStream, options.blocksize)
     else
-        io.BitInputStream.fromByteInputStreamWithLength(byteStream, options.blocksize);
+        io.BitInputStream.fromByteInputStreamWithLength(allocator, byteStream, options.blocksize);
 
     defer input.close();
 

@@ -76,6 +76,7 @@ pub fn runsDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectPa
     runs_ptr.* = detect.StatDetect{
         .name = "Runs",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = runs_init,
         ._iterate = runs_iterate,

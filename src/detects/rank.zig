@@ -102,6 +102,7 @@ pub fn rankDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectPa
     ptr.* = detect.StatDetect{
         .name = "Rank",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = rank_init,
         ._iterate = rank_iterate,

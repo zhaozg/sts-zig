@@ -73,6 +73,7 @@ pub fn frequencyDetectStatDetect(allocator: std.mem.Allocator, param: detect.Det
     freq_ptr.* = detect.StatDetect{
         .name = "Frequency",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = frequency_init,
         ._iterate = frequency_iterate,

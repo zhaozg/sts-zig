@@ -14,8 +14,8 @@ test "OverlappingTemplateMatch" {
     defer file.close();
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(file);
-    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(inputStream, n);
+    const inputStream = io.InputStream.fromFile(allocator, file);
+    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -45,8 +45,8 @@ test "NonOverlappingTemplateMatch" {
     defer file.close();
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(file);
-    const bits = io.BitInputStream.fromByteInputStreamWithLength(inputStream, n);
+    const inputStream = io.InputStream.fromFile(allocator, file);
+    const bits = io.BitInputStream.fromByteInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -74,8 +74,8 @@ test "RandomExcursion" {
     defer file.close();
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(file);
-    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(inputStream, n);
+    const inputStream = io.InputStream.fromFile(allocator, file);
+    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -104,8 +104,8 @@ test "RandomExcursionVariant" {
     defer file.close();
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(file);
-    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(inputStream, n);
+    const inputStream = io.InputStream.fromFile(allocator, file);
+    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     try std.testing.expect(bits.len() == n); // 确保长度是 4 的倍数
@@ -134,8 +134,8 @@ test "Serial" {
     defer file.close();
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(file);
-    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(inputStream, n);
+    const inputStream = io.InputStream.fromFile(allocator, file);
+    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     const param = detect.DetectParam{

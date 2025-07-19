@@ -55,7 +55,7 @@ fn random_excursions_print(self: *detect.StatDetect, result: *const detect.Detec
 fn random_excursions_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = param;
 
-    var state = std.heap.page_allocator.create(RandomExcursionsState) catch |err| {
+    var state = self.allocator.create(RandomExcursionsState) catch |err| {
         std.debug.print("Error allocating RandomExcursionsState: {}\n", .{err});
         return;
     };
@@ -84,7 +84,7 @@ fn random_excursions_init(self: *detect.StatDetect, param: *const detect.DetectP
 
 fn random_excursions_destroy(self: *detect.StatDetect) void {
     const state: *RandomExcursionsState = @alignCast(@ptrCast(self.state.?));
-    std.heap.page_allocator.destroy(state);
+    self.allocator.destroy(state);
 }
 
 fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
@@ -101,7 +101,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
         };
     }
 
-    const allocator = std.heap.page_allocator;
+    const allocator = self.allocator;
     // 转换比特序列为±1序列
     const arr = allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
@@ -273,6 +273,7 @@ pub fn randomExcursionsDetectStatDetect(allocator: std.mem.Allocator, param: det
     ptr.* = detect.StatDetect{
         .name = "RandomExcursions",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = random_excursions_init,
         ._iterate = random_excursions_iterate,

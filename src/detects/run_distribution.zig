@@ -112,6 +112,7 @@ pub fn runDistributionDetectStatDetect(allocator: std.mem.Allocator, param: dete
     ptr.* = detect.StatDetect{
         .name = "RunDistribution",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = run_distribution_init,
         ._iterate = run_distribution_iterate,

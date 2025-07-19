@@ -58,7 +58,7 @@ fn overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.BitInp
                 - math.poisson(lambda, 4),
         };
 
-    const arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
+    const arr = self.allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -68,7 +68,7 @@ fn overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.BitInp
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(arr);
+    defer self.allocator.free(arr);
     if (bits.fetchBits(arr) != n) {
         return detect.DetectResult{
             .passed = false,
@@ -132,6 +132,7 @@ pub fn overlappingTemplateDetectStatDetect(allocator: std.mem.Allocator, param: 
     ptr.* = detect.StatDetect{
         .name = "OverlappingTemplate",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = overlapping_template_init,
         ._iterate = overlapping_template_iterate,

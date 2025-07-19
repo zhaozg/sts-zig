@@ -61,7 +61,7 @@ fn cumulative_sums_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
 
     const n = self.param.n;
 
-    const arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
+    const arr = self.allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -71,7 +71,7 @@ fn cumulative_sums_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(arr);
+    defer self.allocator.free(arr);
 
     if (bits.fetchBits(arr) != n) {
         return detect.DetectResult{
@@ -84,7 +84,7 @@ fn cumulative_sums_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
         };
     }
 
-    var result: *CumulativeSumsResult = std.heap.page_allocator.create(CumulativeSumsResult) catch |err| {
+    var result: *CumulativeSumsResult = self.allocator.create(CumulativeSumsResult) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -173,6 +173,7 @@ pub fn cumulativeSumsDetectStatDetect(allocator: std.mem.Allocator, param: detec
     ptr.* = detect.StatDetect{
         .name = "CumulativeSums",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = cumulative_sums_init,
         ._iterate = cumulative_sums_iterate,

@@ -5,6 +5,7 @@ const math = @import("../math.zig");
 
 /// 执行实数到复数 FFT 并计算幅值谱
 pub fn compute_r2c_fft(
+    self: *detect.StatDetect,
     x: []const f64,          // 输入实数数据
     fft_out: []f64,          // 输出复数数组 (交替存储 re, im)
     fft_m: []f64,            // 输出幅值谱
@@ -22,8 +23,8 @@ pub fn compute_r2c_fft(
     if (fft_m.len < out_len) return error.BufferTooSmall;
 
     // 2. 复制输入数据到临时数组 (GSL 会原地修改数据)
-    const tmp = try std.heap.page_allocator.alloc(f64, n);
-    defer std.heap.page_allocator.free(tmp);
+    const tmp = try self.allocator.alloc(f64, n);
+    defer self.allocator.free(tmp);
     @memcpy(tmp, x);
 
     // 3. 初始化 GSL FFT
@@ -62,7 +63,7 @@ fn dft_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
 fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     const n = self.param.n;
 
-    var x = std.heap.page_allocator.alloc(f64, n) catch |err| {
+    var x = self.allocator.alloc(f64, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -72,14 +73,14 @@ fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(x);
+    defer self.allocator.free(x);
 
     for (0..n) |i| {
         x[i] = if (bits.fetchBit()) |b| if (b == 1) 1.0 else -1.0 else -1.0;
     }
 
     // 申请实数存储空间
-    const fft_out = std.heap.page_allocator.alloc(f64, 2*n+1) catch |err| {
+    const fft_out = self.allocator.alloc(f64, 2*n+1) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -89,10 +90,10 @@ fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(fft_out);
+    defer self.allocator.free(fft_out);
 
     // 幅值谱存储空间
-    const fft_m = std.heap.page_allocator.alloc(f64, n) catch |err| {
+    const fft_m = self.allocator.alloc(f64, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -102,10 +103,10 @@ fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(fft_m);
+    defer self.allocator.free(fft_m);
 
     // 执行 FFT
-    compute_r2c_fft(x, fft_out, fft_m) catch |err| {
+    compute_r2c_fft(self, x, fft_out, fft_m) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -159,6 +160,7 @@ pub fn dftDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectPar
     ptr.* = detect.StatDetect{
         .name = "DFT",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = dft_init,
         ._iterate = dft_iterate,

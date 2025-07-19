@@ -120,6 +120,7 @@ pub fn linearComplexityDetectStatDetect(allocator: std.mem.Allocator, param: det
     ptr.* = detect.StatDetect{
         .name = "LinearComplexity",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = linear_complexity_init,
         ._iterate = linear_complexity_iterate,

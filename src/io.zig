@@ -70,30 +70,31 @@ pub const InputStream = struct {
     }
 
     /// Create an InputStream from a file
-    pub fn fromFile(file: std.fs.File) InputStream {
-        return createFileStream(file);
+    pub fn fromFile(allocator: std.mem.Allocator, file: std.fs.File) InputStream {
+        return createFileStream(allocator, file);
     }
 
     /// Create an InputStream from memory
-    pub fn fromMemory(data: []const u8) InputStream {
-        return createMemoryStream(data);
+    pub fn fromMemory(allocator: std.mem.Allocator, data: []const u8) InputStream {
+        return createMemoryStream(allocator, data);
     }
 
     /// Create an InputStream from a fixed-size array
-    pub fn fromArray(comptime T: type, data: []const T, length: usize) InputStream {
-        return createMemoryStream(std.mem.sliceAsBytes(data[0..length]));
+    pub fn fromArray(allocator: std.mem.Allocator, comptime T: type, data: []const T, length: usize) InputStream {
+        return createMemoryStream(allocator, std.mem.sliceAsBytes(data[0..length]));
     }
 
     /// Create an InputStream from a null-terminated string
-    pub fn fromCString(str: [*:0]const u8) InputStream {
+    pub fn fromCString(allocator: std.mem.Allocator, str: [*:0]const u8) InputStream {
         const length = std.mem.len(str);
-        return createMemoryStream(str[0..length]);
+        return createMemoryStream(allocator, str[0..length]);
     }
 };
 
 // ===== Concrete InputStream Implementations =====
 
 const FileStream = struct {
+    allocator: std.mem.Allocator,
     file: std.fs.File,
     pos: usize = 0,
     end_pos: ?usize = null,
@@ -147,7 +148,7 @@ const FileStream = struct {
         const self: *FileStream = @ptrCast(@alignCast(context));
         self.end_pos = 0;
         self.pos = 0;
-        std.heap.page_allocator.destroy(self);
+        self.allocator.destroy(self);
     }
 
     const vtable = InputStream.VTable{
@@ -164,9 +165,12 @@ const FileStream = struct {
 };
 
 /// Create a file-based InputStream
-pub fn createFileStream(file: std.fs.File) InputStream {
-    const stream = std.heap.page_allocator.create(FileStream) catch unreachable;
-    stream.* = .{ .file = file };
+pub fn createFileStream(allocator: std.mem.Allocator, file: std.fs.File) InputStream {
+    const stream = allocator.create(FileStream) catch unreachable;
+    stream.* = .{
+        .allocator = allocator,
+        .file = file
+    };
     return InputStream{
         .vtable = &FileStream.vtable,
         .context = stream,
@@ -174,6 +178,7 @@ pub fn createFileStream(file: std.fs.File) InputStream {
 }
 
 const MemoryStream = struct {
+    allocator: std.mem.Allocator,
     data: []const u8,
     index: usize = 0,
 
@@ -219,7 +224,7 @@ const MemoryStream = struct {
     fn close(context: *anyopaque) void {
         const self: *MemoryStream = @ptrCast(@alignCast(context));
         self.index = self.data.len;
-        std.heap.page_allocator.destroy(self);
+        self.allocator.destroy(self);
     }
 
     const vtable = InputStream.VTable{
@@ -236,9 +241,9 @@ const MemoryStream = struct {
 };
 
 /// Create a memory-based InputStream
-pub fn createMemoryStream(data: []const u8) InputStream {
-    const stream = std.heap.page_allocator.create(MemoryStream) catch unreachable;
-    stream.* = .{ .data = data };
+pub fn createMemoryStream(allocator: std.mem.Allocator, data: []const u8) InputStream {
+    const stream = allocator.create(MemoryStream) catch unreachable;
+    stream.* = .{ .data = data, .allocator = allocator };
     return InputStream{
         .vtable = &MemoryStream.vtable,
         .context = stream,
@@ -295,35 +300,35 @@ pub const BitInputStream = struct {
     }
 
     /// Create a BitInputStream from a byte array
-    pub fn fromByteInputStream(stream: InputStream) BitInputStream {
-        return ByteInputStream.create(stream);
+    pub fn fromByteInputStream(allocator: std.mem.Allocator, stream: InputStream) BitInputStream {
+        return ByteInputStream.create(allocator, stream);
     }
 
     /// Create a BitInputStream from a byte array with a specified length
-    pub fn fromByteInputStreamWithLength(stream: InputStream, length: usize) BitInputStream {
-        return ByteInputStream.createWithLength(stream, length);
+    pub fn fromByteInputStreamWithLength(allocator: std.mem.Allocator, stream: InputStream, length: usize) BitInputStream {
+        return ByteInputStream.createWithLength(allocator, stream, length);
     }
 
     /// Create a BitInputStream from a byte array
-    pub fn fromAsciiInputStream(stream: InputStream) BitInputStream {
-        return AsciiInputStream.create(stream);
+    pub fn fromAsciiInputStream(allocator: std.mem.Allocator, stream: InputStream) BitInputStream {
+        return AsciiInputStream.create(allocator, stream);
     }
 
     /// Create a BitAsciiInputStream from a byte array with a specified length
-    pub fn fromAsciiInputStreamWithLength(stream: InputStream, length: usize) BitInputStream {
-        return AsciiInputStream.createWithLength(stream, length);
+    pub fn fromAsciiInputStreamWithLength(allocator: std.mem.Allocator, stream: InputStream, length: usize) BitInputStream {
+        return AsciiInputStream.createWithLength(allocator, stream, length);
     }
 
     /// Create a BitInputStream from an ASCII string
-    pub fn fromAscii(data: []const u8) BitInputStream {
-        return AsciiBitStream.create(data);
+    pub fn fromAscii(allocator: std.mem.Allocator, data: []const u8) BitInputStream {
+        return AsciiBitStream.create(allocator, data);
     }
-
 };
 
 // ===== Concrete ByteInputStream Implementations =====
 
 const ByteInputStream = struct {
+    allocator: std.mem.Allocator,
     stream: InputStream,
     data: [1]u8 = [1]u8{0}**1,
     bit_index: usize,
@@ -377,7 +382,7 @@ const ByteInputStream = struct {
     fn close(ctx: *anyopaque) void {
         const self: *ByteInputStream = @ptrCast(@alignCast(ctx));
         self.stream.close();
-        std.heap.page_allocator.destroy(self);
+        self.allocator.destroy(self);
     }
 
     const vtable = BitInputStream.VTable{
@@ -388,14 +393,15 @@ const ByteInputStream = struct {
         .close = close,
     };
 
-    pub fn create(stream: InputStream) BitInputStream {
-        return createWithLength(stream, stream.len() * 8);
+    pub fn create(allocator: std.mem.Allocator, stream: InputStream) BitInputStream {
+        return createWithLength(allocator, stream, stream.len() * 8);
     }
 
-    pub fn createWithLength(stream: InputStream, len: usize) BitInputStream {
-        const self: *ByteInputStream = std.heap.page_allocator.create(ByteInputStream) catch unreachable;
+    pub fn createWithLength(allocator: std.mem.Allocator, stream: InputStream, len: usize) BitInputStream {
+        const self: *ByteInputStream = allocator.create(ByteInputStream) catch unreachable;
         self.* = .{
             .stream = stream,
+            .allocator = allocator,
             .bit_index = 0,
             .len = len,
         };
@@ -410,6 +416,7 @@ const ByteInputStream = struct {
 const Ascii_MAX_BUFFER=4096;
 
 const AsciiInputStream = struct {
+    allocator: std.mem.Allocator,
     stream: InputStream,
     data: []u8,
 
@@ -461,8 +468,8 @@ const AsciiInputStream = struct {
     fn close(ctx: *anyopaque) void {
         const self: *AsciiInputStream = @ptrCast(@alignCast(ctx));
         self.stream.close();
-        std.heap.page_allocator.free(self.data);
-        std.heap.page_allocator.destroy(self);
+        self.allocator.free(self.data);
+        self.allocator.destroy(self);
     }
 
     const vtable = BitInputStream.VTable{
@@ -472,15 +479,16 @@ const AsciiInputStream = struct {
         .close = close,
     };
 
-    pub fn create(stream: InputStream) BitInputStream {
-        return createWithLength(stream, stream.len() * 8);
+    pub fn create(allocator: std.mem.Allocator, stream: InputStream) BitInputStream {
+        return createWithLength(allocator, stream, stream.len() * 8);
     }
 
-    pub fn createWithLength(stream: InputStream, len: usize) BitInputStream {
-        const self: *AsciiInputStream = std.heap.page_allocator.create(AsciiInputStream) catch unreachable;
+    pub fn createWithLength(allocator: std.mem.Allocator, stream: InputStream, len: usize) BitInputStream {
+        const self: *AsciiInputStream = allocator.create(AsciiInputStream) catch unreachable;
         self.* = .{
+            .allocator = allocator,
             .stream = stream,
-            .data = std.heap.page_allocator.alloc(u8, Ascii_MAX_BUFFER) catch unreachable,
+            .data = allocator.alloc(u8, Ascii_MAX_BUFFER) catch unreachable,
             .byteslength = 0,
             .byte_index = 0,
             .bit_index = 0,
@@ -494,6 +502,7 @@ const AsciiInputStream = struct {
 };
 
 const AsciiBitStream = struct {
+    allocator: std.mem.Allocator,
     data: []const u8,
     index: usize = 0,
     length: usize = 0,
@@ -548,9 +557,10 @@ const AsciiBitStream = struct {
         .close = close,
     };
 
-    pub fn create(data: []const u8) BitInputStream {
-        const self = std.heap.page_allocator.create(AsciiBitStream) catch unreachable;
+    pub fn create(allocator: std.mem.Allocator, data: []const u8) BitInputStream {
+        const self = allocator.create(AsciiBitStream) catch unreachable;
         self.* = .{
+            .allocator = allocator,
             .data = data,
         };
         return .{
@@ -561,8 +571,11 @@ const AsciiBitStream = struct {
 };
 
 test "MemoryStream basic operations" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
     const data = "Hello, Zig!";
-    var stream = createMemoryStream(data);
+    var stream = createMemoryStream(allocator, data);
 
     // 测试读取
     var buffer: [1024]u8 = undefined;
@@ -579,6 +592,9 @@ test "MemoryStream basic operations" {
 }
 
 test "FileStream basic operations" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
     const file_path = "testfile.txt";
     const content = "FileStream test data";
     try std.fs.cwd().writeFile(.{
@@ -590,7 +606,7 @@ test "FileStream basic operations" {
     // 打开文件流
     const file = try std.fs.cwd().openFile(file_path, .{});
     defer file.close();
-    var stream = createFileStream(file);
+    var stream = createFileStream(allocator, file);
 
     // 测试读取
     var buffer: [1024]u8 = undefined;
@@ -607,8 +623,11 @@ test "FileStream basic operations" {
 }
 
 test "AsciiBitStream basic operations" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
     const ascii_data = "101001001111";
-    var bit_stream = AsciiBitStream.create(ascii_data);
+    var bit_stream = AsciiBitStream.create(allocator, ascii_data);
 
     // 依次读取所有位
     const expected_bits = [_]u1{ 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1 };
@@ -631,11 +650,14 @@ test "AsciiBitStream basic operations" {
 }
 
 test "ByteInputStream from memory stream" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
     const data = [4]u8{ 0b10100000, 0b11110000, 0b00001111, 0b00000000 };
-    const input_stream = createMemoryStream(&data);
+    const input_stream = createMemoryStream(allocator, &data);
 
     // 创建位流
-    var bit_stream = ByteInputStream.create(input_stream);
+    var bit_stream = ByteInputStream.create(allocator, input_stream);
 
     // 验证按位读取
     const expected_bits = [32]u1{
@@ -668,9 +690,12 @@ test "ByteInputStream from memory stream" {
 }
 
 test "BitInputStream fetchBits" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
     const data = [2]u8{ 0b10101010, 0b11110000 };
-    const input_stream = createMemoryStream(&data);
-    const bit_stream = ByteInputStream.create(input_stream);
+    const input_stream = createMemoryStream(allocator, &data);
+    const bit_stream = ByteInputStream.create(allocator, input_stream);
 
     // 读取 12 位
     var bits = [_]u1{0} ** 12;

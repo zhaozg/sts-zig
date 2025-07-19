@@ -186,7 +186,7 @@ fn longest_run_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream)
     const P = if (P0 < P1) P0 else P1;
     const V = if (P0 < P1) V0 else V1;
 
-    const result: *LongestRunResult = std.heap.page_allocator.create(LongestRunResult) catch |err| {
+    const result: *LongestRunResult = self.allocator.create(LongestRunResult) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -225,6 +225,7 @@ pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.De
     ptr.* = detect.StatDetect{
         .name = "LongestRun",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = longest_run_init,
         ._iterate = longest_run_iterate,

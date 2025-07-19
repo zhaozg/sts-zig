@@ -35,7 +35,7 @@ fn poker_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detec
     }
     const M = @as(u16, 1) << m;
 
-    var counts = std.heap.page_allocator.alloc(usize, M) catch |err| {
+    var counts = self.allocator.alloc(usize, M) catch |err| {
         //std.debug.print("Poker Test: allocation failed: {}\n", .{err});
         _ = err catch {};
         return detect.DetectResult{
@@ -48,7 +48,7 @@ fn poker_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detec
         };
     };
 
-    defer std.heap.page_allocator.free(counts);
+    defer self.allocator.free(counts);
     for (counts) |*c| {
         c.* = 0;
     }
@@ -151,6 +151,7 @@ pub fn pokerDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectP
     poker_ptr.* = detect.StatDetect{
         .name = "Poker",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = poker_init,
         ._iterate = poker_iterate,

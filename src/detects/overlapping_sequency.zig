@@ -23,7 +23,7 @@ fn overlapping_sequency_iterate(self: *detect.StatDetect, bits: *const io.BitInp
         const osParam: *OverlappingSequencyParam = @ptrCast(self.param.extra);
         m = osParam.*.m;
     }
-    const allocator = std.heap.page_allocator;
+    const allocator = self.allocator;
 
     const n = self.param.n;
 
@@ -38,7 +38,7 @@ fn overlapping_sequency_iterate(self: *detect.StatDetect, bits: *const io.BitInp
         };
     };
 
-    defer std.heap.page_allocator.free(arr);
+    defer self.allocator.free(arr);
 
     var n_arr: [1<<8]usize = [_]usize{0}**(1<<8);
     var n1_arr: [1<<8]usize = [_]usize{0}**(1<<8);
@@ -141,6 +141,7 @@ pub fn overlappingSequencyDetectStatDetect(allocator: std.mem.Allocator, param: 
     ptr.* = detect.StatDetect{
         .name = "OverlappingSequency",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = overlapping_sequency_init,
         ._iterate = overlapping_sequency_iterate,

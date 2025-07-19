@@ -24,7 +24,7 @@ fn autocorrelation_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
         d = autocorrParam.d;
     }
 
-    var arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
+    var arr = self.allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -34,7 +34,7 @@ fn autocorrelation_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(arr);
+    defer self.allocator.free(arr);
 
     if (bits.fetchBits(arr) != n) {
         return detect.DetectResult{
@@ -91,6 +91,7 @@ pub fn autocorrelationDetectStatDetect(allocator: std.mem.Allocator, param: dete
     ptr.* = detect.StatDetect{
         .name = "Autocorrelation",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = autocorrelation_init,
         ._iterate = autocorrelation_iterate,

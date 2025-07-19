@@ -13,12 +13,12 @@ fn serial_destroy(self: *detect.StatDetect) void {
 }
 
 
-fn psi2(bit_arr: []u1, n: usize, m: u5) !f64 {
+fn psi2(self: *detect.StatDetect, bit_arr: []u1, n: usize, m: u5) !f64 {
     if (m == 0) return 0.0;
 
     const patterns: u32 = @as(u32, 1) << m;
-    var counts = try std.heap.page_allocator.alloc(usize, patterns);
-    defer std.heap.page_allocator.free(counts);
+    var counts = try self.allocator.alloc(usize, patterns);
+    defer self.allocator.free(counts);
     for(0..patterns) |i| {
         counts[i] = 0;
     }
@@ -53,7 +53,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
     }
 
 
-    const arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
+    const arr = self.allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -63,7 +63,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(arr);
+    defer self.allocator.free(arr);
 
     if (bits.fetchBits(arr) != n) {
         return detect.DetectResult{
@@ -76,7 +76,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
         };
     }
 
-    const psi2_m   = psi2(arr, n, m) catch |err| {
+    const psi2_m   = psi2(self, arr, n, m) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -87,7 +87,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
         };
     };
 
-    const psi2_m1  = psi2(arr, n, m - 1) catch |err| {
+    const psi2_m1  = psi2(self, arr, n, m - 1) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -98,7 +98,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
         };
     };
 
-    const psi2_m2  = psi2(arr, n, m - 2) catch |err| {
+    const psi2_m2  = psi2(self, arr, n, m - 2) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -134,6 +134,7 @@ pub fn serialDetectStatDetect(allocator: std.mem.Allocator, param: detect.Detect
     ptr.* = detect.StatDetect{
         .name = "Serial",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = serial_init,
         ._iterate = serial_iterate,

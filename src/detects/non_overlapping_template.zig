@@ -120,7 +120,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
     );
     // std.debug.print("u={d:.6} sigma_squared = {d:.6}\n", .{mu, sigma_squared});
 
-    const arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
+    const arr = self.allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -130,7 +130,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(arr);
+    defer self.allocator.free(arr);
 
     if (bits.fetchBits(arr) != n) {
         return detect.DetectResult{
@@ -144,7 +144,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
     }
 
     // 生成模板
-    const templates = generateNonPeriodicTemplates(m, std.heap.page_allocator) catch |err| {
+    const templates = generateNonPeriodicTemplates(m, self.allocator) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -154,9 +154,9 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
             .errno = err,
         };
     };
-    // defer for (templates) |t| std.heap.page_allocator.free(t);
+    // defer for (templates) |t| self.allocator.free(t);
 
-    var results: *NonOverlappingTemplateResult = std.heap.page_allocator.create(NonOverlappingTemplateResult) catch |err| {
+    var results: *NonOverlappingTemplateResult = self.allocator.create(NonOverlappingTemplateResult) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -168,8 +168,8 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
     };
 
     results.n = templates.len;
-    results.passed = std.heap.page_allocator.alloc(bool, templates.len) catch |err| {
-        std.heap.page_allocator.destroy(results);
+    results.passed = self.allocator.alloc(bool, templates.len) catch |err| {
+        self.allocator.destroy(results);
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -179,8 +179,8 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
             .errno = err,
         };
     };
-    results.p_value = std.heap.page_allocator.alloc(f64, templates.len) catch |err| {
-        std.heap.page_allocator.destroy(results);
+    results.p_value = self.allocator.alloc(f64, templates.len) catch |err| {
+        self.allocator.destroy(results);
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -190,8 +190,8 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
             .errno = err,
         };
     };
-    results.v_value = std.heap.page_allocator.alloc(f64, templates.len) catch |err| {
-        std.heap.page_allocator.destroy(results);
+    results.v_value = self.allocator.alloc(f64, templates.len) catch |err| {
+        self.allocator.destroy(results);
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -270,6 +270,7 @@ pub fn nonOverlappingTemplateDetectStatDetect(allocator: std.mem.Allocator, para
     ptr.* = detect.StatDetect{
         .name = "NonOverlappingTemplate",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = non_overlapping_template_init,
         ._iterate = non_overlapping_template_iterate,

@@ -56,7 +56,7 @@ fn maurer_universal_iterate(self: *detect.StatDetect, bits: *const io.BitInputSt
     }
     const K = total_blocks - Q;
 
-    var allocator = std.heap.page_allocator;
+    var allocator = self.allocator;
     var T: []usize = allocator.alloc(usize, @as(usize, 1) << @as(u3, @intCast(L))) catch |err| {
         return detect.DetectResult{
             .passed = false,
@@ -149,6 +149,7 @@ pub fn maurerUniversalDetectStatDetect(allocator: std.mem.Allocator,
     ptr.* = detect.StatDetect{
         .name = "MaurerUniversal",
         .param = param_ptr,
+        .allocator = allocator,
 
         ._init = maurer_universal_init,
         ._iterate = maurer_universal_iterate,

@@ -71,6 +71,7 @@ pub fn detectPrint(self: *StatDetect, result: *const DetectResult, level: PrintL
 pub const StatDetect = struct {
     name: []const u8,
     param: *DetectParam,
+    allocator: std.mem.Allocator,
 
     state: ?*anyopaque = null, // 可选内部状态
 
