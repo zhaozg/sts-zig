@@ -20,6 +20,40 @@ fn non_overlapping_template_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
+fn non_veerlapping_template_print(self: *detect.StatDetect, result: *const detect.DetectResult, level: detect.PrintLevel) void {
+    detect.detectPrint(self, result, level);
+    if (result.extra == null) {
+        return;
+    }
+
+    const results = @as(*NonOverlappingTemplateResult, @alignCast(@ptrCast(result.extra.?)));
+    var passed: usize = 0;
+    for (0..results.passed.len) |i| {
+        if (results.passed[i]) {
+            passed += 1;
+        }
+    }
+    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n",
+    .{passed, results.passed.len, results.passed.len - passed, results.passed.len});
+
+    if (level == .detail) {
+        std.debug.print("\n", .{});
+        for (0..results.n) |i| {
+            std.debug.print("\tState {d:3}: {}{}{}{}{}{}{}{}{} passed={s}, V = {d:10.6} P = {d:.6}\n",
+            .{
+                i,
+                results.template[i][0], results.template[i][1], results.template[i][2],
+                results.template[i][3], results.template[i][4], results.template[i][5],
+                results.template[i][6], results.template[i][7], results.template[i][8],
+                if (results.passed[i]) "Yes" else "No ",
+                results.v_value[i],
+                results.p_value[i],
+            });
+        }
+        std.debug.print("\n", .{});
+    }
+}
+
 const BLOCKS_NON_OVERLAPPING = 8; // 可根据实际情况调整
 
 fn generateNonPeriodicTemplates(m: u4, allocator: std.mem.Allocator) ![][]u1 {
@@ -242,6 +276,7 @@ pub fn nonOverlappingTemplateDetectStatDetect(allocator: std.mem.Allocator, para
         ._destroy = non_overlapping_template_destroy,
 
         ._reset = detect.detectReset,
+        ._print = non_veerlapping_template_print,
     };
     return ptr;
 }

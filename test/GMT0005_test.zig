@@ -32,9 +32,7 @@ test "frequency" {
     const freq = try frequency.frequencyDetectStatDetect(allocator, param);
     freq.init(&param);
     const result = freq.iterate(&bits);
-
-    std.debug.print("Frequency: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    freq.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
     try std.testing.expectApproxEqAbs(result.v_value, -1.237437, tolerance);
@@ -59,9 +57,7 @@ test "block frequency" {
     const freq = try block_frequency.blockFrequencyDetectStatDetect(allocator, param, m);
     freq.init(&param);
     const result = freq.iterate(&bits);
-
-    std.debug.print("BlockFrequency: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    freq.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
     try std.testing.expectApproxEqAbs(result.v_value, 7.2, tolerance);
@@ -87,9 +83,7 @@ test "poker" {
     const stat = try poker.pokerDetectStatDetect(allocator, param, m);
     stat.init(&param);
     const result = stat.iterate(&bits);
-
-    std.debug.print("Poker(m={d}): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{m, result.passed, result.v_value, result.p_value, result.q_value});
+    stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
     try std.testing.expectApproxEqAbs(result.v_value, 19.000000, tolerance);
@@ -114,12 +108,9 @@ test "Overlapping Subsequence" {
     const stat = try zsts.overlappingseq.overlappingSequencyDetectStatDetect(allocator, param, m);
     stat.init(&param);
     const result = stat.iterate(&bits);
-
-    std.debug.print("OverlappingSequence(m={d}): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{m, result.passed, result.v_value, result.p_value, result.q_value});
+    stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
-
     try std.testing.expectApproxEqAbs(result.v_value, 1.656250, tolerance);
     try std.testing.expectApproxEqAbs(result.p_value, 0.436868, tolerance);
     try std.testing.expectApproxEqAbs(result.q_value, 0.723674, tolerance);
@@ -141,10 +132,7 @@ test "Runs" {
     const stat = try zsts.runs.runsDetectStatDetect(allocator, param);
     stat.init(&param);
     const result = stat.iterate(&bits);
-
-    try std.testing.expect(result.passed == true);
-    std.debug.print("Runs: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
     try std.testing.expectApproxEqAbs(result.v_value, 0.494817, tolerance);
@@ -168,9 +156,7 @@ test "Run Distribution" {
     const stat = try zsts.runDist.runDistributionDetectStatDetect(allocator, param);
     stat.init(&param);
     const result = stat.iterate(&bits);
-
-    std.debug.print("Run Distribution: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
     try std.testing.expectApproxEqAbs(result.v_value, 0.060606, tolerance);
@@ -191,30 +177,27 @@ test "Longest Run" {
         .extra = null, // 这里可以设置额外参数
     };
 
-    var stat = try zsts.longestRun.longestRunDetectStatDetect(allocator, param, 1);
+    var stat = try zsts.longestRun.longestRunDetectStatDetect(allocator, param);
     stat.init(&param);
     var result = stat.iterate(&bits);
-
-    std.debug.print("LongestRun(1): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
     try std.testing.expectApproxEqAbs(result.v_value, 4.882605, tolerance);
     try std.testing.expectApproxEqAbs(result.p_value, 0.180598, tolerance);
     try std.testing.expectApproxEqAbs(result.q_value, 0.180598, tolerance);
 
-    bits.reset();
-    stat = try zsts.longestRun.longestRunDetectStatDetect(allocator, param, 0);
-    stat.init(&param);
-    result = stat.iterate(&bits);
+    const results: *zsts.longestRun.LongestRunResult = @alignCast(@ptrCast(result.extra.?));
 
-    std.debug.print("LongestRun(0): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    try std.testing.expect(results.passed[0] == true);
+    try std.testing.expectApproxEqAbs(results.v_value[0], 0.842410, tolerance);
+    try std.testing.expectApproxEqAbs(results.p_value[0], 0.839299, tolerance);
+    try std.testing.expectApproxEqAbs(results.q_value[0], 0.839299, tolerance);
 
-    try std.testing.expect(result.passed == true);
-    try std.testing.expectApproxEqAbs(result.v_value, 0.842410, tolerance);
-    try std.testing.expectApproxEqAbs(result.p_value, 0.839299, tolerance);
-    try std.testing.expectApproxEqAbs(result.q_value, 0.839299, tolerance);
+    try std.testing.expect(results.passed[1] == true);
+    try std.testing.expectApproxEqAbs(results.v_value[1], 4.882605, tolerance);
+    try std.testing.expectApproxEqAbs(results.p_value[1], 0.180598, tolerance);
+    try std.testing.expectApproxEqAbs(results.q_value[1], 0.180598, tolerance);
 }
 
 test "Binary Derivative" {
@@ -233,9 +216,7 @@ test "Binary Derivative" {
     const stat = try zsts.binaryDerivative.binaryDerivativeDetectStatDetect(allocator, param, 3);
     stat.init(&param);
     const result = stat.iterate(&bits);
-
-    std.debug.print("binaryDerivative: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
     try std.testing.expectApproxEqAbs(result.v_value, -2.057183, tolerance);
@@ -259,12 +240,9 @@ test "autocorrelation" {
     const stat = try zsts.autocorrelation.autocorrelationDetectStatDetect(allocator, param, 1);
     stat.init(&param);
     const result = stat.iterate(&bits);
-
-    std.debug.print("AutoCorrelation: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
-
     try std.testing.expectApproxEqAbs(result.v_value, 0.266207, tolerance);
     try std.testing.expectApproxEqAbs(result.p_value, 0.790080, tolerance);
     try std.testing.expectApproxEqAbs(result.q_value, 0.395040, tolerance);
@@ -290,12 +268,9 @@ test "Rank" {
     const stat = try zsts.rank.rankDetectStatDetect(allocator, param);
     stat.init(&param);
     const result = stat.iterate(&bits);
-
-    std.debug.print("Rank: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
-
     try std.testing.expectApproxEqAbs(result.v_value, 2.358278, tolerance);
     try std.testing.expectApproxEqAbs(result.p_value, 0.307543, tolerance);
     try std.testing.expectApproxEqAbs(result.q_value, 0.307543, tolerance);
@@ -314,32 +289,22 @@ test "cumulative_sums" {
         .extra = null, // 这里可以设置额外参数
     };
 
-    var stat = try zsts.cumulativeSums.cumulativeSumsDetectStatDetect(allocator, param, true);
+    var stat = try zsts.cumulativeSums.cumulativeSumsDetectStatDetect(allocator, param);
     stat.init(&param);
     var result = stat.iterate(&bits);
+    stat.print(&result, .detail);
 
-    std.debug.print("cumSums(Forward): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    const statResult: *zsts.cumulativeSums.CumulativeSumsResult = @alignCast(@ptrCast(result.extra.?));
 
-    try std.testing.expect(result.passed == true);
+    try std.testing.expect(statResult.passed[0] == true);
+    try std.testing.expectApproxEqAbs(statResult.v_value[0], 0.0, tolerance);
+    try std.testing.expectApproxEqAbs(statResult.p_value[0], 0.219194, tolerance);
+    try std.testing.expectApproxEqAbs(statResult.q_value[0], 0.219194, tolerance);
 
-    try std.testing.expectApproxEqAbs(result.v_value, 0.0, tolerance);
-    try std.testing.expectApproxEqAbs(result.p_value, 0.219194, tolerance);
-    try std.testing.expectApproxEqAbs(result.q_value, 0.219194, tolerance);
-
-    bits.reset();
-    stat = try zsts.cumulativeSums.cumulativeSumsDetectStatDetect(allocator, param, false);
-    stat.init(&param);
-    result = stat.iterate(&bits);
-
-    std.debug.print("cumSums(Backup): passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
-
-    try std.testing.expect(result.passed == true);
-
-    try std.testing.expectApproxEqAbs(result.v_value, 0.0, tolerance);
-    try std.testing.expectApproxEqAbs(result.p_value, 0.114866, tolerance);
-    try std.testing.expectApproxEqAbs(result.q_value, 0.114866, tolerance);
+    try std.testing.expect(statResult.passed[1] == true);
+    try std.testing.expectApproxEqAbs(statResult.v_value[1], 0.0, tolerance);
+    try std.testing.expectApproxEqAbs(statResult.p_value[1], 0.114866, tolerance);
+    try std.testing.expectApproxEqAbs(statResult.q_value[1], 0.114866, tolerance);
 }
 
 test "ApproxEntropy" {
@@ -358,12 +323,9 @@ test "ApproxEntropy" {
     var stat = try zsts.approximateEntropy.approxEntropyDetectStatDetect(allocator, param, 2);
     stat.init(&param);
     const result = stat.iterate(&bits);
-
-    std.debug.print("approximateEntropy: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
-
     try std.testing.expectApproxEqAbs(result.v_value, 5.550792, tolerance);
     try std.testing.expectApproxEqAbs(result.p_value, 0.235301, tolerance);
     try std.testing.expectApproxEqAbs(result.q_value, 0.235301, tolerance);
@@ -389,9 +351,7 @@ test "Maurer Universal" {
     const stat = try zsts.maurerUniversal.maurerUniversalDetectStatDetect(allocator, param, 7, 1280);
     stat.init(&param);
     const result = stat.iterate(&bits);
-
-    std.debug.print("maurerUniversal: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
     try std.testing.expectApproxEqAbs(result.v_value, 1.074569, tolerance);
@@ -417,12 +377,9 @@ test "DFT" {
     var stat = try zsts.dft.dftDetectStatDetect(allocator, param);
     stat.init(&param);
     const result = stat.iterate(&bits);
-
-    std.debug.print("DFT: passed={}, V = {d:.6} P = {d:.6}, Q = {d:.6}\n",
-        .{result.passed, result.v_value, result.p_value, result.q_value});
+    stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
-
     try std.testing.expectApproxEqAbs(result.v_value, 0.447214, tolerance);
     try std.testing.expectApproxEqAbs(result.p_value, 0.654721, tolerance);
     try std.testing.expectApproxEqAbs(result.q_value, 0.327360, tolerance);

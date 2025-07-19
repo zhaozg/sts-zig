@@ -47,23 +47,25 @@ pub const DetectResult = struct {
     extra: ?*anyopaque, // 支持扩展字段
 };
 
-pub fn detectPrint(self: *StatDetect, result: *const DetectResult) void {
-    std.debug.print("Test {s>12}: passed={}, p_value={:10.6}\n",
-        .{ self.name,  result.passed, result.p_value });
-}
-
-pub fn detectMetrics(self: *StatDetect, result: *const DetectResult) void {
-    _ = self;
-    _ = result;
-}
-
-pub fn detectSummary(self: *StatDetect, result: *const DetectResult) void {
-    _ = self;
-    _ = result;
-}
-
 pub fn detectReset(self: *StatDetect) void {
     _ = self;
+}
+
+pub const PrintLevel = enum {
+    summary,
+    detail,
+};
+
+pub fn detectPrint(self: *StatDetect, result: *const DetectResult, level: PrintLevel) void {
+    _ = level;
+    std.debug.print("Test {s:>24}: passed={s}, V={d:>14.6} P={d:<10.6} Q={d:<10.6}\n",
+    .{
+        self.name,
+        if(result.passed) "Yes" else "No ",
+        result.v_value,
+        result.p_value,
+        result.q_value,
+    });
 }
 
 pub const StatDetect = struct {
@@ -76,7 +78,8 @@ pub const StatDetect = struct {
     _iterate: *const fn (self: *StatDetect, bitStream: *const io.BitInputStream) DetectResult,
     _destroy: *const fn (self: *StatDetect) void,
 
-    _reset: ?*const fn (self: *StatDetect) void,
+    _reset: ?*const fn (self: *StatDetect) void = detectReset,
+    _print: ?*const fn (self: *StatDetect, result: *const DetectResult, level: PrintLevel) void = detectPrint,
 
     pub fn init(self: *StatDetect, param: *const DetectParam) void {
         self._init(self, param);
@@ -88,10 +91,11 @@ pub const StatDetect = struct {
         self._destroy(self);
     }
 
+    pub fn print(self: *StatDetect, result: *const DetectResult, level: PrintLevel) void {
+        self._print.?(self, result, level);
+    }
+
     pub fn reset(self: *StatDetect) void {
-        if (self._reset == null) {
-            return detectReset(self);
-        }
         self._reset.?(self);
     }
 };

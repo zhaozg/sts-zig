@@ -13,7 +13,6 @@ const RandomExcursionsState = struct {
       = .{[_]f64{0}**DEGREES_OF_FREEDOM_RND_EXCURSION} ** MAX_EXCURSION_RND_EXCURSION,
 };
 
-
 pub const RandomExcursionsResult = struct {
     counter: [NUMBER_OF_STATES_RND_EXCURSION]usize = .{0} ** NUMBER_OF_STATES_RND_EXCURSION,  // 每个状态的卡方统计量
     v_value: [NUMBER_OF_STATES_RND_EXCURSION]f64 =   .{0} ** NUMBER_OF_STATES_RND_EXCURSION,  // 每个状态的卡方统计量
@@ -21,6 +20,37 @@ pub const RandomExcursionsResult = struct {
     passed:  [NUMBER_OF_STATES_RND_EXCURSION]bool = .{true} ** NUMBER_OF_STATES_RND_EXCURSION,// 每个状态是否通过
     nCycles: usize = 0,             // 每个状态的循环数
 };
+
+fn random_excursions_print(self: *detect.StatDetect, result: *const detect.DetectResult, level: detect.PrintLevel) void {
+    detect.detectPrint(self, result, level);
+    if (result.extra == null) {
+        return;
+    }
+
+    const results = @as(*RandomExcursionsResult, @alignCast(@ptrCast(result.extra.?)));
+    var passed: usize = 0;
+    for (0..results.passed.len) |i| {
+        if (results.passed[i]) {
+            passed += 1;
+        }
+    }
+    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n",
+    .{passed, results.passed.len, results.passed.len - passed, results.passed.len});
+
+    if (level == .detail) {
+        std.debug.print("\n", .{});
+        for (0..results.passed.len) |i| {
+            std.debug.print("\tState {d:>3}: passed={s}, V = {d:10.6} P = {d:.6}\n",
+            .{
+                i,
+                if (results.passed[i]) "Yes" else "No ",
+                results.v_value[i],
+                results.p_value[i],
+            });
+        }
+        std.debug.print("\n", .{});
+    }
+}
 
 fn random_excursions_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = param;
@@ -249,6 +279,7 @@ pub fn randomExcursionsDetectStatDetect(allocator: std.mem.Allocator, param: det
         ._destroy = random_excursions_destroy,
 
         ._reset = detect.detectReset,
+        ._print = random_excursions_print,
     };
     return ptr;
 }

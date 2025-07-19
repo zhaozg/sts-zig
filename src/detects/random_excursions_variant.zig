@@ -15,6 +15,37 @@ pub const RandomExcursionsVariantResult = struct {
     nCycles: usize = 0,             // 每个状态的循环数
 };
 
+fn random_excursions_variant_print(self: *detect.StatDetect, result: *const detect.DetectResult, level: detect.PrintLevel) void {
+    detect.detectPrint(self, result, level);
+    if (result.extra == null) {
+        return;
+    }
+
+    const results = @as(*RandomExcursionsVariantResult, @alignCast(@ptrCast(result.extra.?)));
+    var passed: usize = 0;
+    for (0..results.passed.len) |i| {
+        if (results.passed[i]) {
+            passed += 1;
+        }
+    }
+    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n",
+    .{passed, results.passed.len, results.passed.len - passed, results.passed.len});
+
+    if (level == .detail) {
+        std.debug.print("\n", .{});
+        for (0..results.passed.len) |i| {
+            std.debug.print("\tState {d:>3}: passed={s}, V = {d:10.6} P = {d:.6}\n",
+            .{
+                i,
+                if (results.passed[i]) "Yes" else "No ",
+                results.v_value[i],
+                results.p_value[i],
+            });
+        }
+    }
+    std.debug.print("\n", .{});
+}
+
 fn random_excursions_variant_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = self;
     _ = param;
@@ -186,6 +217,7 @@ pub fn randomExcursionsVariantDetectStatDetect(allocator: std.mem.Allocator, par
         ._destroy = random_excursions_variant_destroy,
 
         ._reset = detect.detectReset,
+        ._print = random_excursions_variant_print,
     };
     return ptr;
 }

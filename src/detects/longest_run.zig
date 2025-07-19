@@ -3,10 +3,45 @@ const io = @import("../io.zig");
 const math = @import("../math.zig");
 const std = @import("std");
 
-pub const LongestRunParam= struct {
-    mode: u1
+const NUMBER_OF_STATES_LONGEST_RUN = 2;
+
+pub const LongestRunResult = struct {
+    v_value: [NUMBER_OF_STATES_LONGEST_RUN]f64 =   .{0} ** NUMBER_OF_STATES_LONGEST_RUN,  // 每个状态的卡方统计量
+    p_value: [NUMBER_OF_STATES_LONGEST_RUN]f64 =   .{0} ** NUMBER_OF_STATES_LONGEST_RUN,  // 每个状态的p值
+    q_value: [NUMBER_OF_STATES_LONGEST_RUN]f64 =   .{0} ** NUMBER_OF_STATES_LONGEST_RUN,  // 每个状态的q值
+    passed:  [NUMBER_OF_STATES_LONGEST_RUN]bool = .{true} ** NUMBER_OF_STATES_LONGEST_RUN,// 每个状态是否通过
 };
 
+fn longest_run_print(self: *detect.StatDetect, result: *const detect.DetectResult, level: detect.PrintLevel) void {
+    detect.detectPrint(self, result, level);
+    if (result.extra == null) {
+        return;
+    }
+
+    const results = @as(*LongestRunResult, @alignCast(@ptrCast(result.extra.?)));
+    var passed: usize = 0;
+    for (0..results.passed.len) |i| {
+        if (results.passed[i]) {
+            passed += 1;
+        }
+    }
+    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n",
+    .{passed, results.passed.len, results.passed.len - passed, results.passed.len});
+
+    if (level == .detail) {
+        std.debug.print("\n", .{});
+        for (0..results.passed.len) |i| {
+            std.debug.print("\tState({d}): passed={s}, V = {d:10.6} P = {d:.6}\n",
+            .{
+                i,
+                if (results.passed[i]) "Yes" else "No ",
+                results.v_value[i],
+                results.p_value[i],
+            });
+        }
+        std.debug.print("\n", .{});
+    }
+}
 fn longest_run_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = self;
     _ = param;
@@ -76,12 +111,7 @@ fn selectPi(m: u16, i: u3) f64 {
 }
 
 fn longest_run_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
-    var mode: u1 = 1;
     const n = self.param.n;
-    if (self.param.extra != null) {
-        const longestParam: *LongestRunParam = @alignCast(@ptrCast(self.param.extra));
-        mode = @as(u1, @intCast(longestParam.mode));
-    }
 
     const M: u16 = selectM(n);
 
@@ -103,38 +133,77 @@ fn longest_run_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream)
     const K: u3 = if (M == 8) 3 else if (M == 128) 5 else 6;
 
     // K + 1 个集合
-    var v = [_]usize{0} ** 7;
+    var v0 = [_]usize{0} ** 7;
+    var v1 = [_]usize{0} ** 7;
 
     for (0..N) |_| {
         // Step 2: 块内计数
-        var run: u16 = 0;
-        var max_run: u16 = 0;
+        var run0: u16 = 0;
+        var max_run0: u16 = 0;
+        var run1: u16 = 0;
+        var max_run1: u16 = 0;
 
         for (0 .. M) |_| {
             const bit = bits.fetchBit() orelse 0;
-            if (bit == mode) {
-                run += 1;
-                if (run > max_run) max_run = run;
-            } else {
-                if (run > max_run) max_run = run;
+            if (bit == 0) {
+                if (run1 > max_run1) max_run1 = run1;
+                run1 = 0;
 
-                run = 0;
+                run0 += 1;
+                if (run0 > max_run0) max_run0 = run0;
+            } else {
+                if (run0 > max_run0) max_run0 = run0;
+                run0 = 0;
+
+                run1+= 1;
+                if (run1 > max_run1) max_run1 = run1;
             }
         }
 
-        v[selectSet(M, max_run)] += 1;
+        v0[selectSet(M, max_run0)] += 1;
+        v1[selectSet(M, max_run1)] += 1;
     }
 
     // Step 3: 计算统计量
-    var V: f64 = 0.0;
+    var V0: f64 = 0.0;
+    var V1: f64 = 0.0;
+
     for (0..K + 1) |i| {
         const pi: f64 = selectPi(M, @as(u3, @intCast(i)));
-        const f = @as(f64, @floatFromInt(v[i])) - @as(f64, @floatFromInt(N)) * pi;
-        const x = ( f * f ) / (@as(f64, @floatFromInt(N)) * pi);
 
-        V += x;
+        const f0 = @as(f64, @floatFromInt(v0[i])) - @as(f64, @floatFromInt(N)) * pi;
+        const x0 = ( f0 * f0 ) / (@as(f64, @floatFromInt(N)) * pi);
+        V0 += x0;
+
+        const f1 = @as(f64, @floatFromInt(v1[i])) - @as(f64, @floatFromInt(N)) * pi;
+        const x1 = ( f1 * f1 ) / (@as(f64, @floatFromInt(N)) * pi);
+        V1 += x1;
     }
-    const P = math.igamc(@as(f64, @floatFromInt(K)) / 2.0, V / 2.0);
+
+    const P0 = math.igamc(@as(f64, @floatFromInt(K)) / 2.0, V0 / 2.0);
+    const P1 = math.igamc(@as(f64, @floatFromInt(K)) / 2.0, V1 / 2.0);
+
+    const P = if (P0 < P1) P0 else P1;
+    const V = if (P0 < P1) V0 else V1;
+
+    const result: *LongestRunResult = std.heap.page_allocator.create(LongestRunResult) catch |err| {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
+
+    result.* = LongestRunResult{
+        .v_value = .{ V0, V1 },
+        .p_value = .{ P0, P1 },
+        .q_value = .{ P0, P1 },
+        .passed = .{ P0 > 0.01, P1 > 0.01 },
+    };
+
     const passed = P > 0.01;
 
     return detect.DetectResult{
@@ -142,22 +211,16 @@ fn longest_run_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream)
         .v_value = V,
         .p_value = P,
         .q_value = P,
-        .extra = null,
+        .extra = result,
         .errno = null,
     };
 }
 
-pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam, mode: u1) !*detect.StatDetect {
+pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam) !*detect.StatDetect {
     const ptr = try allocator.create(detect.StatDetect);
     const param_ptr = try allocator.create(detect.DetectParam);
     param_ptr.* = param;
     param_ptr.*.type = detect.DetectType.LongestRun;
-    const longestParam = try allocator.create(LongestRunParam);
-    longestParam.* = LongestRunParam{
-        .mode = mode, // 默认模式为 1
-    };
-
-    param_ptr.*.extra = longestParam;
 
     ptr.* = detect.StatDetect{
         .name = "LongestRun",
@@ -168,6 +231,7 @@ pub fn longestRunDetectStatDetect(allocator: std.mem.Allocator, param: detect.De
         ._destroy = longest_run_destroy,
 
         ._reset = detect.detectReset,
+        ._print = longest_run_print,
     };
     return ptr;
 }

@@ -24,17 +24,6 @@ const serial = @import("detects/serial.zig");
 const randomExcursions = @import("detects/random_excursions.zig");
 const randomExcursionsVarariant = @import("detects/random_excursions_variant.zig");
 
-pub fn detectPrint(self: *detect.StatDetect, result: *const detect.DetectResult) void {
-    std.debug.print("Test {s:>24}: passed={s}, V={d:>14.6} P={d:<10.6} Q={d:<10.6}\n",
-    .{
-        self.name,
-        if(result.passed) "Yes" else "No ",
-        result.v_value,
-        result.p_value,
-        result.q_value,
-    });
-}
-
 pub const DetectSuite = struct {
     allocator: std.mem.Allocator,
     detects: std.ArrayList(*detect.StatDetect),
@@ -65,11 +54,8 @@ pub const DetectSuite = struct {
         const run_dist = try runDist.runDistributionDetectStatDetect(self.allocator, param);
         try self.detects.append(run_dist);
 
-        const longest1 = try longestRun.longestRunDetectStatDetect(self.allocator, param, 1);
-        try self.detects.append(longest1);
-
-        const longest0 = try longestRun.longestRunDetectStatDetect(self.allocator, param, 0);
-        try self.detects.append(longest0);
+        const longest = try longestRun.longestRunDetectStatDetect(self.allocator, param);
+        try self.detects.append(longest);
 
         const binary = try binaryDerivative.binaryDerivativeDetectStatDetect(self.allocator, param, 3);
         try self.detects.append(binary);
@@ -80,7 +66,7 @@ pub const DetectSuite = struct {
         const rnk = try rank.rankDetectStatDetect(self.allocator, param);
         try self.detects.append(rnk);
 
-        const sumsums = try cumulativeSums.cumulativeSumsDetectStatDetect(self.allocator, param, true);
+        const sumsums = try cumulativeSums.cumulativeSumsDetectStatDetect(self.allocator, param);
         try self.detects.append(sumsums);
 
         const approx = try approximateEntropy.approxEntropyDetectStatDetect(self.allocator, param, 2);
@@ -116,7 +102,7 @@ pub const DetectSuite = struct {
             t.init(t.param);
             bits.reset();
             const result = t.iterate(bits);
-            detectPrint(t, &result);
+            t.print(&result, .summary);
             t.destroy();
         }
     }
