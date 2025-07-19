@@ -13,8 +13,10 @@ fn overlapping_template_destroy(self: *detect.StatDetect) void {
 }
 
 fn overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
-    const m = 3;
+    // 1. 参数支持
+    const m = 9;
     const M = 1032;
+    const K = 5;
     const n = self.param.n;
 
     const N = n / M;
@@ -29,8 +31,32 @@ fn overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.BitInp
         };
     }
 
-    // 固定模板 "111"
-    const template = [_]u8{1, 1, 1};
+    // 2. pi_term, nist book 800-22r1a 3.8
+    const lambda = @as(f64, @floatFromInt(M - m + 1)) / @as(f64, @floatFromInt(1 << m));
+    var pi: [6]f64 = undefined;
+    if (m == 9 and M == 1032)
+        pi = [_]f64 {
+	    0.36409105321672786245,     // T0[[M]]/2^1032 // N (was 0.364091)
+	    0.18565890010624038178,     // T1[[M]]/2^1032 // N (was 0.185659)
+	    0.13938113045903269914,     // T2[[M]]/2^1032 // N (was 0.139381)
+	    0.10057114399877811497,     // T3[[M]]/2^1032 // N (was 0.100571)
+	    0.070432326346398449744,    // T4[[M]]/2^1032 // N (was 0.0704323)
+	    0.13986544587282249192,     // 1 - previous terms (was 0.1398657)
+        }
+    else
+        // 泊松分布近似
+        pi = [_]f64 {
+            math.poisson(lambda, 0),
+            math.poisson(lambda, 1),
+            math.poisson(lambda, 2),
+            math.poisson(lambda, 3),
+            math.poisson(lambda, 4),
+            1.0 - math.poisson(lambda, 0)
+                - math.poisson(lambda, 1)
+                - math.poisson(lambda, 2)
+                - math.poisson(lambda, 3)
+                - math.poisson(lambda, 4),
+        };
 
     const arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
@@ -54,59 +80,45 @@ fn overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.BitInp
         };
     }
 
-    // λ = (M - m + 1) / 2^m
-    const lambda = @as(f64, @floatFromInt(M - m + 1)) / 8.0;
-
-    // 统计每块模板出现次数
-    const K = 5;
-    var v = [_]usize{0} ** K;
+    // 3. 统计 v
+    var v = [_]usize{0} ** (K + 1);
     for (0..N) |blk| {
         const offset = blk * M;
         var count: usize = 0;
-        var i: usize = 0;
-        while (i + m <= M) : (i += 1) {
+        for (0..(M-m+1)) |i| {
             var match = true;
             for (0..m) |j| {
-                if (arr[offset + i + j] != template[j]) {
+                // 目前仅匹配全 1 模板
+                if (arr[offset + i + j] != 1) {
                     match = false;
                     break;
                 }
             }
             if (match) count += 1;
         }
-        if (count <= 1) v[0] += 1
-        else if (count == 2) v[1] += 1
-        else if (count == 3) v[2] += 1
-        else if (count == 4) v[3] += 1
-        else v[4] += 1;
+        if (count < K) v[count] += 1
+        else v[K] += 1;
     }
 
-    const pi = [_]f64{
-        math.poisson(lambda, 0) + math.poisson(lambda, 1),
-        math.poisson(lambda, 2),
-        math.poisson(lambda, 3),
-        math.poisson(lambda, 4),
-        1.0 - (math.poisson(lambda, 0)
-            + math.poisson(lambda, 1)
-            + math.poisson(lambda, 2)
-            + math.poisson(lambda, 3)
-            + math.poisson(lambda, 4)),
-    };
-
+    // 4. chi2 和 p-value
     var chi2: f64 = 0.0;
-    for (0..K) |i| {
+    for (0..K+1) |i| {
         const exp = pi[i] * @as(f64, @floatFromInt(N));
-        chi2 += ( @as(f64, @floatFromInt(v[i])) - exp ) * ( @as(f64, @floatFromInt(v[i])) - exp ) / exp;
+        const val = ( @as(f64, @floatFromInt(v[i])) - exp )
+                  * ( @as(f64, @floatFromInt(v[i])) - exp )
+                  / exp;
+
+        chi2 += val;
     }
 
-    const p_value = math.igamc(2.0, chi2 / 2.0);
+    const p_value = math.igamc(@as(f64, @floatFromInt(K)) / 2.0, chi2 / 2.0);
     const passed = p_value > 0.01;
 
     return detect.DetectResult{
         .passed = passed,
         .v_value = chi2,
         .p_value = p_value,
-        .q_value = 0.0,
+        .q_value = p_value,
         .extra = null,
         .errno = null,
     };

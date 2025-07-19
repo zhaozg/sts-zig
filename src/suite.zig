@@ -20,11 +20,12 @@ const overlappingTemplate = @import("detects/overlapping_template.zig");
 
 const runDist = @import("detects/run_distribution.zig");
 const randomExcursions = @import("detects/random_excursions.zig");
+const randomExcursionsVarariant = @import("detects/random_excursions_variant.zig");
 const serial = @import("detects/serial.zig");
 const dft = @import("detects/dft.zig");
 
 pub fn detectPrint(self: *detect.StatDetect, result: *const detect.DetectResult) void {
-    std.debug.print("Test {s:>22}: passed={s}, V={d:>14.6} P={d:<10.6} Q={d:<10.6}\n",
+    std.debug.print("Test {s:>24}: passed={s}, V={d:>14.6} P={d:<10.6} Q={d:<10.6}\n",
     .{
         self.name,
         if(result.passed) "Yes" else "No ",
@@ -98,6 +99,9 @@ pub const DetectSuite = struct {
 
         const random_excursions = try randomExcursions.randomExcursionsDetectStatDetect(self.allocator, param);
         try self.detects.append(random_excursions);
+
+        const random_excursions_variant = try randomExcursionsVarariant.randomExcursionsVariantDetectStatDetect(self.allocator, param);
+        try self.detects.append(random_excursions_variant);
 
         const serial_detect = try serial.serialDetectStatDetect(self.allocator, param);
         try self.detects.append(serial_detect);

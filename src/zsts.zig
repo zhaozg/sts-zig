@@ -20,5 +20,6 @@ pub const overlappingTemplate = @import("detects/overlapping_template.zig");
 
 pub const runDist = @import("detects/run_distribution.zig");
 pub const randomExcursions = @import("detects/random_excursions.zig");
+pub const randomExcursionsVariant = @import("detects/random_excursions_variant.zig");
 pub const serial = @import("detects/serial.zig");
 pub const dft = @import("detects/dft.zig");

@@ -3,6 +3,14 @@ const io = @import("../io.zig");
 const math = @import("../math.zig");
 const std = @import("std");
 
+pub const NonOverlappingTemplateResult = struct {
+    n: usize,
+    passed: []bool,
+    template: [][]u1, // 模板
+    v_value: []f64,
+    p_value: []f64,
+};
+
 fn non_overlapping_template_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = self;
     _ = param;
@@ -12,11 +20,55 @@ fn non_overlapping_template_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
+const BLOCKS_NON_OVERLAPPING = 8; // 可根据实际情况调整
+
+fn generateNonPeriodicTemplates(m: u4, allocator: std.mem.Allocator) ![][]u1 {
+    var templates = std.ArrayList([]u1).init(allocator);
+    const max_num: usize = @as(usize, 1) << m;
+    for (1..max_num) |val| {
+        var arr = try allocator.alloc(u1, m);
+        for (0..m) |i| {
+            arr[i] = if (((val >> @as(u6, @intCast(m - 1 - i))) & 1) == 1) 1 else 0;
+        }
+        if (!isPeriodic(arr)) {
+            try templates.append(arr);
+        } else {
+            allocator.free(arr);
+        }
+    }
+    return templates.toOwnedSlice();
+}
+
+fn isPeriodic(arr: []u1) bool {
+    const m = arr.len;
+    for (1..m) |p| {
+        var periodic = true;
+        for (0..m - p) |i| {
+            if (arr[i] != arr[i + p]) {
+                periodic = false;
+                break;
+            }
+        }
+        if (periodic) return true;
+    }
+    return false;
+}
+
+fn isEquals(arr: []const u1, mat: []const u1) bool {
+    if (arr.len != mat.len) return false;
+    for (0..arr.len) |i| {
+        if (arr[i] != mat[i]) return false;
+    }
+    return true;
+}
+
 fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
 
-    const m = 3;
+    const m = 9;
     const n = self.param.n;
-    if (n < m) {
+    const M = n / BLOCKS_NON_OVERLAPPING;
+
+    if (M < m) {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -27,8 +79,13 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
         };
     }
 
-    // 固定模板 "111"
-    const template = [_]u1{1, 1, 1};
+    const mu = @as(f64, @floatFromInt(M - m + 1)) / @as(f64, @floatFromInt(1 << m));
+    const sigma_squared = @as(f64, @floatFromInt(M)) * (
+        1.0 / @as(f64, @floatFromInt(1 << m)) -
+        (2.0 * m - 1.0) / @as(f64, @floatFromInt(1 << (2 * m)))
+    );
+    // std.debug.print("u={d:.6} sigma_squared = {d:.6}\n", .{mu, sigma_squared});
+
     const arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
@@ -52,37 +109,121 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
         };
     }
 
-    // 统计非重叠出现次数
-    var W: usize = 0;
-    var i: usize = 0;
-    while (i + m <= n) {
-        var match = true;
-        for (0..m) |j| {
-            if (arr[i + j] != template[j]) {
-                match = false;
-                break;
+    // 生成模板
+    const templates = generateNonPeriodicTemplates(m, std.heap.page_allocator) catch |err| {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
+    // defer for (templates) |t| std.heap.page_allocator.free(t);
+
+    var results: *NonOverlappingTemplateResult = std.heap.page_allocator.create(NonOverlappingTemplateResult) catch |err| {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
+
+    results.n = templates.len;
+    results.passed = std.heap.page_allocator.alloc(bool, templates.len) catch |err| {
+        std.heap.page_allocator.destroy(results);
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
+    results.p_value = std.heap.page_allocator.alloc(f64, templates.len) catch |err| {
+        std.heap.page_allocator.destroy(results);
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
+    results.v_value = std.heap.page_allocator.alloc(f64, templates.len) catch |err| {
+        std.heap.page_allocator.destroy(results);
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
+    results.template = templates;
+
+    var p_min: f64 = 1.0;
+    var v_min: f64 = 0.0;
+
+    for (templates, 0..templates.len) |template, i| {
+        var Wj = [_]usize{0} ** BLOCKS_NON_OVERLAPPING;
+        for (0..BLOCKS_NON_OVERLAPPING) |block_idx| {
+            var count: usize = 0;
+            var j: usize = 0;
+            while (j + m <= M) {
+                var match = true;
+                for (0..m) |k| {
+                    if (arr[block_idx * M + j + k] != template[k]) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) {
+                    count += 1;
+                    j += m;
+                } else {
+                    j += 1;
+                }
             }
+            Wj[block_idx] = count;
         }
-        if (match) {
-            W += 1;
-            i += m;
-        } else {
-            i += 1;
+
+        var chi2: f64 = 0.0;
+        for (Wj) |w| {
+            chi2 += ((@as(f64, @floatFromInt(w)) - mu) * (@as(f64, @floatFromInt(w)) - mu)) / sigma_squared;
+        }
+        const p_value = math.igamc(BLOCKS_NON_OVERLAPPING / 2.0, chi2 / 2.0);
+
+        results.passed[i] = p_value > 0.01;
+        results.p_value[i] = p_value;
+        results.v_value[i] = chi2;
+
+        // const mat: [9]u1 = [_]u1{ 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+        // if (isEquals(template, mat[0..])) {
+        //     for(Wj, 0..)|w, x| {
+        //         std.debug.print("Wj[{d}] = {d}\n", .{x, w});
+        //     }
+        // }
+        //
+
+        if (p_value < p_min) {
+            p_min = p_value;
+            v_min = chi2;
         }
     }
-
-    const mu = @as(f64, @floatFromInt(n - m + 1)) / 8.0;
-    const sigma2 = @as(f64, @floatFromInt(n)) * (1.0 / 8.0 - (2.0 * m - 1.0) / 64.0);
-    const chi2 = ( @as(f64, @floatFromInt(W)) - mu ) * ( @as(f64, @floatFromInt(W)) - mu ) / sigma2;
-    const p_value = math.igamc(0.5, chi2 / 2.0);
-    const passed = p_value > 0.01;
-
     return detect.DetectResult{
-        .passed = passed,
-        .v_value = chi2,
-        .p_value = p_value,
-        .q_value = 0.0,
-        .extra = null,
+        .passed = p_min > 0.01,
+        .v_value = v_min,
+        .p_value = p_min,
+        .q_value = p_min,
+        .extra = results,
         .errno = null,
     };
 }

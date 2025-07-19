@@ -3,20 +3,33 @@ const io = @import("../io.zig");
 const math = @import("../math.zig");
 const std = @import("std");
 
+const MAX_EXCURSION_RND_EXCURSION_VAR = 9;
+// Number of states for TEST_RND_EXCURSION_VAR
+const NUMBER_OF_STATES_RND_EXCURSION_VAR = 2*MAX_EXCURSION_RND_EXCURSION_VAR;
+
+pub const RandomExcursionsVariantResult = struct {
+    counter: [NUMBER_OF_STATES_RND_EXCURSION_VAR]usize = .{0} ** NUMBER_OF_STATES_RND_EXCURSION_VAR,  // 每个状态的卡方统计量
+    v_value: [NUMBER_OF_STATES_RND_EXCURSION_VAR]f64 =   .{0} ** NUMBER_OF_STATES_RND_EXCURSION_VAR,  // 每个状态的卡方统计量
+    p_value: [NUMBER_OF_STATES_RND_EXCURSION_VAR]f64 =   .{0} ** NUMBER_OF_STATES_RND_EXCURSION_VAR,  // 每个状态的p值
+    passed:  [NUMBER_OF_STATES_RND_EXCURSION_VAR]bool = .{true} ** NUMBER_OF_STATES_RND_EXCURSION_VAR,// 每个状态是否通过
+    nCycles: usize = 0,             // 每个状态的循环数
+};
+
 fn random_excursions_variant_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
     _ = self;
     _ = param;
 }
 
 fn random_excursions_variant_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    const result: *RandomExcursionsVariantResult = @alignCast(@ptrCast(self.state.?));
+    std.heap.page_allocator.destroy(result);
 }
 
 fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     _ = self;
 
-    const n = data.len * 8;
-    if (n < 100) {
+    const n = bits.len();
+    if (n < 1000) {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -27,8 +40,7 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.B
         };
     }
 
-    var bits = io.BitStream{ .data = data, .bit_index = 0, .len = n };
-    var bit_arr = std.heap.page_allocator.alloc(u8, n) catch |err| {
+    const arr = std.heap.page_allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -38,77 +50,113 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.B
             .errno = err,
         };
     };
-    defer std.heap.page_allocator.free(bit_arr);
-    for (0..n) |i| {
-        bit_arr[i] = if (bits.fetchBit()) |b| b else 0;
+    defer std.heap.page_allocator.free(arr);
+
+    if (bits.fetchBits(arr) != n) {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = null,
+        };
     }
 
     // 累计和S
+    // S[0] = 0, S[i+1] = S[i] + (arr[i] == 1 ? 1 : -1)
     var S = std.heap.page_allocator.alloc(i32, n + 1) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .p_value = 0.0,
+            .q_value = 0.0,
             .v_value = 0.0,
             .extra = null,
             .errno = err,
         };
     };
     defer std.heap.page_allocator.free(S);
-    S[0] = 0;
-    for (0..n) |i| {
-        S[i + 1] = S[i] + if (bit_arr[i] == 1) 1 else -1;
-    }
 
-    // 找出所有S=0的位置
     var cycle_idx = std.ArrayList(usize).init(std.heap.page_allocator);
     defer cycle_idx.deinit();
-    for (0..(n + 1)) |i| {
+
+    // 计算累积、收集零交叉点
+    S[0] = @as(i32, if(arr[0]==1) 1 else -1); // 初始化第一个元素 ;
+    for (1..n) |i| {
+        S[i] = S[i-1] + @as(i32, if(arr[i]==1) 1 else -1);
+        // 收集零交叉点
         if (S[i] == 0) {
             cycle_idx.append(i) catch {};
         }
     }
-    const J = cycle_idx.items.len - 1;
-    if (J < 1) {
+
+    if (S[n - 1] != 0) {
+        cycle_idx.append(n) catch {};
+    }
+
+    const J: usize = cycle_idx.items.len;
+    const min_cycles = @max(500, @as(usize, @intFromFloat(0.005 * @sqrt(@as(f64, @floatFromInt(n))))));
+
+    // 检查最小循环数要求
+    if (J < min_cycles) {
         return detect.DetectResult{
             .passed = false,
-            .p_value = 0.0,
             .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
             .extra = null,
             .errno = null,
         };
     }
 
-    // 统计每个状态x在所有游程中出现的次数
-    var count = [_]usize{0} ** 18; // x=-9..-1,1..9
+    var result: *RandomExcursionsVariantResult = std.heap.page_allocator.create(RandomExcursionsVariantResult) catch |err| {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
+    for (0..NUMBER_OF_STATES_RND_EXCURSION_VAR) |k| {
+        result.passed[k] = true;
+        result.counter[k] = 0;
+        result.v_value[k] = 0.0;
+        result.p_value[k] = 0.0;
+    }
+    result.nCycles = J;
+
+    // 统计每个状态 x=±1..9 在所有游程中出现的次数
+    var start: usize = 0;
+    var stop: usize = 0;
+
     for (0..J) |j| {
-        const start = cycle_idx.items[j];
-        const end = cycle_idx.items[j + 1];
-        for (start + 1..end + 1) |i| {
+        start = stop;
+        stop = cycle_idx.items[j];
+
+        // 统计当前循环中各状态出现次数
+        for (start..stop) |i| {
             const x = S[i];
-            if (x >= -9 and x <= -1) count[(x + 9) - 1] += 1;
-            if (x >= 1 and x <= 9) count[(x + 9) - 1] += 1;
+
+            if (x >= -9 and x <= -1) result.counter[@as(usize, @intCast(x + 9))] += 1;
+            if (x >= 1 and x <= 9) result.counter[@as(usize, @intCast(x + 8))] += 1;
         }
     }
 
-    // 理论概率（NIST SP800-22, Table 5）
-    const pi = [_]f64{
-        0.000000000, 0.000000002, 0.000000061, 0.000001104, 0.000010765, 0.000062209, 0.000248019, 0.000701307, 0.001655210,
-        0.003248188, 0.005904900, 0.009098534, 0.012903800, 0.017099480, 0.021269400, 0.024997500, 0.027864900, 0.029599000
-    };
-    // 实际上NIST只推荐x=±1..9，pi对称，表中只需±1..9
-    // 这里pi[0..8]为-9..-1，pi[9..17]为1..9
-
     var min_p_value: f64 = 1.0;
     var min_z_value: f64 = 0.0;
-    for (0..18) |i| {
-        const mu = @as(f64, @floatFromInt(J)) * pi[i];
-        const sigma2 = @as(f64, @floatFromInt(J)) * pi[i] * (1.0 - pi[i]);
-        if (sigma2 == 0.0) continue;
-        const z = (@as(f64, @floatFromInt(count[i])) - mu) / std.math.sqrt(sigma2);
-        const p = math.erfc(@abs(z) / std.math.sqrt(2.0));
-        if (p < min_p_value) {
-            min_p_value = p;
-            min_z_value = z;
+    for (0..NUMBER_OF_STATES_RND_EXCURSION_VAR) |k| {
+        const K = @as(f64, @floatFromInt(if (k < 9) @as(isize, @intCast(k)) - MAX_EXCURSION_RND_EXCURSION_VAR  else @as(isize, @intCast(k)) - 8));
+        const V = @as(f64, @floatFromInt(@abs( @as(isize, @intCast(result.counter[k])) - @as(isize, @intCast(result.nCycles)))))
+                / ( @sqrt(2.0 * @as(f64, @floatFromInt(result.nCycles)) * (4.0 * @abs(K) - 2.0)));
+        const P = math.erfc( V );
+
+	result.p_value[k] = P;
+        result.v_value[k] = V;
+        if (P < min_p_value) {
+            min_p_value = P;
+            min_z_value = V;
         }
     }
     const passed = min_p_value > 0.01;
@@ -117,8 +165,8 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.B
         .passed = passed,
         .v_value = min_z_value,
         .p_value = min_p_value,
-        .q_value = 0.0,
-        .extra = null,
+        .q_value = min_p_value,
+        .extra = result,
         .errno = null,
     };
 }
@@ -127,7 +175,7 @@ pub fn randomExcursionsVariantDetectStatDetect(allocator: std.mem.Allocator, par
     const ptr = try allocator.create(detect.StatDetect);
     const param_ptr = try allocator.create(detect.DetectParam);
     param_ptr.* = param;
-    param_ptr.*.type = detect.DetectType.General;
+    param_ptr.*.type = detect.DetectType.RandomExcursionsVariant;
     ptr.* = detect.StatDetect{
         .name = "RandomExcursionsVariant",
         .param = param_ptr,

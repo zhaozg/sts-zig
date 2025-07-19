@@ -47,13 +47,8 @@ pub const DetectResult = struct {
 };
 
 pub fn detectPrint(self: *StatDetect, result: *const DetectResult) void {
-    if (result.passed) {
-        std.debug.print("Test {s>10}: passed={}, p_value={:10.6}\n",
-            .{ self.name,  result.passed, result.p_value });
-    } else {
-        std.debug.print("Test {s>10}: passed={}\n",
-            .{ self.name,  result.passed});
-    }
+    std.debug.print("Test {s>12}: passed={}, p_value={:10.6}\n",
+        .{ self.name,  result.passed, result.p_value });
 }
 
 pub fn detectMetrics(self: *StatDetect, result: *const DetectResult) void {
@@ -73,6 +68,8 @@ pub fn detectReset(self: *StatDetect) void {
 pub const StatDetect = struct {
     name: []const u8,
     param: *DetectParam,
+
+    state: ?*anyopaque = null, // 可选内部状态
 
     _init: *const fn (self: *StatDetect, param: *const DetectParam) void,
     _iterate: *const fn (self: *StatDetect, bitStream: *const io.BitInputStream) DetectResult,
