@@ -21,19 +21,20 @@ pub fn build(b: *std.Build) void {
     });
     const test_step = b.step("test", "Run unit tests");
 
-    // const gmt_tests = b.addTest(.{
-    //     .root_source_file = b.path("test/GMT0005_test.zig"),
-    //     .target = target,
-    // });
-    // gmt_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
-    // gmt_tests.linkSystemLibrary("gsl");
-    // gmt_tests.root_module.addImport("zsts", zsts_module);
-    //
-    // const run_gmt_tests = b.addRunArtifact(gmt_tests);
-    // test_step.dependOn(&run_gmt_tests.step);
-    // b.installArtifact(gmt_tests);
+    // GMT tests
+    const gmt_tests = b.addTest(.{
+        .root_source_file = b.path("test/GMT0005_test.zig"),
+        .target = target,
+    });
+    gmt_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
+    gmt_tests.linkSystemLibrary("gsl");
+    gmt_tests.root_module.addImport("zsts", zsts_module);
 
+    const run_gmt_tests = b.addRunArtifact(gmt_tests);
+    test_step.dependOn(&run_gmt_tests.step);
+    b.installArtifact(gmt_tests);
 
+    // NIST tests
     const nist_tests = b.addTest(.{
         .root_source_file = b.path("test/SP800_22r1_test.zig"),
         .target = target,

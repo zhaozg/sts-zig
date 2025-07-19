@@ -21,6 +21,7 @@ fn random_excursions_variant_init(self: *detect.StatDetect, param: *const detect
 }
 
 fn random_excursions_variant_destroy(self: *detect.StatDetect) void {
+    if (self.state == null) return;
     const result: *RandomExcursionsVariantResult = @alignCast(@ptrCast(self.state.?));
     std.heap.page_allocator.destroy(result);
 }

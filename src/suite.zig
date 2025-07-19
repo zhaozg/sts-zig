@@ -3,26 +3,26 @@ const detect = @import("detect.zig");
 const io = @import("io.zig");
 
 const frequency = @import("detects/frequency.zig");
-const poker = @import("detects/poker.zig");
-const runs = @import("detects/runs.zig");
 const block_frequency = @import("detects/block_frequency.zig");
-const cumulativeSums = @import("detects/cumulative_sums.zig");
-const maurerUniversal = @import("detects/maurer_universal.zig");
-const longestRun = @import("detects/longest_run.zig");
-const rank = @import("detects/rank.zig");
-const autocorrelation = @import("detects/autocorrelation.zig");
-const approximateEntropy = @import("detects/approx_entropy.zig");
-const binaryDerivative = @import("detects/binary_derivative.zig");
-const linearComplexity = @import("detects/linear_complexity.zig");
-const nonOverlappingTemplate = @import("detects/non_overlapping_template.zig");
+const poker = @import("detects/poker.zig");
 const overlappingseq = @import("detects/overlapping_sequency.zig");
-const overlappingTemplate = @import("detects/overlapping_template.zig");
-
+const runs = @import("detects/runs.zig");
 const runDist = @import("detects/run_distribution.zig");
+const longestRun = @import("detects/longest_run.zig");
+const binaryDerivative = @import("detects/binary_derivative.zig");
+const autocorrelation = @import("detects/autocorrelation.zig");
+const rank = @import("detects/rank.zig");
+const cumulativeSums = @import("detects/cumulative_sums.zig");
+const approximateEntropy = @import("detects/approx_entropy.zig");
+const linearComplexity = @import("detects/linear_complexity.zig");
+const maurerUniversal = @import("detects/maurer_universal.zig");
+const dft = @import("detects/dft.zig");
+
+const nonOverlappingTemplate = @import("detects/non_overlapping_template.zig");
+const overlappingTemplate = @import("detects/overlapping_template.zig");
+const serial = @import("detects/serial.zig");
 const randomExcursions = @import("detects/random_excursions.zig");
 const randomExcursionsVarariant = @import("detects/random_excursions_variant.zig");
-const serial = @import("detects/serial.zig");
-const dft = @import("detects/dft.zig");
 
 pub fn detectPrint(self: *detect.StatDetect, result: *const detect.DetectResult) void {
     std.debug.print("Test {s:>24}: passed={s}, V={d:>14.6} P={d:<10.6} Q={d:<10.6}\n",
@@ -34,6 +34,7 @@ pub fn detectPrint(self: *detect.StatDetect, result: *const detect.DetectResult)
         result.q_value,
     });
 }
+
 pub const DetectSuite = struct {
     allocator: std.mem.Allocator,
     detects: std.ArrayList(*detect.StatDetect),
@@ -55,14 +56,14 @@ pub const DetectSuite = struct {
         const pok = try poker.pokerDetectStatDetect(self.allocator, param, 4);
         try self.detects.append(pok);
 
+        const overseq = try overlappingseq.overlappingSequencyDetectStatDetect(self.allocator, param, 3);
+        try self.detects.append(overseq);
+
         const run = try runs.runsDetectStatDetect(self.allocator, param);
         try self.detects.append(run);
 
-        const sumsums = try cumulativeSums.cumulativeSumsDetectStatDetect(self.allocator, param, true);
-        try self.detects.append(sumsums);
-
-        const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param, 6, 10*(1<<6));
-        try self.detects.append(univ);
+        const run_dist = try runDist.runDistributionDetectStatDetect(self.allocator, param);
+        try self.detects.append(run_dist);
 
         const longest1 = try longestRun.longestRunDetectStatDetect(self.allocator, param, 1);
         try self.detects.append(longest1);
@@ -70,44 +71,44 @@ pub const DetectSuite = struct {
         const longest0 = try longestRun.longestRunDetectStatDetect(self.allocator, param, 0);
         try self.detects.append(longest0);
 
-        const rnk = try rank.rankDetectStatDetect(self.allocator, param);
-        try self.detects.append(rnk);
+        const binary = try binaryDerivative.binaryDerivativeDetectStatDetect(self.allocator, param, 3);
+        try self.detects.append(binary);
 
         const corr = try autocorrelation.autocorrelationDetectStatDetect(self.allocator, param, 1);
         try self.detects.append(corr);
 
+        const rnk = try rank.rankDetectStatDetect(self.allocator, param);
+        try self.detects.append(rnk);
+
+        const sumsums = try cumulativeSums.cumulativeSumsDetectStatDetect(self.allocator, param, true);
+        try self.detects.append(sumsums);
+
         const approx = try approximateEntropy.approxEntropyDetectStatDetect(self.allocator, param, 2);
         try self.detects.append(approx);
-
-        const binary = try binaryDerivative.binaryDerivativeDetectStatDetect(self.allocator, param, 3);
-        try self.detects.append(binary);
 
         const linear = try linearComplexity.linearComplexityDetectStatDetect(self.allocator, param);
         try self.detects.append(linear);
 
+        const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param, 6, 10*(1<<6));
+        try self.detects.append(univ);
+
+        const dft_detect = try dft.dftDetectStatDetect(self.allocator, param);
+        try self.detects.append(dft_detect);
+
         const non_overlapping = try nonOverlappingTemplate.nonOverlappingTemplateDetectStatDetect(self.allocator, param);
         try self.detects.append(non_overlapping);
-
-        const overseq = try overlappingseq.overlappingSequencyDetectStatDetect(self.allocator, param, 3);
-        try self.detects.append(overseq);
 
         const overlapping = try overlappingTemplate.overlappingTemplateDetectStatDetect(self.allocator, param);
         try self.detects.append(overlapping);
 
-        const run_dist = try runDist.runDistributionDetectStatDetect(self.allocator, param);
-        try self.detects.append(run_dist);
+        const serial_detect = try serial.serialDetectStatDetect(self.allocator, param);
+        try self.detects.append(serial_detect);
 
         const random_excursions = try randomExcursions.randomExcursionsDetectStatDetect(self.allocator, param);
         try self.detects.append(random_excursions);
 
         const random_excursions_variant = try randomExcursionsVarariant.randomExcursionsVariantDetectStatDetect(self.allocator, param);
         try self.detects.append(random_excursions_variant);
-
-        const serial_detect = try serial.serialDetectStatDetect(self.allocator, param);
-        try self.detects.append(serial_detect);
-
-        const dft_detect = try dft.dftDetectStatDetect(self.allocator, param);
-        try self.detects.append(dft_detect);
     }
 
     pub fn runAll(self: *DetectSuite, bits: *const io.BitInputStream) !void {
