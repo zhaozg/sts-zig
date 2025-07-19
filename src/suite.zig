@@ -97,12 +97,12 @@ pub const DetectSuite = struct {
         try self.detects.append(random_excursions_variant);
     }
 
-    pub fn runAll(self: *DetectSuite, bits: *const io.BitInputStream) !void {
+    pub fn runAll(self: *DetectSuite, bits: *const io.BitInputStream, level: detect.PrintLevel) !void {
         for (self.detects.items) |t| {
             t.init(t.param);
             bits.reset();
             const result = t.iterate(bits);
-            t.print(&result, .summary);
+            t.print(&result, level);
             t.destroy();
         }
     }

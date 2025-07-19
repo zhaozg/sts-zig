@@ -3,6 +3,31 @@
 基于 `zig` 实现的 STS（Statistical Test Suite）测试套件，支持多种统计测试方法，适用于密码学和数据分析领域。
 全覆盖 NIST SP 800-22a, GMT 0005-2021 两套标准。
 
+## 编译使用
+
+### 下载本仓库
+
+`git clone https://github.com/zhaozg/sts-zig.git`
+
+### 下载 Zig 0.14.1
+
+从[ziglang.org](https://ziglang.org/download)选择对应系统的预编译安装包。
+
+### 编译
+
+```sh
+cd sts-zig
+zig build
+zig-out/bin/sts-zig -h
+```
+
+### 运行测试用例
+
+```sh
+cd sts-zig
+zig build test
+```
+
 ## 目的
 
 - 学习 STS 的实现原理，了解 STS 的应用场景。

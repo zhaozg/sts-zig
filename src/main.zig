@@ -8,6 +8,7 @@ const Options = struct {
     help: bool = false,
     version: bool = false,
     ascii: bool = false,
+    verbose: bool = false,
     blocksize: usize = 1000000,
     iterator: usize = 1,
     output: ?[]const u8 = null,
@@ -22,6 +23,7 @@ fn printHelp() void {
         \\options:
         \\  -h, --help     Print this help message
         \\  -v, --version  Print version information
+        \\  -V, --verbose  Output verbose information
         \\  -a, --ascii    Input ASCII characters
         \\  -o  output     Output to file
         \\  -b  blocksize  Input length of bits, default 1000000
@@ -52,6 +54,9 @@ pub fn main() !void {
             }
             else if (std.mem.eql(u8, arg, "-a") or std.mem.eql(u8, arg, "--ascii")) {
                 options.ascii = true;
+            }
+            else if (std.mem.eql(u8, arg, "-V") or std.mem.eql(u8, arg, "--verbose")) {
+                options.verbose = true;
             }
             else if (std.mem.eql(u8, arg, "-o")) {
                 i += 1;
@@ -143,5 +148,6 @@ pub fn main() !void {
 
     try detect_suite.registerAll(param);
 
-    try detect_suite.runAll(&input);
+    const level = if (options.verbose) detect.PrintLevel.detail else detect.PrintLevel.summary;
+    try detect_suite.runAll(&input, level);
 }
