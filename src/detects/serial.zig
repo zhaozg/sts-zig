@@ -52,20 +52,8 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
         };
     }
 
-
-    const arr = self.allocator.alloc(u1, n) catch |err| {
-        return detect.DetectResult{
-            .passed = false,
-            .v_value = 0.0,
-            .p_value = 0.0,
-            .q_value = 0.0,
-            .extra = null,
-            .errno = err,
-        };
-    };
-    defer self.allocator.free(arr);
-
-    if (bits.fetchBits(arr) != n) {
+    const arr = bits.bits();
+    if (arr.len != n) {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -75,7 +63,6 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
             .errno = null,
         };
     }
-
     const psi2_m   = psi2(self, arr, n, m) catch |err| {
         return detect.DetectResult{
             .passed = false,

@@ -26,21 +26,7 @@ fn approx_entropy_iterate(self: *detect.StatDetect, bits: *const io.BitInputStre
     const n = self.param.n;
 
     // 读取所有位到数组，便于循环补齐
-    var arr = self.allocator.alloc(u8, n) catch |err| {
-        return detect.DetectResult{
-            .passed = false,
-            .v_value = 0.0,
-            .p_value = 0.0,
-            .q_value = 0.0,
-            .extra = null,
-            .errno = err,
-        };
-    };
-
-    defer self.allocator.free(arr);
-    for (0..n) |i| {
-        arr[i] = if (bits.fetchBit()) |b| b else 0;
-    }
+    const arr = bits.bits();
 
     var V :[]usize = self.allocator.alloc(usize, @as(usize, 1) << @as(u3, @intCast((m + 1)))) catch |err| {
         return detect.DetectResult{

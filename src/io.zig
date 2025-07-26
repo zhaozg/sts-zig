@@ -260,7 +260,7 @@ pub const BitInputStream = struct {
 
     pub const VTable = struct {
         fetchBit: *const fn (ctx: *anyopaque) ?u1,
-        fetchBits: ?*const fn (ctx: *anyopaque, bits: []u1) usize = null,
+        bits: *const fn (ctx: *anyopaque) []u1,
         len: *const fn (ctx: *anyopaque) usize,
         reset: *const fn (ctx: *anyopaque) void,
         close: *const fn (ctx: *anyopaque) void,
@@ -269,19 +269,6 @@ pub const BitInputStream = struct {
     /// Fetch a single bit
     pub fn fetchBit(self: Self) ?u1 {
         return self.vtable.fetchBit(self.context);
-    }
-
-    /// Fetch multiple bits as a slice of individual bits
-    pub fn fetchBits(self: Self, bits: []u1) usize {
-        if (self.vtable.fetchBits) |fetchFn| {
-            return fetchFn(self.context, bits);
-        }
-
-        for(0..bits.len) |i| {
-            bits[i] = self.fetchBit() orelse return i;
-        }
-
-        return bits.len;
     }
 
     /// Reset the bit stream to its initial position
@@ -297,6 +284,11 @@ pub const BitInputStream = struct {
     /// Get the total number of bits available in the stream
     pub fn len(self: Self) usize {
         return self.vtable.len(self.context);
+    }
+
+    /// Get bits as a slice
+    pub fn bits(self: Self) []u1 {
+        return self.vtable.bits(self.context);
     }
 
     /// Create a BitInputStream from a byte array
@@ -333,6 +325,7 @@ const ByteInputStream = struct {
     data: [1]u8 = [1]u8{0}**1,
     bit_index: usize,
     len: usize,
+    array: []u1 = &[0]u1{},
 
     fn fetchBit(ctx: *anyopaque) ?u1 {
         const self: *ByteInputStream = @ptrCast(@alignCast(ctx));
@@ -348,29 +341,30 @@ const ByteInputStream = struct {
         return @intCast(bit);
     }
 
-    fn fetchBits(ctx: *anyopaque, bits: []u1) usize {
-        const self: *ByteInputStream = @ptrCast(@alignCast(ctx));
-        var N = bits.len;
-        if (self.bit_index + bits.len > self.len)
-            N = self.len - self.bit_index;
-
-        for (0..N) |i| {
-            if (self.bit_index % 8 == 0) {
-                if (self.stream.read(&self.data) != 1) return i;
-            }
-
-            const bit_in_byte: u3 = @intCast(7 - (self.bit_index % 8));
-            bits[i] = @intCast((self.data[0] >> bit_in_byte) & 0x1);
-
-            self.bit_index += 1;
-        }
-
-        return N;
-    }
-
     fn lenFn(ctx: *anyopaque) usize {
         const self: *ByteInputStream = @ptrCast(@alignCast(ctx));
         return self.len;
+    }
+
+    fn bitsFn(ctx: *anyopaque) []u1 {
+        const self: *ByteInputStream = @ptrCast(@alignCast(ctx));
+
+        if (self.array.len == 0) {
+            self.array = self.allocator.alloc(u1, self.len) catch unreachable;
+
+            self.stream.reset();
+            for (0..self.len) |i| {
+                if (i % 8 == 0) {
+                    if (self.stream.read(&self.data) != 1) return self.array[0..i];
+                }
+
+                const bit_in_byte: u3 = @intCast(7 - (i % 8));
+                self.array[i] = @intCast((self.data[0] >> bit_in_byte) & 0x1);
+            }
+            self.stream.reset();
+        }
+
+        return self.array;
     }
 
     fn reset(ctx: *anyopaque) void {
@@ -381,14 +375,13 @@ const ByteInputStream = struct {
 
     fn close(ctx: *anyopaque) void {
         const self: *ByteInputStream = @ptrCast(@alignCast(ctx));
-        self.stream.close();
         self.allocator.destroy(self);
     }
 
     const vtable = BitInputStream.VTable{
         .fetchBit = fetchBit,
-        .fetchBits = fetchBits,
         .len = lenFn,
+        .bits = bitsFn,
         .reset = reset,
         .close = close,
     };
@@ -419,6 +412,7 @@ const AsciiInputStream = struct {
     allocator: std.mem.Allocator,
     stream: InputStream,
     data: []u8,
+    array: []u1 = &[0]u1{},
 
     byteslength: usize, // piece bytes from stream
     byte_index: usize,  // index byte in piece data
@@ -456,6 +450,18 @@ const AsciiInputStream = struct {
         return self.len;
     }
 
+    fn bitsFn(ctx: *anyopaque) []u1 {
+        const self: *AsciiInputStream = @ptrCast(@alignCast(ctx));
+        if (self.array.len == 0) {
+            self.array = self.allocator.alloc(u1, self.len) catch unreachable;
+
+            for(0..self.array.len) |i| {
+                self.array[i] = fetchBit(ctx) orelse return self.array[0..i];
+            }
+        }
+        return self.array;
+    }
+
     fn reset(ctx: *anyopaque) void {
         const self: *AsciiInputStream = @ptrCast(@alignCast(ctx));
         self.stream.reset();
@@ -475,6 +481,7 @@ const AsciiInputStream = struct {
     const vtable = BitInputStream.VTable{
         .fetchBit = fetchBit,
         .len = lenFn,
+        .bits = bitsFn,
         .reset = reset,
         .close = close,
     };
@@ -507,6 +514,7 @@ const AsciiBitStream = struct {
     index: usize = 0,
     length: usize = 0,
     used: usize = 0,
+    array: []u1 = &[0]u1{},
 
     fn fetchBit(ctx: *anyopaque) ?u1 {
         const self: *AsciiBitStream = @ptrCast(@alignCast(ctx));
@@ -540,6 +548,19 @@ const AsciiBitStream = struct {
         return self.length;
     }
 
+    fn bitsFn(ctx: *anyopaque) []u1 {
+        const self: *AsciiBitStream = @ptrCast(@alignCast(ctx));
+        if (self.array.len == 0) {
+            const sz = len(ctx);
+            self.array = self.allocator.alloc(u1, sz) catch unreachable;
+
+            for(0..self.array.len) |i| {
+                self.array[i] = fetchBit(ctx) orelse return self.array[0..i];
+            }
+        }
+        return self.array;
+    }
+
     fn reset(ctx: *anyopaque) void {
         const self: *AsciiBitStream = @ptrCast(@alignCast(ctx));
         self.index = 0;
@@ -547,12 +568,13 @@ const AsciiBitStream = struct {
 
     fn close(ctx: *anyopaque) void {
         const self: *AsciiBitStream = @ptrCast(@alignCast(ctx));
-        std.heap.page_allocator.destroy(self);
+        self.allocator.destroy(self);
     }
 
     const vtable = BitInputStream.VTable{
         .fetchBit = fetchBit,
         .len = len,
+        .bits = bitsFn,
         .reset = reset,
         .close = close,
     };
@@ -598,10 +620,11 @@ test "FileStream basic operations" {
     const file_path = "testfile.txt";
     const content = "FileStream test data";
     try std.fs.cwd().writeFile(.{
-        .sub_path =file_path,
+        .sub_path = file_path,
         .flags = .{ .truncate = true },
         .data = content,
     });
+    defer std.fs.cwd().deleteFile(file_path) catch {};
 
     // 打开文件流
     const file = try std.fs.cwd().openFile(file_path, .{});
@@ -689,7 +712,7 @@ test "ByteInputStream from memory stream" {
     bit_stream.close();
 }
 
-test "BitInputStream fetchBits" {
+test "BitInputStream bits" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
@@ -698,9 +721,7 @@ test "BitInputStream fetchBits" {
     const bit_stream = ByteInputStream.create(allocator, input_stream);
 
     // 读取 12 位
-    var bits = [_]u1{0} ** 12;
-    const count = bit_stream.fetchBits(12, &bits);
-    try std.testing.expectEqual(@as(usize, 12), count);
+    const bits = bit_stream.bits();
 
     const expected_bits = [12]u1{
         1, 0, 1, 0, 1, 0, 1, 0,
@@ -711,4 +732,131 @@ test "BitInputStream fetchBits" {
     }
 
     bit_stream.close();
+}
+
+test "InputStream readAt, avail, len, readAll, fromArray, fromCString" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    const data = "abcdef";
+    var stream = createMemoryStream(allocator, data);
+
+    // readAt
+    var buf: [3]u8 = undefined;
+    const n = stream.readAt(2, &buf);
+    try std.testing.expectEqualStrings("cde", buf[0..n]);
+
+    // avail/len
+    try std.testing.expectEqual(@as(usize, 6), stream.len());
+    try std.testing.expectEqual(@as(usize, 6), stream.avail());
+
+    // readAll
+    stream.reset();
+    const all = try stream.readAll(allocator);
+    defer allocator.free(all);
+    try std.testing.expectEqualStrings(data, all);
+
+    // fromArray
+    const arr = [_]u8{1,2,3,4,5};
+    var arr_stream = InputStream.fromArray(allocator, u8, &arr, 5);
+    var arr_buf: [5]u8 = undefined;
+    const arr_n = arr_stream.read(&arr_buf);
+    try std.testing.expectEqual(@as(usize, 5), arr_n);
+    try std.testing.expectEqualSlices(u8, arr[0..5], arr_buf[0..arr_n]);
+
+    // fromCString
+    const cstr: [*:0]const u8 = "xyz";
+    var cstr_stream = InputStream.fromCString(allocator, cstr);
+    var cstr_buf: [3]u8 = undefined;
+    const cstr_n = cstr_stream.read(&cstr_buf);
+    try std.testing.expectEqualStrings("xyz", cstr_buf[0..cstr_n]);
+}
+
+test "InputStream edge cases: empty, partial, reset/close" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    // Empty stream
+    var stream = createMemoryStream(allocator, "");
+    var buf: [10]u8 = undefined;
+    try std.testing.expectEqual(@as(usize, 0), stream.read(&buf));
+    try std.testing.expect(stream.hasNext() == false);
+
+    // Partial read
+    const data = "12345";
+    var stream2 = createMemoryStream(allocator, data);
+    var buf2: [2]u8 = undefined;
+    const n = stream2.read(&buf2);
+    try std.testing.expectEqualStrings("12", buf2[0..n]);
+    try std.testing.expect(stream2.hasNext());
+
+    // Multiple reset/close
+    stream2.reset();
+    stream2.reset();
+    stream2.close();
+}
+
+test "BitInputStream API: fromByteInputStream, fromByteInputStreamWithLength, fromAsciiInputStream, fromAsciiInputStreamWithLength, fromAscii, bits, len, reset, close" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    const data = [2]u8{0b11001100, 0b10101010};
+    const byte_stream = createMemoryStream(allocator, &data);
+
+    // fromByteInputStream
+    var bis = BitInputStream.fromByteInputStream(allocator, byte_stream);
+    try std.testing.expectEqual(@as(usize, 16), bis.len());
+    const bits = bis.bits();
+    try std.testing.expectEqual(@as(u1, 1), bits[0]);
+    try std.testing.expectEqual(@as(u1, 0), bits[7]);
+    bis.reset();
+    bis.close();
+
+    // fromByteInputStreamWithLength
+    var bis2 = BitInputStream.fromByteInputStreamWithLength(allocator, byte_stream, 10);
+    try std.testing.expectEqual(@as(usize, 10), bis2.len());
+    bis2.close();
+
+    // fromAsciiInputStream
+    const ascii_data = "10101";
+    const ascii_stream = createMemoryStream(allocator, ascii_data);
+    var abis = BitInputStream.fromAsciiInputStream(allocator, ascii_stream);
+    try std.testing.expectEqual(@as(usize, 40), abis.len()); // 5 chars * 8 bits
+    abis.close();
+
+    // fromAsciiInputStreamWithLength
+    const ascii_stream2 = createMemoryStream(allocator, ascii_data);
+    var abis2 = BitInputStream.fromAsciiInputStreamWithLength(allocator, ascii_stream2, 5);
+    try std.testing.expectEqual(@as(usize, 5), abis2.len());
+    abis2.close();
+
+    // fromAscii
+    const ascii_bis = BitInputStream.fromAscii(allocator, ascii_data);
+    try std.testing.expectEqual(@as(usize, 5), ascii_bis.len());
+    ascii_bis.reset();
+    ascii_bis.close();
+}
+
+test "BitInputStream edge cases: fetchBit null, bits partial, reset/close multiple" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    // Empty ascii
+    var ascii_bis = BitInputStream.fromAscii(allocator, "");
+    try std.testing.expect(ascii_bis.fetchBit() == null);
+    ascii_bis.reset();
+    ascii_bis.close();
+
+    // Partial bits
+    const ascii_data = "1a0b1";
+    var ascii_bis2 = BitInputStream.fromAscii(allocator, ascii_data);
+    const bits = ascii_bis2.bits();
+    try std.testing.expectEqual(@as(usize, 3), bits.len);
+    ascii_bis2.close();
+
+    // Multiple reset/close
+    var ascii_bis3 = BitInputStream.fromAscii(allocator, "101");
+    ascii_bis3.reset();
+    ascii_bis3.reset();
+    ascii_bis3.close();
 }

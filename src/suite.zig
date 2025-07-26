@@ -101,6 +101,8 @@ pub const DetectSuite = struct {
         for (self.detects.items) |t| {
             t.init(t.param);
             bits.reset();
+            _ = bits.bits();
+            bits.reset();
             const result = t.iterate(bits);
             t.print(&result, level);
             t.destroy();

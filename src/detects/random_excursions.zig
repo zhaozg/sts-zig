@@ -103,18 +103,8 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
 
     const allocator = self.allocator;
     // 转换比特序列为±1序列
-    const arr = allocator.alloc(u1, n) catch |err| {
-        return detect.DetectResult{
-            .passed = false,
-            .v_value = 0.0,
-            .p_value = 0.0,
-            .q_value = 0.0,
-            .extra = null,
-            .errno = err,
-        };
-    };
-    defer allocator.free(arr);
-    if (bits.fetchBits(arr) != n) {
+    const arr = bits.bits();
+    if (arr.len != n) {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,

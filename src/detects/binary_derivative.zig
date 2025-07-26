@@ -37,7 +37,8 @@ fn binary_derivative_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     };
     defer self.allocator.free(arr);
 
-    if (bits.fetchBits(arr) != n) {
+    const origin = bits.bits();
+    if (origin.len != n) {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -47,6 +48,7 @@ fn binary_derivative_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
             .errno = null,
         };
     }
+    std.mem.copyForwards(u1, arr, origin);
 
     for (0..k) |i| {
         for (0..n-i-1) |j| {

@@ -120,19 +120,8 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
     );
     // std.debug.print("u={d:.6} sigma_squared = {d:.6}\n", .{mu, sigma_squared});
 
-    const arr = self.allocator.alloc(u1, n) catch |err| {
-        return detect.DetectResult{
-            .passed = false,
-            .v_value = 0.0,
-            .p_value = 0.0,
-            .q_value = 0.0,
-            .extra = null,
-            .errno = err,
-        };
-    };
-    defer self.allocator.free(arr);
-
-    if (bits.fetchBits(arr) != n) {
+    const arr = bits.bits();
+    if (arr.len != n) {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,

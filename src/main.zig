@@ -1,6 +1,5 @@
 const std = @import("std");
 const suite = @import("suite.zig");
-const params = @import("params.zig");
 const io = @import("io.zig");
 const detect = @import("detect.zig");
 
@@ -10,7 +9,6 @@ const Options = struct {
     ascii: bool = false,
     verbose: bool = false,
     blocksize: usize = 1000000,
-    iterator: usize = 1,
     output: ?[]const u8 = null,
     input: ?[]const u8 = null,
 };
@@ -27,7 +25,6 @@ fn printHelp() void {
         \\  -a, --ascii    Input ASCII characters
         \\  -o  output     Output to file
         \\  -b  blocksize  Input length of bits, default 1000000
-        \\  -i, iterator   Run iterator, default 1
     ;
     std.debug.print("{s}\n", .{help_text});
 }
@@ -74,17 +71,6 @@ pub fn main() !void {
                     return err;
                 };
             }
-            else if (std.mem.eql(u8, arg, "-i")) {
-                i += 1;
-                if (i >= args.len) {
-                    printHelp();
-                    return error.MissingIterator;
-                }
-                options.iterator = std.fmt.parseInt(usize, args[i], 10) catch |err| {
-                    std.debug.print("Invalid iterators: {s}\n", .{args[i]});
-                    return err;
-                };
-            }
             else {
                 std.debug.print("UnknownOption: {s}\n", .{arg});
                 return error.UnknownOption;
@@ -108,7 +94,6 @@ pub fn main() !void {
         std.debug.print("\n", .{});
         std.debug.print("Options:\n", .{});
         std.debug.print("  blocksize: {d}\n", .{options.blocksize});
-        std.debug.print("   iterator: {d}\n", .{options.iterator});
         std.debug.print("      ascii: {s}\n", .{if (options.ascii) "true" else "false"});
         std.debug.print("      input: {s}\n", .{options.input orelse "stdin"});
         std.debug.print("     output: {s}\n", .{options.output orelse "stdout"});
@@ -142,8 +127,6 @@ pub fn main() !void {
         .extra = null, // 可扩展更多参数
     };
 
-    const detect_params = try params.parseArgs(allocator, std.os.argv);
-    _ = detect_params; // 使用 detect_params 以避免未使用变量警告
     var detect_suite = try suite.DetectSuite.init(allocator);
 
     try detect_suite.registerAll(param);

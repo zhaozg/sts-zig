@@ -61,19 +61,8 @@ fn cumulative_sums_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
 
     const n = self.param.n;
 
-    const arr = self.allocator.alloc(u1, n) catch |err| {
-        return detect.DetectResult{
-            .passed = false,
-            .v_value = 0.0,
-            .p_value = 0.0,
-            .q_value = 0.0,
-            .extra = null,
-            .errno = err,
-        };
-    };
-    defer self.allocator.free(arr);
-
-    if (bits.fetchBits(arr) != n) {
+    const arr = bits.bits();
+    if (arr.len != n) {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
