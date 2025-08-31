@@ -1,5 +1,11 @@
 # zig-sts
 
+[![CI](https://github.com/zhaozg/sts-zig/workflows/CI/badge.svg)](https://github.com/zhaozg/sts-zig/actions)
+[![Zig Version](https://img.shields.io/badge/zig-0.14.1+-blue.svg)](https://ziglang.org/download/)
+[![Repository Size](https://img.shields.io/github/repo-size/zhaozg/sts-zig)](https://github.com/zhaozg/sts-zig)
+[![Last Commit](https://img.shields.io/github/last-commit/zhaozg/sts-zig)](https://github.com/zhaozg/sts-zig/commits/main)
+[![Issues](https://img.shields.io/github/issues/zhaozg/sts-zig)](https://github.com/zhaozg/sts-zig/issues)
+[![Pull Requests](https://img.shields.io/github/issues-pr/zhaozg/sts-zig)](https://github.com/zhaozg/sts-zig/pulls)
 基于 `zig` 实现的 STS（Statistical Test Suite）测试套件，支持多种统计测试方法，适用于密码学和数据分析领域。
 全覆盖 NIST SP 800-22a, GMT 0005-2021 两套标准。
 
