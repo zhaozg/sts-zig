@@ -3,6 +3,8 @@ const io = @import("../io.zig");
 const math = @import("../math.zig");
 const std = @import("std");
 
+const compat = @import("../compat.zig");
+
 const MAX_EXCURSION_RND_EXCURSION = 4;
 // Number of states for TEST_RND_EXCURSION
 const NUMBER_OF_STATES_RND_EXCURSION = 2*MAX_EXCURSION_RND_EXCURSION;
@@ -127,7 +129,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     };
     defer allocator.free(S);
 
-    var cycle_idx = std.ArrayList(usize).init(allocator);
+    var cycle_idx = compat.ArrayList(usize).init(allocator);
     defer cycle_idx.deinit();
 
     // 计算累积、收集零交叉点
@@ -144,7 +146,8 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
         cycle_idx.append(n) catch {};
     }
 
-    const J: usize = cycle_idx.items.len;
+    const items = cycle_idx.toOwnedSlice();
+    const J: usize = items.len;
 
     const min_cycles = @max(500, @as(usize, @intFromFloat(0.005 * @sqrt(@as(f64, @floatFromInt(n))))));
 
@@ -169,7 +172,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     var stop: usize = 0;
     for (0..J) |j| {
         start = stop;
-        stop = cycle_idx.items[j];
+        stop = items[j];
         var count: [8]usize = .{0} ** 8;
 
         // 统计当前循环中各状态出现次数

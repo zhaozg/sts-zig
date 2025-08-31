@@ -2,6 +2,7 @@ const std = @import("std");
 const suite = @import("suite.zig");
 const io = @import("io.zig");
 const detect = @import("detect.zig");
+const compat = @import("compat.zig");
 
 const Options = struct {
     help: bool = false,
@@ -103,7 +104,7 @@ pub fn main() !void {
     var file: std.fs.File = undefined;
 
     if (options.input == null) {
-        file = std.io.getStdIn();
+        file = compat.getStdIn();
     } else {
         file = std.fs.cwd().openFile(options.input.?, .{}) catch |err| {
             std.debug.print("openFile failed: {}\n", .{err});

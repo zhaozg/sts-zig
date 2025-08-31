@@ -5,26 +5,35 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const exe = b.addExecutable(.{
-        .name = "zsts",
+    const main_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const exe = b.addExecutable(.{
+        .name = "zsts",
+        .root_module = main_mod,
+    });
+
     exe.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
     exe.linkSystemLibrary("gsl");
     b.installArtifact(exe);
 
-   // 创建模块
+    // 创建模块
     const zsts_module = b.addModule("zsts", .{
         .root_source_file = b.path("src/zsts.zig"),
     });
     const test_step = b.step("test", "Run unit tests");
 
     // GMT tests
-    const gmt_tests = b.addTest(.{
+    const gmt_mod = b.createModule(.{
         .root_source_file = b.path("test/GMT0005_test.zig"),
         .target = target,
+        .optimize = optimize,
+    });
+
+    const gmt_tests = b.addTest(.{
+        .root_module = gmt_mod,
     });
     gmt_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
     gmt_tests.linkSystemLibrary("gsl");
@@ -35,9 +44,13 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(gmt_tests);
 
     // NIST tests
-    const nist_tests = b.addTest(.{
+    const nist_mod = b.createModule(.{
         .root_source_file = b.path("test/SP800_22r1_test.zig"),
         .target = target,
+        .optimize = optimize,
+    });
+    const nist_tests = b.addTest(.{
+        .root_module = nist_mod,
     });
     nist_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
     nist_tests.linkSystemLibrary("gsl");

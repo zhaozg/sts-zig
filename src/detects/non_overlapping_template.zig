@@ -2,6 +2,7 @@ const detect = @import("../detect.zig");
 const io = @import("../io.zig");
 const math = @import("../math.zig");
 const std = @import("std");
+const compat = @import("../compat.zig");
 
 pub const NonOverlappingTemplateResult = struct {
     n: usize,
@@ -57,7 +58,7 @@ fn non_veerlapping_template_print(self: *detect.StatDetect, result: *const detec
 const BLOCKS_NON_OVERLAPPING = 8; // 可根据实际情况调整
 
 fn generateNonPeriodicTemplates(m: u4, allocator: std.mem.Allocator) ![][]u1 {
-    var templates = std.ArrayList([]u1).init(allocator);
+    var templates = compat.ArrayList([]u1).init(allocator);
     const max_num: usize = @as(usize, 1) << m;
     for (1..max_num) |val| {
         var arr = try allocator.alloc(u1, m);

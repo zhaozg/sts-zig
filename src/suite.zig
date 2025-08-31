@@ -1,6 +1,7 @@
 const std = @import("std");
 const detect = @import("detect.zig");
 const io = @import("io.zig");
+const compat = @import("compat.zig");
 
 const frequency = @import("detects/frequency.zig");
 const block_frequency = @import("detects/block_frequency.zig");
@@ -26,12 +27,12 @@ const randomExcursionsVarariant = @import("detects/random_excursions_variant.zig
 
 pub const DetectSuite = struct {
     allocator: std.mem.Allocator,
-    detects: std.ArrayList(*detect.StatDetect),
+    detects: compat.ArrayList(*detect.StatDetect),
 
     pub fn init(allocator: std.mem.Allocator) !DetectSuite {
         return DetectSuite{
             .allocator = allocator,
-            .detects = try std.ArrayList(*detect.StatDetect).initCapacity(allocator, 8),
+            .detects = try compat.ArrayList(*detect.StatDetect).initCapacity(allocator, 8),
         };
     }
 
@@ -98,7 +99,8 @@ pub const DetectSuite = struct {
     }
 
     pub fn runAll(self: *DetectSuite, bits: *const io.BitInputStream, level: detect.PrintLevel) !void {
-        for (self.detects.items) |t| {
+        const items = self.detects.toOwnedSlice();
+        for (items) |t| {
             t.init(t.param);
             bits.reset();
             _ = bits.bits();
