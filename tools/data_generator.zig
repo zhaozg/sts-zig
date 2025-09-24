@@ -82,11 +82,25 @@ fn generatePeriodicData(data: []u8, period: usize) !void {
     const random = prng.random();
     
     // Generate one period of random data
-    var pattern = std.ArrayList(u8).init(std.heap.page_allocator);
-    defer pattern.deinit();
+    const PatternListType = std.ArrayList(u8);
+    var pattern = if (@hasField(PatternListType, "allocator")) 
+        PatternListType{ .items = &[_]u8{}, .capacity = 0, .allocator = std.heap.page_allocator }
+    else 
+        PatternListType{};
+    defer {
+        if (@hasField(PatternListType, "allocator")) {
+            pattern.deinit();
+        } else {
+            pattern.deinit(std.heap.page_allocator);
+        }
+    }
     
     for (0..period) |_| {
-        try pattern.append(random.int(u8) & 1);
+        if (@hasField(PatternListType, "allocator")) {
+            try pattern.append(random.int(u8) & 1);
+        } else {
+            try pattern.append(std.heap.page_allocator, random.int(u8) & 1);
+        }
     }
     
     // Repeat the pattern
@@ -153,14 +167,28 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
     switch (format) {
         .binary => {
             // Pack bits into bytes
-            var packed_data = std.ArrayList(u8).init(allocator);
-            defer packed_data.deinit();
+            const PackedListType = std.ArrayList(u8);
+            var packed_data = if (@hasField(PackedListType, "allocator")) 
+                PackedListType{ .items = &[_]u8{}, .capacity = 0, .allocator = allocator }
+            else 
+                PackedListType{};
+            defer {
+                if (@hasField(PackedListType, "allocator")) {
+                    packed_data.deinit();
+                } else {
+                    packed_data.deinit(allocator);
+                }
+            }
             
             var byte: u8 = 0;
             for (data, 0..) |bit, i| {
                 byte = (byte << 1) | bit;
                 if ((i + 1) % 8 == 0 or i == data.len - 1) {
-                    try packed_data.append(byte);
+                    if (@hasField(PackedListType, "allocator")) {
+                        try packed_data.append(byte);
+                    } else {
+                        try packed_data.append(allocator, byte);
+                    }
                     byte = 0;
                 }
             }
@@ -169,7 +197,8 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
         },
         .ascii => {
             for (data) |bit| {
-                try file.writer().print("{c}", .{'0' + bit});
+                const char = [1]u8{'0' + bit};
+                try file.writeAll(&char);
             }
         },
         .hex => {
@@ -181,7 +210,10 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
                             hex_val = (hex_val << 1) | data[i - 4 + j];
                         }
                     }
-                    try file.writer().print("{x}", .{hex_val});
+                    // Cross-version compatible hex writing
+                    var hex_buffer: [2]u8 = undefined;
+                    const hex_str = std.fmt.bufPrint(&hex_buffer, "{x}", .{hex_val}) catch unreachable;
+                    try file.writeAll(hex_str);
                 }
             }
         },

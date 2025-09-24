@@ -119,37 +119,53 @@ fn parseOutputFormat(format_str: []const u8) !OutputFormat {
     return error.InvalidFormat;
 }
 
+/// Cross-compatible ArrayList append helper  
+inline fn appendToList(comptime T: type, list: *std.ArrayList(T), allocator: std.mem.Allocator, item: T) !void {
+    if (@hasField(std.ArrayList(T), "allocator")) {
+        try list.append(item);
+    } else {
+        try list.append(allocator, item);
+    }
+}
+
 fn parseTestTypes(allocator: std.mem.Allocator, tests_str: []const u8) ![]TestType {
-    var result = std.ArrayList(TestType).init(allocator);
+    const TestResultsType = std.ArrayList(TestType);
+    var result = if (@hasField(TestResultsType, "allocator")) 
+        TestResultsType{ .items = &[_]TestType{}, .capacity = 0, .allocator = allocator }
+    else 
+        TestResultsType{};
     var iter = std.mem.splitSequence(u8, tests_str, ",");
     
     while (iter.next()) |test_name| {
         const trimmed = std.mem.trim(u8, test_name, " \t\n\r");
         
         if (std.mem.eql(u8, trimmed, "all")) {
-            try result.append(.all);
+            try appendToList(TestType, &result, allocator, .all);
         } else if (std.mem.eql(u8, trimmed, "frequency")) {
-            try result.append(.frequency);
+            try appendToList(TestType, &result, allocator, .frequency);
         } else if (std.mem.eql(u8, trimmed, "block_frequency")) {
-            try result.append(.block_frequency);
+            try appendToList(TestType, &result, allocator, .block_frequency);
         } else if (std.mem.eql(u8, trimmed, "runs")) {
-            try result.append(.runs);
+            try appendToList(TestType, &result, allocator, .runs);
         } else if (std.mem.eql(u8, trimmed, "rank")) {
-            try result.append(.rank);
+            try appendToList(TestType, &result, allocator, .rank);
         } else if (std.mem.eql(u8, trimmed, "dft")) {
-            try result.append(.dft);
+            try appendToList(TestType, &result, allocator, .dft);
         } else if (std.mem.eql(u8, trimmed, "poker")) {
-            try result.append(.poker);
+            try appendToList(TestType, &result, allocator, .poker);
         } else {
             print("Warning: Unknown test type '{s}' ignored\n", .{trimmed});
         }
     }
     
     if (result.items.len == 0) {
-        try result.append(.all);
+        try appendToList(TestType, &result, allocator, .all);
     }
     
-    return result.toOwnedSlice();
+    return if (@hasField(@TypeOf(result), "allocator")) 
+        result.toOwnedSlice()
+    else 
+        result.toOwnedSlice(allocator);
 }
 
 fn runTest(allocator: std.mem.Allocator, test_type: TestType, data: []const u8, file_name: []const u8) !TestResult {
@@ -364,8 +380,20 @@ pub fn main() !void {
         .data_limit = null,
     };
 
-    var input_files = std.ArrayList([]const u8).init(allocator);
-    defer input_files.deinit();
+    // Use cross-compatible ArrayList initialization
+    const ArrayListType = std.ArrayList([]const u8);
+    var input_files = if (@hasField(ArrayListType, "allocator")) 
+        ArrayListType{ .items = &[_][]const u8{}, .capacity = 0, .allocator = allocator }
+    else 
+        ArrayListType{};
+        
+    defer {
+        if (@hasField(ArrayListType, "allocator")) {
+            input_files.deinit();
+        } else {
+            input_files.deinit(allocator);
+        }
+    }
 
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
@@ -396,7 +424,7 @@ pub fn main() !void {
             i += 1;
             config.tests_to_run = try parseTestTypes(allocator, args[i]);
         } else {
-            try input_files.append(arg);
+            try appendToList([]const u8, &input_files, allocator, arg);
         }
     }
 
@@ -418,8 +446,18 @@ pub fn main() !void {
     }
 
     // Process files and run tests
-    var all_results = std.ArrayList(TestResult).init(allocator);
-    defer all_results.deinit();
+    const AllResultsType = std.ArrayList(TestResult);
+    var all_results = if (@hasField(AllResultsType, "allocator")) 
+        AllResultsType{ .items = &[_]TestResult{}, .capacity = 0, .allocator = allocator }
+    else 
+        AllResultsType{};
+    defer {
+        if (@hasField(AllResultsType, "allocator")) {
+            all_results.deinit();
+        } else {
+            all_results.deinit(allocator);
+        }
+    }
 
     for (config.input_files) |file_path| {
         if (config.verbose) {
@@ -451,7 +489,7 @@ pub fn main() !void {
                 const available_tests = [_]TestType{ .frequency, .runs, .rank, .dft };
                 for (available_tests) |available_test| {
                     const result = try runTest(allocator, available_test, actual_content, file_path);
-                    try all_results.append(result);
+                    try appendToList(TestResult, &all_results, allocator, result);
                     
                     if (config.verbose) {
                         const status = if (result.passed) "✅" else "❌";
@@ -461,7 +499,7 @@ pub fn main() !void {
                 }
             } else {
                 const result = try runTest(allocator, test_type, actual_content, file_path);
-                try all_results.append(result);
+                try appendToList(TestResult, &all_results, allocator, result);
                 
                 if (config.verbose) {
                     const status = if (result.passed) "✅" else "❌";
