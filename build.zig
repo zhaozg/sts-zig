@@ -89,9 +89,44 @@ pub fn build(b: *std.Build) void {
     });
     extended_coverage_tests.root_module.addImport("zsts", zsts_module);
 
-    const run_extended_coverage_tests = b.addRunArtifact(extended_coverage_tests);
-    test_step.dependOn(&run_extended_coverage_tests.step);
-    b.installArtifact(extended_coverage_tests);
+    // Data generator executable
+    const data_gen = b.addExecutable(.{
+        .name = "data-generator",
+        .root_source_file = b.path("tools/data_generator.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(data_gen);
+
+    // Data generator run step
+    const data_gen_cmd = b.addRunArtifact(data_gen);
+    data_gen_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        data_gen_cmd.addArgs(args);
+    }
+    const data_gen_step = b.step("datagen", "Run test data generator");
+    data_gen_step.dependOn(&data_gen_cmd.step);
+
+    // Validation tests
+    const validation_tests = b.addTest(.{
+        .root_source_file = b.path("test/validation_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    validation_tests.root_module.addImport("zsts", zsts_module);
+
+    // Reporting tests
+    const reporting_tests = b.addTest(.{
+        .root_source_file = b.path("test/reporting_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    reporting_tests.root_module.addImport("zsts", zsts_module);
+
+    const run_validation_tests = b.addRunArtifact(validation_tests);
+    const run_reporting_tests = b.addRunArtifact(reporting_tests);
+    test_step.dependOn(&run_validation_tests.step);
+    test_step.dependOn(&run_reporting_tests.step);
 
     // P2 Features: Performance Benchmark and Enhanced CLI
     
