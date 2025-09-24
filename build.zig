@@ -92,4 +92,37 @@ pub fn build(b: *std.Build) void {
     const run_extended_coverage_tests = b.addRunArtifact(extended_coverage_tests);
     test_step.dependOn(&run_extended_coverage_tests.step);
     b.installArtifact(extended_coverage_tests);
+
+    // P2 Features: Performance Benchmark and Enhanced CLI
+    
+    // Performance Benchmark Tool
+    const benchmark_exe = b.addExecutable(.{
+        .name = "sts-benchmark",
+        .root_source_file = b.path("benchmark/performance_benchmark.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    benchmark_exe.root_module.addImport("zsts", zsts_module);
+    b.installArtifact(benchmark_exe);
+    
+    const run_benchmark = b.addRunArtifact(benchmark_exe);
+    const benchmark_step = b.step("benchmark", "Run performance benchmarks");
+    benchmark_step.dependOn(&run_benchmark.step);
+
+    // Enhanced CLI Tool
+    const cli_exe = b.addExecutable(.{
+        .name = "sts-cli",
+        .root_source_file = b.path("cli/enhanced_cli.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    cli_exe.root_module.addImport("zsts", zsts_module);
+    b.installArtifact(cli_exe);
+    
+    const run_cli = b.addRunArtifact(cli_exe);
+    if (b.args) |args| {
+        run_cli.addArgs(args);
+    }
+    const cli_step = b.step("cli", "Run enhanced CLI tool");
+    cli_step.dependOn(&run_cli.step);
 }
