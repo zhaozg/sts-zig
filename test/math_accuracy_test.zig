@@ -87,8 +87,15 @@ test "gammaln accuracy verification" {
     };
     
     for (test_cases) |case| {
-        const result = math.gammaln(case.x);  // 直接调用内部函数进行测试
-        const relative_error = @abs(result - case.expected) / @abs(case.expected);
+        const result = math.gammaln(case.x);
+        var relative_error: f64 = 0.0;
+        
+        if (case.expected == 0.0) {
+            // Special case: when expected is 0, use absolute error
+            relative_error = @abs(result - case.expected);
+        } else {
+            relative_error = @abs(result - case.expected) / @abs(case.expected);
+        }
         
         std.debug.print("gammaln({d:.1}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", 
             .{ case.x, result, case.expected, relative_error });
@@ -114,24 +121,8 @@ test "FFT accuracy verification" {
         input[i] = std.math.sin(2.0 * std.math.pi * freq * t);
     }
     
-    // 执行 FFT
-    var fft_out = try allocator.alloc(f64, n + 2);
-    defer allocator.free(fft_out);
-    var fft_m = try allocator.alloc(f64, n / 2 + 1);
-    defer allocator.free(fft_m);
-    
-    // 创建一个模拟的 StatDetect 结构
-    var mock_detect = struct {
-        allocator: std.mem.Allocator,
-        
-        pub fn init(alloc: std.mem.Allocator) @This() {
-            return @This(){ .allocator = alloc };
-        }
-    }.init(allocator);
-    
-    // 注意：这里需要调整 compute_r2c_fft 的函数签名以匹配测试
-    // 暂时跳过 FFT 测试，专注于 igamc 测试
-    std.debug.print("FFT test skipped - function signature mismatch\n", .{});
+    // 注意：FFT 测试需要完整的 StatDetect 结构，暂时跳过
+    std.debug.print("FFT test skipped - requires full project integration\n", .{});
 }
 
 test "consistency with existing test cases" {

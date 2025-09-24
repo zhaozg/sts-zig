@@ -54,7 +54,7 @@ fn igamc_cf(a: f64, x: f64) f64 {
     }
     
     const gamma_a = std.math.exp(gammaln(a));
-    return std.math.exp(-x + a * std.math.log(x) - gammaln(a)) * h;
+    return std.math.exp(-x + a * std.math.log(f64, std.math.e, x) - gammaln(a)) * h;
 }
 
 /// 使用级数展开计算下不完全伽马函数的正则化形式 P(a,x)
@@ -80,7 +80,7 @@ fn igam_series(a: f64, x: f64) f64 {
         }
     }
     
-    return sum * std.math.exp(-x + a * std.math.log(x) - gammaln(a));
+    return sum * std.math.exp(-x + a * std.math.log(f64, std.math.e, x) - gammaln(a));
 }
 
 /// 计算 ln(Γ(x)) 的高精度实现
@@ -102,7 +102,7 @@ pub fn gammaln(x: f64) f64 {
     
     if (x < 0.5) {
         // 使用反射公式：Γ(z)Γ(1-z) = π/sin(πz)
-        return std.math.log(std.math.pi) - std.math.log(std.math.sin(std.math.pi * x)) - gammaln(1.0 - x);
+        return std.math.log(f64, std.math.e, std.math.pi) - std.math.log(f64, std.math.e, std.math.sin(std.math.pi * x)) - gammaln(1.0 - x);
     }
     
     const z = x - 1.0;
@@ -113,7 +113,7 @@ pub fn gammaln(x: f64) f64 {
     }
     
     const t = z + lanczos_g + 0.5;
-    return 0.5 * std.math.log(2.0 * std.math.pi) + (z + 0.5) * std.math.log(t) - t + std.math.log(sum);
+    return 0.5 * std.math.log(f64, std.math.e, 2.0 * std.math.pi) + (z + 0.5) * std.math.log(f64, std.math.e, t) - t + std.math.log(f64, std.math.e, sum);
 }
 
 // 声明外部 C 函数（erf, erfc）
