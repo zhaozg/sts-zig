@@ -53,7 +53,6 @@ fn igamc_cf(a: f64, x: f64) f64 {
         }
     }
     
-    const gamma_a = std.math.exp(gammaln(a));
     return std.math.exp(-x + a * std.math.log(f64, std.math.e, x) - gammaln(a)) * h;
 }
 

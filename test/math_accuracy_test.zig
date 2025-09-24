@@ -1,5 +1,6 @@
 const std = @import("std");
-const math = @import("../src/math.zig");
+const zsts = @import("zsts");
+const math = zsts.math;
 const testing = std.testing;
 
 // 测试容差 - 相对误差在这个范围内认为正确

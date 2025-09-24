@@ -110,10 +110,11 @@ fn fft(input: []const Complex, output: []Complex, allocator: std.mem.Allocator) 
         const t = Complex{
             .re = std.math.cos(-2.0 * std.math.pi * @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(n))),
             .im = std.math.sin(-2.0 * std.math.pi * @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(n))),
-        }.mul(odd_out[i]);
+        };
+        const t_mult = t.mul(odd_out[i]);
         
-        output[i] = even_out[i].add(t);
-        output[i + half] = even_out[i].sub(t);
+        output[i] = even_out[i].add(t_mult);
+        output[i + half] = even_out[i].sub(t_mult);
     }
 }
 

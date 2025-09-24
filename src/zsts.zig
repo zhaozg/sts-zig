@@ -1,6 +1,7 @@
 pub const std = @import("std");
 pub const detect = @import("detect.zig");
 pub const io = @import("io.zig");
+pub const math = @import("math.zig");
 
 pub const frequency = @import("detects/frequency.zig");
 pub const poker = @import("detects/poker.zig");
