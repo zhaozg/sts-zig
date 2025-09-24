@@ -33,7 +33,7 @@ const GeneratorConfig = struct {
 
 /// Generate test data based on configuration
 pub fn generateData(allocator: std.mem.Allocator, config: GeneratorConfig) ![]u8 {
-    var data = try allocator.alloc(u8, config.size);
+    const data = try allocator.alloc(u8, config.size);
     
     switch (config.data_type) {
         .random => try generateRandomData(data, config.seed),
@@ -52,7 +52,7 @@ pub fn generateData(allocator: std.mem.Allocator, config: GeneratorConfig) ![]u8
 
 /// Generate cryptographically strong random data
 fn generateRandomData(data: []u8, seed: u64) !void {
-    var prng = std.rand.DefaultPrng.init(seed);
+    var prng = std.Random.DefaultPrng.init(seed);
     const random = prng.random();
     
     for (data) |*byte| {

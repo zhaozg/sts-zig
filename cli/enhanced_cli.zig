@@ -121,7 +121,7 @@ fn parseOutputFormat(format_str: []const u8) !OutputFormat {
 
 fn parseTestTypes(allocator: std.mem.Allocator, tests_str: []const u8) ![]TestType {
     var result = std.ArrayList(TestType).init(allocator);
-    var iter = std.mem.split(u8, tests_str, ",");
+    var iter = std.mem.splitSequence(u8, tests_str, ",");
     
     while (iter.next()) |test_name| {
         const trimmed = std.mem.trim(u8, test_name, " \t\n\r");
@@ -280,7 +280,7 @@ fn outputConsole(results: []TestResult, config: TestConfig) void {
         else 
             result.test_name;
 
-        print("│ {s:<16} │ {s:<15} │ {s:<6} │ {d:>9.6f} │ {d:>9.3f} │ {d:>9.6f} │ {d:>8.2f} │\n", 
+        print("│ {s:<16} │ {s:<15} │ {s:<6} │ {d:>9.6} │ {d:>9.3} │ {d:>9.6} │ {d:>8.2} │\n", 
             .{ truncated_file, truncated_test, status, result.p_value, result.v_value, result.q_value, result.execution_time_ms });
     }
 
@@ -291,16 +291,15 @@ fn outputConsole(results: []TestResult, config: TestConfig) void {
     for (results) |result| {
         total_time += result.execution_time_ms;
     }
-    print("⏱️  Total execution time: {d:.2f}ms\n", .{total_time});
+    print("⏱️  Total execution time: {d:.2}ms\n", .{total_time});
 }
 
 fn outputJson(results: []TestResult, config: TestConfig, allocator: std.mem.Allocator) !void {
-    _ = config;
     _ = allocator;
     print("{{\n", .{});
     print("  \"metadata\": {{\n", .{});
     print("    \"tool\": \"STS-Zig Enhanced CLI\",\n", .{});
-    print("    \"version\": \"1.0.0\",\n");
+    print("    \"version\": \"1.0.0\",\n", .{});
     print("    \"timestamp\": \"{d}\",\n", .{std.time.timestamp()});
     print("    \"batch_mode\": {},\n", .{config.batch_mode});
     print("    \"total_files\": {d},\n", .{config.input_files.len});
@@ -361,7 +360,7 @@ pub fn main() !void {
         .output_file = null,
         .batch_mode = false,
         .verbose = false,
-        .tests_to_run = &[_]TestType{.all},
+        .tests_to_run = @constCast(&[_]TestType{.all}),
         .data_limit = null,
     };
 
@@ -456,7 +455,7 @@ pub fn main() !void {
                     
                     if (config.verbose) {
                         const status = if (result.passed) "✅" else "❌";
-                        print("  {s} {s}: P={d:.6f}, Time={d:.2f}ms\n", 
+                        print("  {s} {s}: P={d:.6}, Time={d:.2}ms\n", 
                             .{ status, result.test_name, result.p_value, result.execution_time_ms });
                     }
                 }
@@ -466,7 +465,7 @@ pub fn main() !void {
                 
                 if (config.verbose) {
                     const status = if (result.passed) "✅" else "❌";
-                    print("  {s} {s}: P={d:.6f}, Time={d:.2f}ms\n", 
+                    print("  {s} {s}: P={d:.6}, Time={d:.2}ms\n", 
                         .{ status, result.test_name, result.p_value, result.execution_time_ms });
                 }
             }
