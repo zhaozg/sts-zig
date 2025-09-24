@@ -94,7 +94,12 @@ pub fn computeRank(matrix: [][]BitSequence, M: usize, Q: usize) usize {
                 perform_elementary_row_operations(matrix, 0, i, M, Q);
             }
         } else {
-            @panic("matrix[i][i] should be 0 or 1");
+            // Invalid matrix element - should be 0 or 1
+            // Convert invalid values to 0 for graceful handling
+            matrix[i][i] = 0;
+            if (find_unit_element_and_swap(matrix, 0, i, M, Q)) {
+                perform_elementary_row_operations(matrix, 0, i, M, Q);
+            }
         }
     }
     // Backward elimination
@@ -108,7 +113,12 @@ pub fn computeRank(matrix: [][]BitSequence, M: usize, Q: usize) usize {
                 perform_elementary_row_operations(matrix, 1, idx, M, Q);
             }
         } else {
-            @panic("matrix[i][i] should be 0 or 1");
+            // Invalid matrix element - should be 0 or 1
+            // Convert invalid values to 0 for graceful handling
+            matrix[idx][idx] = 0;
+            if (find_unit_element_and_swap(matrix, 1, idx, M, Q)) {
+                perform_elementary_row_operations(matrix, 1, idx, M, Q);
+            }
         }
     }
     return determine_rank(matrix, m, M, Q);

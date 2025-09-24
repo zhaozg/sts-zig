@@ -16,10 +16,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: install deps
+    - name: Setup dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y libgsl-dev
+        # Pure Zig implementation - no external dependencies required
+        echo "Using pure Zig implementation with zero external dependencies"
 
     - name: Setup Zig
       uses: goto-bus-stop/setup-zig@v2

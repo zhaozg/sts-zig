@@ -1,4 +1,3 @@
-
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
@@ -15,8 +14,6 @@ pub fn build(b: *std.Build) void {
         .root_module = main_mod,
     });
 
-    exe.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
-    exe.linkSystemLibrary("gsl");
     b.installArtifact(exe);
 
     // 创建模块
@@ -35,8 +32,6 @@ pub fn build(b: *std.Build) void {
     const gmt_tests = b.addTest(.{
         .root_module = gmt_mod,
     });
-    gmt_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
-    gmt_tests.linkSystemLibrary("gsl");
     gmt_tests.root_module.addImport("zsts", zsts_module);
 
     const run_gmt_tests = b.addRunArtifact(gmt_tests);
@@ -52,11 +47,116 @@ pub fn build(b: *std.Build) void {
     const nist_tests = b.addTest(.{
         .root_module = nist_mod,
     });
-    nist_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
-    nist_tests.linkSystemLibrary("gsl");
     nist_tests.root_module.addImport("zsts", zsts_module);
 
     const run_nist_tests = b.addRunArtifact(nist_tests);
     test_step.dependOn(&run_nist_tests.step);
     b.installArtifact(nist_tests);
+
+    // Math accuracy tests
+    const math_mod = b.createModule(.{
+        .root_source_file = b.path("test/math_accuracy_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const math_tests = b.addTest(.{
+        .root_module = math_mod,
+    });
+    math_tests.root_module.addImport("zsts", zsts_module);
+
+    const run_math_tests = b.addRunArtifact(math_tests);
+    test_step.dependOn(&run_math_tests.step);
+    b.installArtifact(math_tests);
+
+    // Extended coverage tests
+    const extended_mod = b.createModule(.{
+        .root_source_file = b.path("test/extended_coverage_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const extended_tests = b.addTest(.{
+        .root_module = extended_mod,
+    });
+    extended_tests.root_module.addImport("zsts", zsts_module);
+
+    const run_extended_tests = b.addRunArtifact(extended_tests);
+    test_step.dependOn(&run_extended_tests.step);
+    b.installArtifact(extended_tests);
+
+    // Validation tests
+    const validation_mod = b.createModule(.{
+        .root_source_file = b.path("test/validation_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const validation_tests = b.addTest(.{
+        .root_module = validation_mod,
+    });
+    validation_tests.root_module.addImport("zsts", zsts_module);
+
+    const run_validation_tests = b.addRunArtifact(validation_tests);
+    test_step.dependOn(&run_validation_tests.step);
+    b.installArtifact(validation_tests);
+
+    // Reporting tests
+    const reporting_mod = b.createModule(.{
+        .root_source_file = b.path("test/reporting_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const reporting_tests = b.addTest(.{
+        .root_module = reporting_mod,
+    });
+    reporting_tests.root_module.addImport("zsts", zsts_module);
+
+    const run_reporting_tests = b.addRunArtifact(reporting_tests);
+    test_step.dependOn(&run_reporting_tests.step);
+    b.installArtifact(reporting_tests);
+
+    // Benchmark tool
+    const benchmark_exe = b.addExecutable(.{
+        .name = "benchmark",
+        .root_source_file = b.path("benchmark/performance_benchmark.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    benchmark_exe.root_module.addImport("zsts", zsts_module);
+
+    const benchmark_step = b.step("benchmark", "Run performance benchmarks");
+    const run_benchmark = b.addRunArtifact(benchmark_exe);
+    benchmark_step.dependOn(&run_benchmark.step);
+    b.installArtifact(benchmark_exe);
+
+    // Enhanced CLI tool
+    const cli_exe = b.addExecutable(.{
+        .name = "cli",
+        .root_source_file = b.path("cli/enhanced_cli.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    cli_exe.root_module.addImport("zsts", zsts_module);
+
+    const cli_step = b.step("cli", "Run enhanced CLI");
+    const run_cli = b.addRunArtifact(cli_exe);
+    if (b.args) |args| {
+        run_cli.addArgs(args);
+    }
+    cli_step.dependOn(&run_cli.step);
+    b.installArtifact(cli_exe);
+
+    // Data generator tool
+    const datagen_exe = b.addExecutable(.{
+        .name = "datagen",
+        .root_source_file = b.path("tools/data_generator.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const datagen_step = b.step("datagen", "Run data generator");
+    const run_datagen = b.addRunArtifact(datagen_exe);
+    if (b.args) |args| {
+        run_datagen.addArgs(args);
+    }
+    datagen_step.dependOn(&run_datagen.step);
+    b.installArtifact(datagen_exe);
 }
