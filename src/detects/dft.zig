@@ -3,33 +3,11 @@ const io = @import("../io.zig");
 const std = @import("std");
 const math = @import("../math.zig");
 
-/// 复数结构体
-const Complex = struct {
-    re: f64,
-    im: f64,
-    
-    fn add(self: Complex, other: Complex) Complex {
-        return Complex{ .re = self.re + other.re, .im = self.im + other.im };
-    }
-    
-    fn sub(self: Complex, other: Complex) Complex {
-        return Complex{ .re = self.re - other.re, .im = self.im - other.im };
-    }
-    
-    fn mul(self: Complex, other: Complex) Complex {
-        return Complex{
-            .re = self.re * other.re - self.im * other.im,
-            .im = self.re * other.im + self.im * other.re,
-        };
-    }
-    
-    fn magnitude(self: Complex) f64 {
-        return std.math.sqrt(self.re * self.re + self.im * self.im);
-    }
-};
+// 使用 Zig 标准库的复数类型
+const Complex = std.math.Complex(f64);
 
 /// 执行实数到复数 FFT 并计算幅值谱
-/// 纯 Zig 实现，替代 GSL FFT
+/// 纯 Zig 实现，使用 std.math.Complex 和迭代算法
 pub fn compute_r2c_fft(
     self: *detect.StatDetect,
     x: []const f64,          // 输入实数数据
@@ -55,7 +33,7 @@ pub fn compute_r2c_fft(
     const complex_output = try self.allocator.alloc(Complex, n);
     defer self.allocator.free(complex_output);
     
-    try fft(complex_input, complex_output, self.allocator);
+    try fft_iterative(complex_input, complex_output);
 
     // 4. 转换为交替存储格式并计算幅值谱
     for (0..out_len) |i| {
@@ -65,9 +43,10 @@ pub fn compute_r2c_fft(
     }
 }
 
-/// 基于 Cooley-Tukey 算法的 FFT 实现
-/// 如果 n 不是 2 的幂次，则使用 DFT
-fn fft(input: []const Complex, output: []Complex, allocator: std.mem.Allocator) !void {
+/// 迭代实现的 Cooley-Tukey FFT 算法
+/// 使用 bit-reversal 排列和自底向上合并
+/// 相比递归实现具有更好的内存访问模式和栈安全性
+fn fft_iterative(input: []const Complex, output: []Complex) !void {
     const n = input.len;
     
     // 检查是否是 2 的幂次
@@ -82,40 +61,77 @@ fn fft(input: []const Complex, output: []Complex, allocator: std.mem.Allocator) 
         return;
     }
     
-    // 分治法 FFT
-    const half = n / 2;
+    // 复制输入到输出缓冲区
+    @memcpy(output, input);
     
-    const even = try allocator.alloc(Complex, half);
-    defer allocator.free(even);
-    const odd = try allocator.alloc(Complex, half);
-    defer allocator.free(odd);
+    // 第一步：bit-reversal 排列
+    bit_reverse_permute(output);
     
-    const even_out = try allocator.alloc(Complex, half);
-    defer allocator.free(even_out);
-    const odd_out = try allocator.alloc(Complex, half);
-    defer allocator.free(odd_out);
-    
-    // 分离偶数和奇数索引
-    for (0..half) |i| {
-        even[i] = input[2 * i];
-        odd[i] = input[2 * i + 1];
-    }
-    
-    // 递归调用
-    try fft(even, even_out, allocator);
-    try fft(odd, odd_out, allocator);
-    
-    // 合并结果
-    for (0..half) |i| {
-        const t = Complex{
-            .re = std.math.cos(-2.0 * std.math.pi * @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(n))),
-            .im = std.math.sin(-2.0 * std.math.pi * @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(n))),
-        };
-        const t_mult = t.mul(odd_out[i]);
+    // 第二步：迭代合并 (自底向上)
+    var stage_size: usize = 2;
+    while (stage_size <= n) : (stage_size *= 2) {
+        const half_stage = stage_size / 2;
         
-        output[i] = even_out[i].add(t_mult);
-        output[i + half] = even_out[i].sub(t_mult);
+        // 计算该阶段的旋转因子
+        const theta = -2.0 * std.math.pi / @as(f64, @floatFromInt(stage_size));
+        
+        // 处理每个大小为 stage_size 的子组
+        var group_start: usize = 0;
+        while (group_start < n) : (group_start += stage_size) {
+            // 在每个子组内进行蝶形运算
+            for (0..half_stage) |k| {
+                // 计算旋转因子 W_N^k = e^(-2πik/N)
+                const w = Complex{
+                    .re = std.math.cos(theta * @as(f64, @floatFromInt(k))),
+                    .im = std.math.sin(theta * @as(f64, @floatFromInt(k))),
+                };
+                
+                const even_idx = group_start + k;
+                const odd_idx = group_start + k + half_stage;
+                
+                // 蝶形运算
+                const temp = w.mul(output[odd_idx]);
+                output[odd_idx] = output[even_idx].sub(temp);
+                output[even_idx] = output[even_idx].add(temp);
+            }
+        }
     }
+}
+
+/// 执行 bit-reversal 排列
+/// 将数组元素按照其二进制位反转的顺序重新排列
+/// 这是迭代 FFT 算法的必要预处理步骤
+fn bit_reverse_permute(data: []Complex) void {
+    const n = data.len;
+    if (n <= 1) return;
+    
+    const bits = @as(u6, @intCast(std.math.log2_int(usize, n)));
+    
+    for (0..n) |i| {
+        const j = bit_reverse(@as(u32, @intCast(i)), bits);
+        if (i < j) {
+            // 交换元素
+            const temp = data[i];
+            data[i] = data[j];
+            data[j] = temp;
+        }
+    }
+}
+
+/// 反转一个整数的二进制位
+/// @param value: 要反转的值
+/// @param bits: 使用的位数
+/// @return: 位反转后的值
+fn bit_reverse(value: u32, bits: u6) u32 {
+    var result: u32 = 0;
+    var v = value;
+    
+    for (0..bits) |_| {
+        result = (result << 1) | (v & 1);
+        v >>= 1;
+    }
+    
+    return result;
 }
 
 /// 直接离散傅里叶变换 (DFT) 实现
