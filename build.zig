@@ -5,14 +5,11 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const main_mod = b.createModule(.{
+    const exe = b.addExecutable(.{
+        .name = "zsts",
         .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
-    });
-    const exe = b.addExecutable(.{
-        .name = "zsts",
-        .root_module = main_mod,
     });
 
     // GSL dependencies completely removed - pure Zig mathematical implementation
@@ -26,14 +23,10 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
 
     // GMT tests
-    const gmt_mod = b.createModule(.{
+    const gmt_tests = b.addTest(.{
         .root_source_file = .{ .path = "test/GMT0005_test.zig" },
         .target = target,
         .optimize = optimize,
-    });
-
-    const gmt_tests = b.addTest(.{
-        .root_module = gmt_mod,
     });
     // GSL 依赖已移除 - GMT 测试现在使用纯 Zig 实现
     // gmt_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
@@ -45,13 +38,10 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(gmt_tests);
 
     // NIST tests
-    const nist_mod = b.createModule(.{
+    const nist_tests = b.addTest(.{
         .root_source_file = .{ .path = "test/SP800_22r1_test.zig" },
         .target = target,
         .optimize = optimize,
-    });
-    const nist_tests = b.addTest(.{
-        .root_module = nist_mod,
     });
     // GSL 依赖已移除 - NIST 测试现在使用纯 Zig 实现
     // nist_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
@@ -63,13 +53,10 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(nist_tests);
 
     // Math accuracy tests
-    const math_accuracy_mod = b.createModule(.{
+    const math_accuracy_tests = b.addTest(.{
         .root_source_file = .{ .path = "test/math_accuracy_test.zig" },
         .target = target,
         .optimize = optimize,
-    });
-    const math_accuracy_tests = b.addTest(.{
-        .root_module = math_accuracy_mod,
     });
     math_accuracy_tests.root_module.addImport("zsts", zsts_module);
 
@@ -78,13 +65,10 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(math_accuracy_tests);
 
     // Extended coverage tests  
-    const extended_coverage_mod = b.createModule(.{
+    const extended_coverage_tests = b.addTest(.{
         .root_source_file = .{ .path = "test/extended_coverage_test.zig" },
         .target = target,
         .optimize = optimize,
-    });
-    const extended_coverage_tests = b.addTest(.{
-        .root_module = extended_coverage_mod,
     });
     extended_coverage_tests.root_module.addImport("zsts", zsts_module);
 

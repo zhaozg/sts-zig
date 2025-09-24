@@ -359,7 +359,7 @@ pub fn main() !void {
         .output_file = null,
         .batch_mode = false,
         .verbose = false,
-        .tests_to_run = @constCast(&[_]TestType{.all}),
+        .tests_to_run = &[_]TestType{.all},
         .data_limit = null,
     };
 
