@@ -87,24 +87,24 @@ const BatchResults = struct {
 };
 
 fn printUsage(program_name: []const u8) void {
-    print("STS-Zig Enhanced CLI - Statistical Test Suite\n");
-    print("===========================================\n\n");
-    print("USAGE:\n");
+    print("STS-Zig Enhanced CLI - Statistical Test Suite\n", .{});
+    print("===========================================\n\n", .{});
+    print("USAGE:\n", .{});
     print("    {s} [OPTIONS] <input_files...>\n\n", .{program_name});
-    print("OPTIONS:\n");
-    print("    -h, --help              Show this help message\n");
-    print("    -v, --verbose           Enable verbose output\n");
-    print("    -b, --batch             Enable batch processing mode\n");
-    print("    -f, --format FORMAT     Output format: console, json, csv, xml (default: console)\n");
-    print("    -o, --output FILE       Output file (default: stdout)\n");
-    print("    -t, --tests TESTS       Comma-separated list of tests to run (default: all)\n");
-    print("    -l, --limit SIZE        Limit data size (in bits)\n\n");
-    print("AVAILABLE TESTS:\n");
-    print("    all, frequency, block_frequency, runs, longest_runs, rank, dft,\n");
-    print("    poker, autocorrelation, cumulative_sums, approximate_entropy,\n");
-    print("    random_excursions, random_excursions_variant, serial,\n");
-    print("    linear_complexity, overlapping_template, non_overlapping_template, universal\n\n");
-    print("EXAMPLES:\n");
+    print("OPTIONS:\n", .{});
+    print("    -h, --help              Show this help message\n", .{});
+    print("    -v, --verbose           Enable verbose output\n", .{});
+    print("    -b, --batch             Enable batch processing mode\n", .{});
+    print("    -f, --format FORMAT     Output format: console, json, csv, xml (default: console)\n", .{});
+    print("    -o, --output FILE       Output file (default: stdout)\n", .{});
+    print("    -t, --tests TESTS       Comma-separated list of tests to run (default: all)\n", .{});
+    print("    -l, --limit SIZE        Limit data size (in bits)\n\n", .{});
+    print("AVAILABLE TESTS:\n", .{});
+    print("    all, frequency, block_frequency, runs, longest_runs, rank, dft,\n", .{});
+    print("    poker, autocorrelation, cumulative_sums, approximate_entropy,\n", .{});
+    print("    random_excursions, random_excursions_variant, serial,\n", .{});
+    print("    linear_complexity, overlapping_template, non_overlapping_template, universal\n\n", .{});
+    print("EXAMPLES:\n", .{});
     print("    {s} data.txt                                   # Run all tests on data.txt\n", .{program_name});
     print("    {s} -t frequency,runs data.txt                 # Run specific tests\n", .{program_name});
     print("    {s} -b -f json -o results.json *.txt          # Batch mode with JSON output\n", .{program_name});
@@ -250,21 +250,21 @@ fn runTest(allocator: std.mem.Allocator, test_type: TestType, data: []const u8, 
 }
 
 fn outputConsole(results: []TestResult, config: TestConfig) void {
-    print("\n📊 STS-Zig Statistical Test Results\n");
-    print("===================================\n\n");
+    print("\n📊 STS-Zig Statistical Test Results\n", .{});
+    print("===================================\n\n", .{});
     
     if (config.batch_mode) {
         print("Batch Mode: {d} files processed\n", .{config.input_files.len});
         print("Tests per file: {d}\n", .{config.tests_to_run.len});
-        print("\n");
+        print("\n", .{});
     }
 
     var passed: usize = 0;
     var failed: usize = 0;
 
-    print("┌──────────────────┬─────────────────┬────────┬───────────┬───────────┬───────────┬──────────┐\n");
-    print("│ File             │ Test            │ Status │  P-Value  │  V-Value  │  Q-Value  │ Time(ms) │\n");
-    print("├──────────────────┼─────────────────┼────────┼───────────┼───────────┼───────────┼──────────┤\n");
+    print("┌──────────────────┬─────────────────┬────────┬───────────┬───────────┬───────────┬──────────┐\n", .{});
+    print("│ File             │ Test            │ Status │  P-Value  │  V-Value  │  Q-Value  │ Time(ms) │\n", .{});
+    print("├──────────────────┼─────────────────┼────────┼───────────┼───────────┼───────────┼──────────┤\n", .{});
 
     for (results) |result| {
         const status = if (result.passed) "✅ PASS" else "❌ FAIL";
@@ -284,7 +284,7 @@ fn outputConsole(results: []TestResult, config: TestConfig) void {
             .{ truncated_file, truncated_test, status, result.p_value, result.v_value, result.q_value, result.execution_time_ms });
     }
 
-    print("└──────────────────┴─────────────────┴────────┴───────────┴───────────┴───────────┴──────────┘\n");
+    print("└──────────────────┴─────────────────┴────────┴───────────┴───────────┴───────────┴──────────┘\n", .{});
     print("\n📈 Summary: {d} passed, {d} failed, {d} total\n", .{ passed, failed, results.len });
     
     var total_time: f64 = 0;
@@ -295,19 +295,21 @@ fn outputConsole(results: []TestResult, config: TestConfig) void {
 }
 
 fn outputJson(results: []TestResult, config: TestConfig, allocator: std.mem.Allocator) !void {
-    print("{{\n");
-    print("  \"metadata\": {{\n");
-    print("    \"tool\": \"STS-Zig Enhanced CLI\",\n");
+    _ = config;
+    _ = allocator;
+    print("{{\n", .{});
+    print("  \"metadata\": {{\n", .{});
+    print("    \"tool\": \"STS-Zig Enhanced CLI\",\n", .{});
     print("    \"version\": \"1.0.0\",\n");
     print("    \"timestamp\": \"{d}\",\n", .{std.time.timestamp()});
     print("    \"batch_mode\": {},\n", .{config.batch_mode});
     print("    \"total_files\": {d},\n", .{config.input_files.len});
     print("    \"total_tests\": {d}\n", .{results.len});
-    print("  }},\n");
+    print("  }},\n", .{});
     print("  \"results\": [\n");
 
     for (results, 0..) |result, i| {
-        print("    {{\n");
+        print("    {{\n", .{});
         print("      \"file_name\": \"{s}\",\n", .{result.file_name});
         print("      \"test_name\": \"{s}\",\n", .{result.test_name});
         print("      \"passed\": {},\n", .{result.passed});
@@ -317,19 +319,19 @@ fn outputJson(results: []TestResult, config: TestConfig, allocator: std.mem.Allo
         print("      \"execution_time_ms\": {d},\n", .{result.execution_time_ms});
         print("      \"data_size\": {d}\n", .{result.data_size});
         if (i < results.len - 1) {
-            print("    }},\n");
+            print("    }},\n", .{});
         } else {
-            print("    }}\n");
+            print("    }}\n", .{});
         }
     }
 
-    print("  ]\n");
-    print("}}\n");
+    print("  ]\n", .{});
+    print("}}\n", .{});
 }
 
 fn outputCsv(results: []TestResult, config: TestConfig) void {
     _ = config;
-    print("File,Test,Status,P_Value,V_Value,Q_Value,Execution_Time_MS,Data_Size\n");
+    print("File,Test,Status,P_Value,V_Value,Q_Value,Execution_Time_MS,Data_Size\n", .{});
     
     for (results) |result| {
         const status = if (result.passed) "PASS" else "FAIL";
@@ -379,7 +381,7 @@ pub fn main() !void {
             config.batch_mode = true;
         } else if (std.mem.eql(u8, arg, "-f") or std.mem.eql(u8, arg, "--format")) {
             if (i + 1 >= args.len) {
-                print("Error: --format requires a value\n");
+                print("Error: --format requires a value\n", .{});
                 return;
             }
             i += 1;
@@ -389,7 +391,7 @@ pub fn main() !void {
             };
         } else if (std.mem.eql(u8, arg, "-t") or std.mem.eql(u8, arg, "--tests")) {
             if (i + 1 >= args.len) {
-                print("Error: --tests requires a value\n");
+                print("Error: --tests requires a value\n", .{});
                 return;
             }
             i += 1;
@@ -400,7 +402,7 @@ pub fn main() !void {
     }
 
     if (input_files.items.len == 0) {
-        print("Error: No input files specified\n");
+        print("Error: No input files specified\n", .{});
         printUsage(args[0]);
         return;
     }
@@ -408,12 +410,12 @@ pub fn main() !void {
     config.input_files = input_files.items;
 
     if (config.verbose) {
-        print("🔧 Configuration:\n");
+        print("🔧 Configuration:\n", .{});
         print("- Input files: {d}\n", .{config.input_files.len});
         print("- Output format: {s}\n", .{@tagName(config.output_format)});
         print("- Batch mode: {}\n", .{config.batch_mode});
         print("- Tests to run: {d}\n", .{config.tests_to_run.len});
-        print("\n");
+        print("\n", .{});
     }
 
     // Process files and run tests
@@ -477,7 +479,7 @@ pub fn main() !void {
         .json => try outputJson(all_results.items, config, allocator),
         .csv => outputCsv(all_results.items, config),
         .xml => {
-            print("XML output format not yet implemented\n");
+            print("XML output format not yet implemented\n", .{});
             outputConsole(all_results.items, config);
         },
     }

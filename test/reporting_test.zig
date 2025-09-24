@@ -1,6 +1,7 @@
 const std = @import("std");
-const reporting = @import("../src/reporting.zig");
-const detect = @import("../src/detect.zig");
+const zsts = @import("zsts");
+const reporting = zsts.reporting;
+const detect = zsts.detect;
 
 test "reporting: summary calculation" {
     var summary = reporting.TestSummary.init();

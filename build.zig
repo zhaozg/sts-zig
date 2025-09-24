@@ -1,16 +1,68 @@
 
 const std = @import("std");
 
+// Helper function for version-compatible source file specification
+fn createPath(b: *std.Build, path: []const u8) std.Build.LazyPath {
+    // Try newer API first (0.15+)
+    if (@hasDecl(std.Build, "path")) {
+        return b.path(path);
+    }
+    // Fallback to older API (0.14.x)
+    if (@hasField(std.Build.LazyPath, "cwd_relative")) {
+        return .{ .cwd_relative = path };
+    }
+    return .{ .path = path };
+}
+
+// Helper function for version-compatible executable creation
+fn createExecutable(b: *std.Build, name: []const u8, source_path: []const u8, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
+    // Check if we have the old API (0.14.x)
+    if (@hasField(std.Build.ExecutableOptions, "root_source_file")) {
+        return b.addExecutable(.{
+            .name = name,
+            .root_source_file = createPath(b, source_path),
+            .target = target,
+            .optimize = optimize,
+        });
+    }
+    
+    // New API (0.15+) 
+    const exe = b.addExecutable(.{
+        .name = name,
+        .root_module = undefined,
+    });
+    exe.root_module.root_source_file = createPath(b, source_path);
+    exe.root_module.target = target;
+    exe.root_module.optimize = optimize;
+    return exe;
+}
+
+// Helper function for version-compatible test creation
+fn createTest(b: *std.Build, source_path: []const u8, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
+    // Check if we have the old API (0.14.x)  
+    if (@hasField(std.Build.TestOptions, "root_source_file")) {
+        return b.addTest(.{
+            .root_source_file = createPath(b, source_path),
+            .target = target,
+            .optimize = optimize,
+        });
+    }
+    
+    // New API (0.15+)
+    const test_exe = b.addTest(.{
+        .root_module = undefined,
+    });
+    test_exe.root_module.root_source_file = createPath(b, source_path);
+    test_exe.root_module.target = target;
+    test_exe.root_module.optimize = optimize;
+    return test_exe;
+}
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const exe = b.addExecutable(.{
-        .name = "zsts",
-        .root_source_file = .{ .path = "src/main.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const exe = createExecutable(b, "zsts", "src/main.zig", target, optimize);
 
     // GSL dependencies completely removed - pure Zig mathematical implementation
     // All statistical algorithms now use verified Zig standard library functions
@@ -18,16 +70,12 @@ pub fn build(b: *std.Build) void {
 
     // 创建模块
     const zsts_module = b.addModule("zsts", .{
-        .root_source_file = .{ .path = "src/zsts.zig" },
+        .root_source_file = createPath(b, "src/zsts.zig"),
     });
     const test_step = b.step("test", "Run unit tests");
 
     // GMT tests
-    const gmt_tests = b.addTest(.{
-        .root_source_file = .{ .path = "test/GMT0005_test.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const gmt_tests = createTest(b, "test/GMT0005_test.zig", target, optimize);
     // GSL 依赖已移除 - GMT 测试现在使用纯 Zig 实现
     // gmt_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
     // gmt_tests.linkSystemLibrary("gsl");
@@ -38,11 +86,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(gmt_tests);
 
     // NIST tests
-    const nist_tests = b.addTest(.{
-        .root_source_file = .{ .path = "test/SP800_22r1_test.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const nist_tests = createTest(b, "test/SP800_22r1_test.zig", target, optimize);
     // GSL 依赖已移除 - NIST 测试现在使用纯 Zig 实现
     // nist_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
     // nist_tests.linkSystemLibrary("gsl");
@@ -53,11 +97,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(nist_tests);
 
     // Math accuracy tests
-    const math_accuracy_tests = b.addTest(.{
-        .root_source_file = .{ .path = "test/math_accuracy_test.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const math_accuracy_tests = createTest(b, "test/math_accuracy_test.zig", target, optimize);
     math_accuracy_tests.root_module.addImport("zsts", zsts_module);
 
     const run_math_accuracy_tests = b.addRunArtifact(math_accuracy_tests);
@@ -65,20 +105,11 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(math_accuracy_tests);
 
     // Extended coverage tests  
-    const extended_coverage_tests = b.addTest(.{
-        .root_source_file = .{ .path = "test/extended_coverage_test.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const extended_coverage_tests = createTest(b, "test/extended_coverage_test.zig", target, optimize);
     extended_coverage_tests.root_module.addImport("zsts", zsts_module);
 
     // Data generator executable
-    const data_gen = b.addExecutable(.{
-        .name = "data-generator",
-        .root_source_file = .{ .path = "tools/data_generator.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const data_gen = createExecutable(b, "data-generator", "tools/data_generator.zig", target, optimize);
     b.installArtifact(data_gen);
 
     // Data generator run step
@@ -91,19 +122,11 @@ pub fn build(b: *std.Build) void {
     data_gen_step.dependOn(&data_gen_cmd.step);
 
     // Validation tests
-    const validation_tests = b.addTest(.{
-        .root_source_file = .{ .path = "test/validation_test.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const validation_tests = createTest(b, "test/validation_test.zig", target, optimize);
     validation_tests.root_module.addImport("zsts", zsts_module);
 
     // Reporting tests
-    const reporting_tests = b.addTest(.{
-        .root_source_file = .{ .path = "test/reporting_test.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const reporting_tests = createTest(b, "test/reporting_test.zig", target, optimize);
     reporting_tests.root_module.addImport("zsts", zsts_module);
 
     const run_validation_tests = b.addRunArtifact(validation_tests);
@@ -114,12 +137,7 @@ pub fn build(b: *std.Build) void {
     // P2 Features: Performance Benchmark and Enhanced CLI
     
     // Performance Benchmark Tool
-    const benchmark_exe = b.addExecutable(.{
-        .name = "sts-benchmark",
-        .root_source_file = .{ .path = "benchmark/performance_benchmark.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const benchmark_exe = createExecutable(b, "sts-benchmark", "benchmark/performance_benchmark.zig", target, optimize);
     benchmark_exe.root_module.addImport("zsts", zsts_module);
     b.installArtifact(benchmark_exe);
     
@@ -128,12 +146,7 @@ pub fn build(b: *std.Build) void {
     benchmark_step.dependOn(&run_benchmark.step);
 
     // Enhanced CLI Tool
-    const cli_exe = b.addExecutable(.{
-        .name = "sts-cli",
-        .root_source_file = .{ .path = "cli/enhanced_cli.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const cli_exe = createExecutable(b, "sts-cli", "cli/enhanced_cli.zig", target, optimize);
     cli_exe.root_module.addImport("zsts", zsts_module);
     b.installArtifact(cli_exe);
     

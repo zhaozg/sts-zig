@@ -1,7 +1,8 @@
 const std = @import("std");
-const validation = @import("../src/validation.zig");
-const detect = @import("../src/detect.zig");
-const io = @import("../src/io.zig");
+const zsts = @import("zsts");
+const validation = zsts.validation;
+const detect = zsts.detect;
+const io = zsts.io;
 
 test "validation: minimum data requirements" {
     // Test frequency algorithm
@@ -33,8 +34,6 @@ test "validation: recommended data sizes" {
 }
 
 test "validation: parameter validation" {
-    const allocator = std.testing.allocator;
-    
     // Valid parameters
     const valid_param = detect.DetectParam{
         .type = .Frequency,
