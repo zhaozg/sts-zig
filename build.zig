@@ -6,7 +6,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const main_mod = b.createModule(.{
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -22,13 +22,13 @@ pub fn build(b: *std.Build) void {
 
     // 创建模块
     const zsts_module = b.addModule("zsts", .{
-        .root_source_file = b.path("src/zsts.zig"),
+        .root_source_file = .{ .path = "src/zsts.zig" },
     });
     const test_step = b.step("test", "Run unit tests");
 
     // GMT tests
     const gmt_mod = b.createModule(.{
-        .root_source_file = b.path("test/GMT0005_test.zig"),
+        .root_source_file = .{ .path = "test/GMT0005_test.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -47,7 +47,7 @@ pub fn build(b: *std.Build) void {
 
     // NIST tests
     const nist_mod = b.createModule(.{
-        .root_source_file = b.path("test/SP800_22r1_test.zig"),
+        .root_source_file = .{ .path = "test/SP800_22r1_test.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -65,7 +65,7 @@ pub fn build(b: *std.Build) void {
 
     // Math accuracy tests
     const math_accuracy_mod = b.createModule(.{
-        .root_source_file = b.path("test/math_accuracy_test.zig"),
+        .root_source_file = .{ .path = "test/math_accuracy_test.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -80,7 +80,7 @@ pub fn build(b: *std.Build) void {
 
     // Extended coverage tests  
     const extended_coverage_mod = b.createModule(.{
-        .root_source_file = b.path("test/extended_coverage_test.zig"),
+        .root_source_file = .{ .path = "test/extended_coverage_test.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -92,7 +92,7 @@ pub fn build(b: *std.Build) void {
     // Data generator executable
     const data_gen = b.addExecutable(.{
         .name = "data-generator",
-        .root_source_file = b.path("tools/data_generator.zig"),
+        .root_source_file = .{ .path = "tools/data_generator.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -109,7 +109,7 @@ pub fn build(b: *std.Build) void {
 
     // Validation tests
     const validation_tests = b.addTest(.{
-        .root_source_file = b.path("test/validation_test.zig"),
+        .root_source_file = .{ .path = "test/validation_test.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -117,7 +117,7 @@ pub fn build(b: *std.Build) void {
 
     // Reporting tests
     const reporting_tests = b.addTest(.{
-        .root_source_file = b.path("test/reporting_test.zig"),
+        .root_source_file = .{ .path = "test/reporting_test.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -133,7 +133,7 @@ pub fn build(b: *std.Build) void {
     // Performance Benchmark Tool
     const benchmark_exe = b.addExecutable(.{
         .name = "sts-benchmark",
-        .root_source_file = b.path("benchmark/performance_benchmark.zig"),
+        .root_source_file = .{ .path = "benchmark/performance_benchmark.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -147,7 +147,7 @@ pub fn build(b: *std.Build) void {
     // Enhanced CLI Tool
     const cli_exe = b.addExecutable(.{
         .name = "sts-cli",
-        .root_source_file = b.path("cli/enhanced_cli.zig"),
+        .root_source_file = .{ .path = "cli/enhanced_cli.zig" },
         .target = target,
         .optimize = optimize,
     });

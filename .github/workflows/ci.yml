@@ -19,7 +19,7 @@ jobs:
     - name: install deps
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgsl-dev
+        # No external dependencies required - pure Zig implementation
 
     - name: Setup Zig
       uses: goto-bus-stop/setup-zig@v2

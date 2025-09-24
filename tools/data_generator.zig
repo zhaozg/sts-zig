@@ -237,11 +237,11 @@ pub fn main() !void {
     
     if (args.len < 2) {
         print("Usage: {s} <command> [options]\n", .{args[0]});
-        print("\nCommands:\n");
-        print("  suite <output_dir>     - Generate comprehensive test data suite\n");
-        print("  random <size> <seed>   - Generate random data\n");
-        print("  pattern <size> <pattern> - Generate pattern-based data\n");
-        print("  help                   - Show this help message\n");
+        print("\nCommands:\n", .{});
+        print("  suite <output_dir>     - Generate comprehensive test data suite\n", .{});
+        print("  random <size> <seed>   - Generate random data\n", .{});
+        print("  pattern <size> <pattern> - Generate pattern-based data\n", .{});
+        print("  help                   - Show this help message\n", .{});
         return;
     }
     

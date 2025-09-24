@@ -237,9 +237,9 @@ fn formatTime(ns: u64) void {
 fn printBenchmarkResult(result: BenchmarkResult) void {
     print("│ {s:<12} │ {d:>8} │ ", .{ result.test_name, result.data_size });
     formatTime(result.avg_time_ns);
-    print(" │ ");
+    print(" │ ", .{});
     formatTime(result.min_time_ns);
-    print(" │ ");
+    print(" │ ", .{});
     formatTime(result.max_time_ns);
     print(" │ {d:>8.2} MB/s │\n", .{result.throughput_mbps});
 }
@@ -247,22 +247,22 @@ fn printBenchmarkResult(result: BenchmarkResult) void {
 pub fn runPerformanceBenchmark(allocator: std.mem.Allocator) !void {
     const config = BenchmarkConfig{};
     
-    print("\n🔥 STS-Zig Performance Benchmark Suite\n");
-    print("=====================================\n\n");
+    print("\n🔥 STS-Zig Performance Benchmark Suite\n", .{});
+    print("=====================================\n\n", .{});
     
-    print("Configuration:\n");
+    print("Configuration:\n", .{});
     print("- Iterations per test: {d}\n", .{config.iterations});
-    print("- Test data sizes: ");
+    print("- Test data sizes: ", .{});
     for (config.data_sizes) |size| {
         print("{d} ", .{size});
     }
-    print("bits\n");
-    print("- Compiler optimizations: ReleaseFast equivalent\n\n");
+    print("bits\n", .{});
+    print("- Compiler optimizations: ReleaseFast equivalent\n\n", .{});
 
     // Table header
-    print("┌──────────────┬──────────┬───────────┬───────────┬───────────┬──────────────┐\n");
-    print("│ Test Name    │ Data Size│  Avg Time │  Min Time │  Max Time │  Throughput  │\n");
-    print("├──────────────┼──────────┼───────────┼───────────┼───────────┼──────────────┤\n");
+    print("┌──────────────┬──────────┬───────────┬───────────┬───────────┬──────────────┐\n", .{});
+    print("│ Test Name    │ Data Size│  Avg Time │  Min Time │  Max Time │  Throughput  │\n", .{});
+    print("├──────────────┼──────────┼───────────┼───────────┼───────────┼──────────────┤\n", .{});
 
     for (config.data_sizes) |data_size| {
         // Generate test data
@@ -288,21 +288,21 @@ pub fn runPerformanceBenchmark(allocator: std.mem.Allocator) !void {
         }
 
         if (data_size < config.data_sizes[config.data_sizes.len - 1]) {
-            print("├──────────────┼──────────┼───────────┼───────────┼───────────┼──────────────┤\n");
+            print("├──────────────┼──────────┼───────────┼───────────┼───────────┼──────────────┤\n", .{});
         }
     }
 
-    print("└──────────────┴──────────┴───────────┴───────────┴───────────┴──────────────┘\n");
+    print("└──────────────┴──────────┴───────────┴───────────┴───────────┴──────────────┘\n", .{});
     
-    print("\n📊 Performance Analysis:\n");
-    print("- Frequency Test: O(n) complexity, excellent scalability\n");
-    print("- Runs Test: O(n) complexity, very fast\n");
-    print("- DFT Test: O(n log n) complexity due to FFT optimization\n");
-    print("- Rank Test: O(m³) complexity per matrix, depends on data size\n");
-    print("\n🎯 Optimization Opportunities:\n");
-    print("- Use SIMD instructions for bit operations\n");
-    print("- Implement parallel processing for large datasets\n");
-    print("- Consider memory pool allocation for frequent operations\n");
+    print("\n📊 Performance Analysis:\n", .{});
+    print("- Frequency Test: O(n) complexity, excellent scalability\n", .{});
+    print("- Runs Test: O(n) complexity, very fast\n", .{});
+    print("- DFT Test: O(n log n) complexity due to FFT optimization\n", .{});
+    print("- Rank Test: O(m³) complexity per matrix, depends on data size\n", .{});
+    print("\n🎯 Optimization Opportunities:\n", .{});
+    print("- Use SIMD instructions for bit operations\n", .{});
+    print("- Implement parallel processing for large datasets\n", .{});
+    print("- Consider memory pool allocation for frequent operations\n", .{});
 }
 
 // Test runner entry point
