@@ -305,7 +305,7 @@ fn outputJson(results: []TestResult, config: TestConfig, allocator: std.mem.Allo
     print("    \"total_files\": {d},\n", .{config.input_files.len});
     print("    \"total_tests\": {d}\n", .{results.len});
     print("  }},\n", .{});
-    print("  \"results\": [\n");
+    print("  \"results\": [\n", .{});
 
     for (results, 0..) |result, i| {
         print("    {{\n", .{});

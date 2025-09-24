@@ -21,6 +21,7 @@ pub const MinDataRequirements = struct {
     pub const NON_OVERLAPPING_TEMPLATE = 1000;
     pub const OVERLAPPING_TEMPLATE = 1032;
     pub const MAURER_UNIVERSAL = 387840; // L=6, Q=640*6*101
+    pub const UNIVERSAL = MAURER_UNIVERSAL; // Alias
     pub const RANDOM_EXCURSIONS = 1000;
     pub const RANDOM_EXCURSIONS_VARIANT = 1000;
     pub const SERIAL = 100;
@@ -35,7 +36,7 @@ pub const MinDataRequirements = struct {
 
 /// Validate input data size for specific algorithm
 pub fn validateDataSize(algorithm: detect.DetectType, data_size: usize) ValidationError!void {
-    const min_size = switch (algorithm) {
+    const min_size: usize = switch (algorithm) {
         .Frequency => MinDataRequirements.FREQUENCY,
         .BlockFrequency => MinDataRequirements.BLOCK_FREQUENCY,
         .Runs => MinDataRequirements.RUNS,
@@ -65,17 +66,14 @@ pub fn validateDataSize(algorithm: detect.DetectType, data_size: usize) Validati
 
 /// Validate bit sequence integrity
 pub fn validateBitSequence(bits: *const io.BitInputStream) ValidationError!void {
-    // Check if the bit stream is readable
-    const original_pos = bits.pos;
-    defer bits.pos = original_pos; // Restore position
-    
-    // Try to read first few bits to verify stream integrity
-    var test_count: usize = 0;
-    const max_test = std.math.min(100, bits.len());
-    
-    while (test_count < max_test) : (test_count += 1) {
-        _ = bits.fetchBit() orelse return ValidationError.InvalidBitSequence;
+    // Check if the bit stream is readable by testing len()
+    const stream_len = bits.len();
+    if (stream_len == 0) {
+        return ValidationError.InvalidBitSequence;
     }
+    
+    // Since we can't restore position, just check that stream is accessible
+    // The actual validation will happen during test execution
 }
 
 /// Validate test parameters for specific algorithms

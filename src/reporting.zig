@@ -62,13 +62,13 @@ pub const TestSummary = struct {
 pub fn generateConsoleReport(allocator: std.mem.Allocator, test_name: []const u8, result: *const detect.DetectResult, execution_time: f64, data_size: usize) !void {
     _ = allocator;
     
-    print("\n═══════════════════════════════════════════════\n");
-    print("📊 Statistical Test Report\n");
-    print("═══════════════════════════════════════════════\n");
+    print("\n═══════════════════════════════════════════════\n", .{});
+    print("📊 Statistical Test Report\n", .{});
+    print("═══════════════════════════════════════════════\n", .{});
     print("🔬 Test Name: {s}\n", .{test_name});
     print("📏 Data Size: {} bits\n", .{data_size});
     print("⏱️  Execution Time: {d:.3} ms\n", .{execution_time});
-    print("───────────────────────────────────────────────\n");
+    print("───────────────────────────────────────────────\n", .{});
     
     const status_icon = if (result.passed) "✅" else "❌";
     const status_text = if (result.passed) "PASS" else "FAIL";
@@ -79,21 +79,21 @@ pub fn generateConsoleReport(allocator: std.mem.Allocator, test_name: []const u8
     print("🎲 Q-Value: {d:.6}\n", .{result.q_value});
     
     if (result.p_value >= 0.01) {
-        print("📋 Interpretation: The sequence appears random (p ≥ 0.01)\n");
+        print("📋 Interpretation: The sequence appears random (p ≥ 0.01)\n", .{});
     } else {
-        print("⚠️  Interpretation: The sequence may not be random (p < 0.01)\n");
+        print("⚠️  Interpretation: The sequence may not be random (p < 0.01)\n", .{});
     }
     
     if (result.errno) |err| {
         print("🚫 Error: {}\n", .{err});
     }
     
-    print("═══════════════════════════════════════════════\n\n");
+    print("═══════════════════════════════════════════════\n\n", .{});
 }
 
 /// Generate JSON report
 pub fn generateJsonReport(allocator: std.mem.Allocator, test_name: []const u8, result: *const detect.DetectResult, execution_time: f64, data_size: usize) ![]u8 {
-    const json_obj = std.json.ObjectMap.init(allocator);
+    var json_obj = std.json.ObjectMap.init(allocator);
     defer json_obj.deinit();
     
     // This is a simplified JSON generation - in practice, you'd use std.json.stringify
@@ -188,15 +188,15 @@ pub fn generateXmlReport(allocator: std.mem.Allocator, test_name: []const u8, re
 pub fn generateSummaryReport(allocator: std.mem.Allocator, summary: *const TestSummary, format: ReportFormat) ![]u8 {
     switch (format) {
         .console => {
-            print("\n🎯 Test Suite Summary\n");
-            print("══════════════════════════════════════\n");
+            print("\n🎯 Test Suite Summary\n", .{});
+            print("══════════════════════════════════════\n", .{});
             print("📊 Total Tests: {}\n", .{summary.total_tests});
             print("✅ Passed: {} ({d:.1}%)\n", .{ summary.passed_tests, summary.pass_rate * 100 });
             print("❌ Failed: {}\n", .{summary.failed_tests});
             print("📈 P-Value Range: {d:.6} - {d:.6}\n", .{ summary.min_p_value, summary.max_p_value });
             print("📊 Average P-Value: {d:.6}\n", .{summary.avg_p_value});
             print("⏱️  Total Execution Time: {d:.3} ms\n", .{summary.execution_time_ms});
-            print("══════════════════════════════════════\n\n");
+            print("══════════════════════════════════════\n\n", .{});
             return try allocator.dupe(u8, "Console output generated");
         },
         .json => {

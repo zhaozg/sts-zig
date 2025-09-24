@@ -13,11 +13,13 @@ pub const DetectType = enum {
     LongestRun,
     BinaryDerivative,
     AutoCorrelation,
+    Autocorrelation,  // Alias for AutoCorrelation 
     Rank,
     CumulativeSums,
     ApproxEntropy,
     LinearComplexity,
     MaurerUniversal,
+    Universal,  // Alias for MaurerUniversal
     Dft,
 
     NonOverlappingTemplate,

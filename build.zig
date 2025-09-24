@@ -114,11 +114,14 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(reporting_tests);
 
     // Benchmark tool
-    const benchmark_exe = b.addExecutable(.{
-        .name = "benchmark",
+    const benchmark_mod = b.createModule(.{
         .root_source_file = b.path("benchmark/performance_benchmark.zig"),
         .target = target,
         .optimize = optimize,
+    });
+    const benchmark_exe = b.addExecutable(.{
+        .name = "benchmark",
+        .root_module = benchmark_mod,
     });
     benchmark_exe.root_module.addImport("zsts", zsts_module);
 
@@ -128,11 +131,14 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(benchmark_exe);
 
     // Enhanced CLI tool
-    const cli_exe = b.addExecutable(.{
-        .name = "cli",
+    const cli_mod = b.createModule(.{
         .root_source_file = b.path("cli/enhanced_cli.zig"),
         .target = target,
         .optimize = optimize,
+    });
+    const cli_exe = b.addExecutable(.{
+        .name = "cli",
+        .root_module = cli_mod,
     });
     cli_exe.root_module.addImport("zsts", zsts_module);
 
@@ -145,11 +151,14 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(cli_exe);
 
     // Data generator tool
-    const datagen_exe = b.addExecutable(.{
-        .name = "datagen",
+    const datagen_mod = b.createModule(.{
         .root_source_file = b.path("tools/data_generator.zig"),
         .target = target,
         .optimize = optimize,
+    });
+    const datagen_exe = b.addExecutable(.{
+        .name = "datagen",
+        .root_module = datagen_mod,
     });
 
     const datagen_step = b.step("datagen", "Run data generator");

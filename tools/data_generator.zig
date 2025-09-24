@@ -78,7 +78,7 @@ fn generateConstantData(data: []u8, value: u8) void {
 fn generatePeriodicData(data: []u8, period: usize) !void {
     if (period == 0) return error.InvalidPeriod;
     
-    var prng = std.rand.DefaultPrng.init(12345);
+    var prng = std.Random.DefaultPrng.init(12345);
     const random = prng.random();
     
     // Generate one period of random data
@@ -110,7 +110,7 @@ fn generateLCGData(data: []u8, seed: u64) !void {
 
 /// Generate data using Mersenne Twister
 fn generateMTData(data: []u8, seed: u64) !void {
-    var mt = std.rand.Xoshiro256.init(seed);
+    var mt = std.Random.Xoshiro256.init(seed);
     
     for (data) |*byte| {
         byte.* = @as(u8, @intCast(mt.next() & 1));
@@ -173,7 +173,7 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
             }
         },
         .hex => {
-            for (data, 0..) |bit, i| {
+            for (data, 0..) |_, i| {
                 if (i % 4 == 0 and i > 0) {
                     var hex_val: u8 = 0;
                     for (0..4) |j| {
@@ -252,7 +252,7 @@ pub fn main() !void {
         try generateTestSuite(allocator, output_dir);
     } else if (std.mem.eql(u8, command, "random")) {
         if (args.len < 4) {
-            print("Usage: random <size> <seed>\n");
+            print("Usage: random <size> <seed>\n", .{});
             return;
         }
         
@@ -267,21 +267,21 @@ pub fn main() !void {
         print("Generated {} bits of random data in 'random_data.txt'\n", .{size});
         
     } else if (std.mem.eql(u8, command, "help")) {
-        print("STS-Zig Test Data Generator\n");
-        print("============================\n");
-        print("Generate various types of test data for statistical analysis.\n\n");
-        print("Available data types:\n");
-        print("- random: Cryptographically strong random data\n");
-        print("- alternating: Alternating bit pattern (010101...)\n");
-        print("- constant: All zeros or all ones\n");
-        print("- periodic: Repeating patterns\n");
-        print("- lcg: Linear Congruential Generator\n");
-        print("- mt: Mersenne Twister\n");
-        print("- lfsr: Linear Feedback Shift Register\n");
-        print("- pattern: Custom bit patterns\n");
+        print("STS-Zig Test Data Generator\n", .{});
+        print("============================\n", .{});
+        print("Generate various types of test data for statistical analysis.\n\n", .{});
+        print("Available data types:\n", .{});
+        print("- random: Cryptographically strong random data\n", .{});
+        print("- alternating: Alternating bit pattern (010101...)\n", .{});
+        print("- constant: All zeros or all ones\n", .{});
+        print("- periodic: Repeating patterns\n", .{});
+        print("- lcg: Linear Congruential Generator\n", .{});
+        print("- mt: Mersenne Twister\n", .{});
+        print("- lfsr: Linear Feedback Shift Register\n", .{});
+        print("- pattern: Custom bit patterns\n", .{});
     } else {
         print("Unknown command: {s}\n", .{command});
-        print("Use 'help' for available commands.\n");
+        print("Use 'help' for available commands.\n", .{});
     }
 }
 
