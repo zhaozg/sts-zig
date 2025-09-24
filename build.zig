@@ -77,4 +77,19 @@ pub fn build(b: *std.Build) void {
     const run_math_accuracy_tests = b.addRunArtifact(math_accuracy_tests);
     test_step.dependOn(&run_math_accuracy_tests.step);
     b.installArtifact(math_accuracy_tests);
+
+    // Extended coverage tests  
+    const extended_coverage_mod = b.createModule(.{
+        .root_source_file = b.path("test/extended_coverage_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const extended_coverage_tests = b.addTest(.{
+        .root_module = extended_coverage_mod,
+    });
+    extended_coverage_tests.root_module.addImport("zsts", zsts_module);
+
+    const run_extended_coverage_tests = b.addRunArtifact(extended_coverage_tests);
+    test_step.dependOn(&run_extended_coverage_tests.step);
+    b.installArtifact(extended_coverage_tests);
 }
