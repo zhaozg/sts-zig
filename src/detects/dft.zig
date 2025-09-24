@@ -3,55 +3,137 @@ const io = @import("../io.zig");
 const std = @import("std");
 const math = @import("../math.zig");
 
+/// 复数结构体
+const Complex = struct {
+    re: f64,
+    im: f64,
+    
+    fn add(self: Complex, other: Complex) Complex {
+        return Complex{ .re = self.re + other.re, .im = self.im + other.im };
+    }
+    
+    fn sub(self: Complex, other: Complex) Complex {
+        return Complex{ .re = self.re - other.re, .im = self.im - other.im };
+    }
+    
+    fn mul(self: Complex, other: Complex) Complex {
+        return Complex{
+            .re = self.re * other.re - self.im * other.im,
+            .im = self.re * other.im + self.im * other.re,
+        };
+    }
+    
+    fn magnitude(self: Complex) f64 {
+        return std.math.sqrt(self.re * self.re + self.im * self.im);
+    }
+};
+
 /// 执行实数到复数 FFT 并计算幅值谱
+/// 纯 Zig 实现，替代 GSL FFT
 pub fn compute_r2c_fft(
     self: *detect.StatDetect,
     x: []const f64,          // 输入实数数据
     fft_out: []f64,          // 输出复数数组 (交替存储 re, im)
     fft_m: []f64,            // 输出幅值谱
 ) !void {
-    const c = @cImport({
-        @cInclude("gsl/gsl_fft_real.h");
-        @cInclude("gsl/gsl_fft_halfcomplex.h");
-    });
-
     const n = x.len;
-    const out_len = n / 2 + 1; // 复数输出的长度 (半复数格式)
+    const out_len = n / 2 + 1; // 复数输出的长度
 
     // 1. 检查输出缓冲区大小
     if (fft_out.len < 2 * out_len) return error.BufferTooSmall;
     if (fft_m.len < out_len) return error.BufferTooSmall;
 
-    // 2. 复制输入数据到临时数组 (GSL 会原地修改数据)
-    const tmp = try self.allocator.alloc(f64, n);
-    defer self.allocator.free(tmp);
-    @memcpy(tmp, x);
-
-    // 3. 初始化 GSL FFT
-    const workspace = c.gsl_fft_real_workspace_alloc(n);
-    defer c.gsl_fft_real_workspace_free(workspace);
-    const wavetable = c.gsl_fft_real_wavetable_alloc(n);
-    defer c.gsl_fft_real_wavetable_free(wavetable);
-
-    // 4. 执行实数 FFT (结果以半复数格式存储在 tmp 中)
-    _ = c.gsl_fft_real_transform(tmp.ptr, 1, n, wavetable, workspace);
-
-    // 5. 转换为 FFTW 兼容的复数格式 (交替存储 re, im)
-    fft_out[0] = tmp[0]; // 直流分量 (纯实数)
-    fft_out[1] = 0.0;    // 对应的虚部为 0
-
-    for (1..out_len) |k| {
-        const re = tmp[2 * k - 1];
-        const im = if (k < n / 2) tmp[2 * k] else 0.0; // 处理 Nyquist 频率
-        fft_out[2 * k] = re;
-        fft_out[2 * k + 1] = im;
+    // 2. 创建复数输入数组
+    const complex_input = try self.allocator.alloc(Complex, n);
+    defer self.allocator.free(complex_input);
+    
+    for (0..n) |i| {
+        complex_input[i] = Complex{ .re = x[i], .im = 0.0 };
     }
 
-    // 6. 计算幅值谱
+    // 3. 执行 FFT
+    const complex_output = try self.allocator.alloc(Complex, n);
+    defer self.allocator.free(complex_output);
+    
+    try fft(complex_input, complex_output, self.allocator);
+
+    // 4. 转换为交替存储格式并计算幅值谱
     for (0..out_len) |i| {
-        const re = fft_out[2 * i];
-        const im = fft_out[2 * i + 1];
-        fft_m[i] = std.math.sqrt(re * re + im * im);
+        fft_out[2 * i] = complex_output[i].re;
+        fft_out[2 * i + 1] = complex_output[i].im;
+        fft_m[i] = complex_output[i].magnitude();
+    }
+}
+
+/// 基于 Cooley-Tukey 算法的 FFT 实现
+/// 如果 n 不是 2 的幂次，则使用 DFT
+fn fft(input: []const Complex, output: []Complex, allocator: std.mem.Allocator) !void {
+    const n = input.len;
+    
+    // 检查是否是 2 的幂次
+    if (n & (n - 1) != 0) {
+        // 不是 2 的幂次，使用直接 DFT
+        try dft(input, output);
+        return;
+    }
+    
+    if (n <= 1) {
+        if (n == 1) output[0] = input[0];
+        return;
+    }
+    
+    // 分治法 FFT
+    const half = n / 2;
+    
+    const even = try allocator.alloc(Complex, half);
+    defer allocator.free(even);
+    const odd = try allocator.alloc(Complex, half);
+    defer allocator.free(odd);
+    
+    const even_out = try allocator.alloc(Complex, half);
+    defer allocator.free(even_out);
+    const odd_out = try allocator.alloc(Complex, half);
+    defer allocator.free(odd_out);
+    
+    // 分离偶数和奇数索引
+    for (0..half) |i| {
+        even[i] = input[2 * i];
+        odd[i] = input[2 * i + 1];
+    }
+    
+    // 递归调用
+    try fft(even, even_out, allocator);
+    try fft(odd, odd_out, allocator);
+    
+    // 合并结果
+    for (0..half) |i| {
+        const t = Complex{
+            .re = std.math.cos(-2.0 * std.math.pi * @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(n))),
+            .im = std.math.sin(-2.0 * std.math.pi * @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(n))),
+        }.mul(odd_out[i]);
+        
+        output[i] = even_out[i].add(t);
+        output[i + half] = even_out[i].sub(t);
+    }
+}
+
+/// 直接离散傅里叶变换 (DFT) 实现
+/// 用于处理非 2 的幂次长度的序列
+fn dft(input: []const Complex, output: []Complex) !void {
+    const n = input.len;
+    
+    for (0..n) |k| {
+        output[k] = Complex{ .re = 0.0, .im = 0.0 };
+        
+        for (0..n) |j| {
+            const angle = -2.0 * std.math.pi * @as(f64, @floatFromInt(k)) * @as(f64, @floatFromInt(j)) / @as(f64, @floatFromInt(n));
+            const w = Complex{
+                .re = std.math.cos(angle),
+                .im = std.math.sin(angle),
+            };
+            
+            output[k] = output[k].add(input[j].mul(w));
+        }
     }
 }
 

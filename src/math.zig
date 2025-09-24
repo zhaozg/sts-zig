@@ -1,12 +1,119 @@
 const std = @import("std");
 const math = std.math;
 
-// 通过 Zig 调用 GSL 的 igamc
+/// 计算上不完全伽马函数的正则化形式 Q(a,x) = Γ(a,x)/Γ(a)
+/// 这是 GSL gsl_sf_gamma_inc_Q 的纯 Zig 实现
+/// 使用连分数展开和级数展开的组合算法，确保数值稳定性和精度
 pub fn igamc(a: f64, x: f64) f64 {
-    const c = @cImport({
-        @cInclude("gsl/gsl_sf.h");
-    });
-    return c.gsl_sf_gamma_inc_Q(a, x);
+    if (x < 0.0 or a <= 0.0) {
+        return std.math.nan(f64);
+    }
+    
+    if (x == 0.0) {
+        return 1.0;
+    }
+    
+    // 对于 x >> a 的情况，使用连分数展开
+    if (x > a + 1.0) {
+        return igamc_cf(a, x);
+    }
+    
+    // 对于 x <= a + 1 的情况，使用级数展开计算 P(a,x) = γ(a,x)/Γ(a)
+    // 然后返回 Q(a,x) = 1 - P(a,x)
+    return 1.0 - igam_series(a, x);
+}
+
+/// 使用连分数展开计算上不完全伽马函数
+fn igamc_cf(a: f64, x: f64) f64 {
+    const max_iterations = 1000;
+    const epsilon = std.math.floatEps(f64);
+    
+    var b = x + 1.0 - a;
+    var c = 1.0 / std.math.floatMin(f64);
+    var d = 1.0 / b;
+    var h = d;
+    
+    var i: usize = 1;
+    while (i <= max_iterations) : (i += 1) {
+        const an = -(@as(f64, @floatFromInt(i))) * (@as(f64, @floatFromInt(i)) - a);
+        b += 2.0;
+        d = an * d + b;
+        if (@abs(d) < std.math.floatMin(f64)) {
+            d = std.math.floatMin(f64);
+        }
+        c = b + an / c;
+        if (@abs(c) < std.math.floatMin(f64)) {
+            c = std.math.floatMin(f64);
+        }
+        d = 1.0 / d;
+        const del = d * c;
+        h *= del;
+        if (@abs(del - 1.0) <= epsilon) {
+            break;
+        }
+    }
+    
+    const gamma_a = std.math.exp(gammaln(a));
+    return std.math.exp(-x + a * std.math.log(x) - gammaln(a)) * h;
+}
+
+/// 使用级数展开计算下不完全伽马函数的正则化形式 P(a,x)
+fn igam_series(a: f64, x: f64) f64 {
+    const max_iterations = 1000;
+    const epsilon = std.math.floatEps(f64);
+    
+    if (x == 0.0) {
+        return 0.0;
+    }
+    
+    var sum = 1.0 / a;
+    var del = sum;
+    var ap = a;
+    
+    var n: usize = 1;
+    while (n <= max_iterations) : (n += 1) {
+        ap += 1.0;
+        del *= x / ap;
+        sum += del;
+        if (@abs(del) < @abs(sum) * epsilon) {
+            break;
+        }
+    }
+    
+    return sum * std.math.exp(-x + a * std.math.log(x) - gammaln(a));
+}
+
+/// 计算 ln(Γ(x)) 的高精度实现
+/// 基于 Lanczos 近似算法
+pub fn gammaln(x: f64) f64 {
+    // Lanczos 系数 (g=7, n=9)
+    const lanczos_g = 7.0;
+    const lanczos_coeff = [_]f64{
+        0.99999999999980993227684700473478,
+        676.520368121885098567009190444019,
+        -1259.13921672240287047156078755283,
+        771.323428777653477146296386350052,
+        -176.615029162140599065845597129337,
+        12.5073432786869048144827324987843,
+        -0.138571095265720116895197677512527,
+        9.98436957801957085956266828503e-6,
+        1.50563273514931155834849228193e-7,
+    };
+    
+    if (x < 0.5) {
+        // 使用反射公式：Γ(z)Γ(1-z) = π/sin(πz)
+        return std.math.log(std.math.pi) - std.math.log(std.math.sin(std.math.pi * x)) - gammaln(1.0 - x);
+    }
+    
+    const z = x - 1.0;
+    var sum = lanczos_coeff[0];
+    
+    for (1..lanczos_coeff.len) |i| {
+        sum += lanczos_coeff[i] / (z + @as(f64, @floatFromInt(i)));
+    }
+    
+    const t = z + lanczos_g + 0.5;
+    return 0.5 * std.math.log(2.0 * std.math.pi) + (z + 0.5) * std.math.log(t) - t + std.math.log(sum);
 }
 
 // 声明外部 C 函数（erf, erfc）

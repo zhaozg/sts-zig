@@ -15,8 +15,9 @@ pub fn build(b: *std.Build) void {
         .root_module = main_mod,
     });
 
-    exe.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
-    exe.linkSystemLibrary("gsl");
+    // GSL 依赖已移除 - 现在使用纯 Zig 数学实现  
+    // exe.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
+    // exe.linkSystemLibrary("gsl");
     b.installArtifact(exe);
 
     // 创建模块
@@ -35,8 +36,9 @@ pub fn build(b: *std.Build) void {
     const gmt_tests = b.addTest(.{
         .root_module = gmt_mod,
     });
-    gmt_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
-    gmt_tests.linkSystemLibrary("gsl");
+    // GSL 依赖已移除 - GMT 测试现在使用纯 Zig 实现
+    // gmt_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
+    // gmt_tests.linkSystemLibrary("gsl");
     gmt_tests.root_module.addImport("zsts", zsts_module);
 
     const run_gmt_tests = b.addRunArtifact(gmt_tests);
@@ -52,11 +54,27 @@ pub fn build(b: *std.Build) void {
     const nist_tests = b.addTest(.{
         .root_module = nist_mod,
     });
-    nist_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
-    nist_tests.linkSystemLibrary("gsl");
+    // GSL 依赖已移除 - NIST 测试现在使用纯 Zig 实现
+    // nist_tests.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
+    // nist_tests.linkSystemLibrary("gsl");
     nist_tests.root_module.addImport("zsts", zsts_module);
 
     const run_nist_tests = b.addRunArtifact(nist_tests);
     test_step.dependOn(&run_nist_tests.step);
     b.installArtifact(nist_tests);
+
+    // Math accuracy tests
+    const math_accuracy_mod = b.createModule(.{
+        .root_source_file = b.path("test/math_accuracy_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const math_accuracy_tests = b.addTest(.{
+        .root_module = math_accuracy_mod,
+    });
+    math_accuracy_tests.root_module.addImport("zsts", zsts_module);
+
+    const run_math_accuracy_tests = b.addRunArtifact(math_accuracy_tests);
+    test_step.dependOn(&run_math_accuracy_tests.step);
+    b.installArtifact(math_accuracy_tests);
 }
