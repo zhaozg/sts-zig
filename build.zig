@@ -15,9 +15,8 @@ pub fn build(b: *std.Build) void {
         .root_module = main_mod,
     });
 
-    // GSL 依赖已移除 - 现在使用纯 Zig 数学实现  
-    // exe.addIncludePath(.{ .cwd_relative = "/usr/local/opt/gsl/include" });
-    // exe.linkSystemLibrary("gsl");
+    // GSL dependencies completely removed - pure Zig mathematical implementation
+    // All statistical algorithms now use verified Zig standard library functions
     b.installArtifact(exe);
 
     // 创建模块
