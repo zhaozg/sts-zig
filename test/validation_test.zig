@@ -14,18 +14,18 @@ test "validation: minimum data requirements" {
     try std.testing.expectError(validation.ValidationError.InsufficientData, validation.validateDataSize(.Rank, 512));
     
     // Test universal algorithm  
-    try validation.validateDataSize(.Universal, 400000);
-    try std.testing.expectError(validation.ValidationError.InsufficientData, validation.validateDataSize(.Universal, 10000));
+    try validation.validateDataSize(.MaurerUniversal, 400000);
+    try std.testing.expectError(validation.ValidationError.InsufficientData, validation.validateDataSize(.MaurerUniversal, 10000));
 }
 
 test "validation: recommended data sizes" {
     const freq_size = validation.getRecommendedDataSize(.Frequency);
     const rank_size = validation.getRecommendedDataSize(.Rank);
-    const universal_size = validation.getRecommendedDataSize(.Universal);
+    const universal_size = validation.getRecommendedDataSize(.MaurerUniversal);
     
     try std.testing.expect(freq_size >= validation.MinDataRequirements.FREQUENCY);
     try std.testing.expect(rank_size >= validation.MinDataRequirements.RANK);
-    try std.testing.expect(universal_size >= validation.MinDataRequirements.UNIVERSAL);
+    try std.testing.expect(universal_size >= validation.MinDataRequirements.MAURER_UNIVERSAL);
     
     // Ensure recommended sizes are reasonable for good statistical power
     try std.testing.expect(freq_size >= 10000);
@@ -77,7 +77,7 @@ test "validation: bit sequence validation" {
     
     // Create a valid bit sequence
     const test_data = "1101001011010010110100101101001011010010110100101101001011010010110100101101001011010010";
-    const input_stream = io.InputStream.fromString(allocator, test_data);
+    const input_stream = io.InputStream.fromMemory(allocator, test_data);
     const bits = io.BitInputStream.fromAsciiInputStream(allocator, input_stream);
     defer bits.close();
     
@@ -90,7 +90,7 @@ test "validation: comprehensive input validation" {
     
     // Create test data
     const test_data = "1101001011010010110100101101001011010010110100101101001011010010110100101101001011010010" ** 50;
-    const input_stream = io.InputStream.fromString(allocator, test_data);
+    const input_stream = io.InputStream.fromMemory(allocator, test_data);
     const bits = io.BitInputStream.fromAsciiInputStream(allocator, input_stream);
     defer bits.close();
     
@@ -123,7 +123,7 @@ test "validation: all algorithm minimum requirements" {
         .Dft,
         .NonOverlappingTemplate,
         .OverlappingTemplate,
-        .Universal,
+        .MaurerUniversal,
         .RandomExcursions,
         .RandomExcursionsVariant,
         .Serial,

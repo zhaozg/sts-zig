@@ -20,7 +20,7 @@ pub const MinDataRequirements = struct {
     pub const DFT = 1000;
     pub const NON_OVERLAPPING_TEMPLATE = 1000;
     pub const OVERLAPPING_TEMPLATE = 1032;
-    pub const UNIVERSAL = 387840; // L=6, Q=640*6*101
+    pub const MAURER_UNIVERSAL = 387840; // L=6, Q=640*6*101
     pub const RANDOM_EXCURSIONS = 1000;
     pub const RANDOM_EXCURSIONS_VARIANT = 1000;
     pub const SERIAL = 100;
@@ -44,7 +44,7 @@ pub fn validateDataSize(algorithm: detect.DetectType, data_size: usize) Validati
         .Dft => MinDataRequirements.DFT,
         .NonOverlappingTemplate => MinDataRequirements.NON_OVERLAPPING_TEMPLATE,
         .OverlappingTemplate => MinDataRequirements.OVERLAPPING_TEMPLATE,
-        .Universal => MinDataRequirements.UNIVERSAL,
+        .Universal => MinDataRequirements.MAURER_UNIVERSAL,
         .RandomExcursions => MinDataRequirements.RANDOM_EXCURSIONS,
         .RandomExcursionsVariant => MinDataRequirements.RANDOM_EXCURSIONS_VARIANT,
         .Serial => MinDataRequirements.SERIAL,
@@ -95,7 +95,7 @@ pub fn validateParameters(param: *const detect.DetectParam) ValidationError!bool
                 // Additional validation can be added here
             }
         },
-        .Universal => {
+        .MaurerUniversal => {
             // Universal test requires specific L and Q values
             if (param.n < MinDataRequirements.UNIVERSAL) {
                 return ValidationError.InsufficientData;
@@ -138,7 +138,7 @@ pub fn getRecommendedDataSize(algorithm: detect.DetectType) usize {
         .Dft => 10000,
         .NonOverlappingTemplate => 100000,
         .OverlappingTemplate => 100000,
-        .Universal => 1000000, // Large data needed for accurate entropy estimation
+        .MaurerUniversal => 1000000, // Large data needed for accurate entropy estimation
         .RandomExcursions => 100000,
         .RandomExcursionsVariant => 100000,
         .Serial => 10000,
