@@ -23,7 +23,7 @@ const RADIX4_THRESHOLD = 256;
 fn TwiddleFactorTable(comptime N: usize) type {
     return struct {
         const Self = @This();
-        
+
         // 编译时预计算旋转因子
         const twiddle_factors: [N / 2]Complex = init: {
             var factors: [N / 2]Complex = undefined;
@@ -36,7 +36,7 @@ fn TwiddleFactorTable(comptime N: usize) type {
             }
             break :init factors;
         };
-        
+
         // 编译时预计算位反转表
         const bit_reverse_table: [N]usize = init: {
             var table: [N]usize = undefined;
@@ -45,7 +45,7 @@ fn TwiddleFactorTable(comptime N: usize) type {
             }
             break :init table;
         };
-        
+
         fn bitReverse(x: usize, bits: usize) usize {
             var result: usize = 0;
             var x_val = x;
@@ -55,7 +55,7 @@ fn TwiddleFactorTable(comptime N: usize) type {
             }
             return result;
         }
-        
+
         fn log2Int(n: usize) usize {
             var result: usize = 0;
             var val = n;
@@ -65,11 +65,11 @@ fn TwiddleFactorTable(comptime N: usize) type {
             }
             return result;
         }
-        
+
         pub fn getTwiddle(k: usize) Complex {
             return twiddle_factors[k % twiddle_factors.len];
         }
-        
+
         pub fn getBitReverse(i: usize) usize {
             return bit_reverse_table[i];
         }
@@ -369,21 +369,21 @@ fn bit_reverse_permute_simd(data: []Complex) void {
 const MemoryPool = struct {
     allocator: std.mem.Allocator,
     buffers: std.ArrayList([]Complex),
-    
+
     fn init(allocator: std.mem.Allocator) MemoryPool {
         return .{
             .allocator = allocator,
             .buffers = std.ArrayList([]Complex).init(allocator),
         };
     }
-    
+
     fn deinit(self: *MemoryPool) void {
         for (self.buffers.items) |buffer| {
             self.allocator.free(buffer);
         }
         self.buffers.deinit();
     }
-    
+
     fn getBuffer(self: *MemoryPool, size: usize) ![]Complex {
         // 尝试重用现有缓冲区
         for (self.buffers.items, 0..) |buffer, i| {
@@ -392,11 +392,11 @@ const MemoryPool = struct {
                 return buffer[0..size];
             }
         }
-        
+
         // 分配新缓冲区
         return try self.allocator.alloc(Complex, size);
     }
-    
+
     fn returnBuffer(self: *MemoryPool, buffer: []Complex) !void {
         try self.buffers.append(buffer);
     }
@@ -536,19 +536,19 @@ fn bit_reverse_permute_optimized(data: []Complex) void {
 fn fft_radix4_simd(data: []Complex) !void {
     const n = data.len;
     if (n <= 1) return;
-    
+
     if (!isPowerOf4(n)) {
         return error.NotPowerOfFour;
     }
-    
+
     // 优化的bit-reversal排列（基4版本）
     bit_reverse_permute_radix4(data);
-    
+
     // 基4蝶形运算的迭代合并
     var stage_size: usize = 4;
     while (stage_size <= n) : (stage_size *= 4) {
         const quarter_stage = stage_size / 4;
-        
+
         var group_start: usize = 0;
         while (group_start < n) : (group_start += stage_size) {
             // SIMD向量化的基4蝶形运算
@@ -557,26 +557,21 @@ fn fft_radix4_simd(data: []Complex) !void {
                 // 预计算4组旋转因子
                 const stage_f = @as(f64, @floatFromInt(stage_size));
                 const base_angle = -2.0 * std.math.pi / stage_f;
-                
+
                 // 为基4 FFT计算三套旋转因子 (W^k, W^2k, W^3k)
-                const k_vec = VectorF64{ 
-                    @as(f64, @floatFromInt(k)), 
-                    @as(f64, @floatFromInt(k + 1)), 
-                    @as(f64, @floatFromInt(k + 2)), 
-                    @as(f64, @floatFromInt(k + 3))
-                };
-                
+                const k_vec = VectorF64{ @as(f64, @floatFromInt(k)), @as(f64, @floatFromInt(k + 1)), @as(f64, @floatFromInt(k + 2)), @as(f64, @floatFromInt(k + 3)) };
+
                 const w1_angles = k_vec * @as(VectorF64, @splat(base_angle));
                 const w2_angles = k_vec * @as(VectorF64, @splat(2.0 * base_angle));
                 const w3_angles = k_vec * @as(VectorF64, @splat(3.0 * base_angle));
-                
+
                 const w1_cos = @cos(w1_angles);
                 const w1_sin = @sin(w1_angles);
                 const w2_cos = @cos(w2_angles);
                 const w2_sin = @sin(w2_angles);
                 const w3_cos = @cos(w3_angles);
                 const w3_sin = @sin(w3_angles);
-                
+
                 // 执行SIMD向量化的基4蝶形运算
                 for (0..4) |idx| {
                     const base_idx = group_start + k + idx;
@@ -584,13 +579,13 @@ fn fft_radix4_simd(data: []Complex) !void {
                     const idx2 = base_idx + quarter_stage;
                     const idx3 = base_idx + 2 * quarter_stage;
                     const idx4 = base_idx + 3 * quarter_stage;
-                    
+
                     // 加载输入数据
                     const x0 = data[idx1];
                     const x1 = data[idx2];
-                    const x2 = data[idx3];  
+                    const x2 = data[idx3];
                     const x3 = data[idx4];
-                    
+
                     // 应用旋转因子
                     const x1_rot = Complex{
                         .re = w1_cos[idx] * x1.re - w1_sin[idx] * x1.im,
@@ -604,7 +599,7 @@ fn fft_radix4_simd(data: []Complex) !void {
                         .re = w3_cos[idx] * x3.re - w3_sin[idx] * x3.im,
                         .im = w3_cos[idx] * x3.im + w3_sin[idx] * x3.re,
                     };
-                    
+
                     // 基4蝶形运算
                     const a = x0.add(x2_rot);
                     const b = x0.sub(x2_rot);
@@ -612,14 +607,14 @@ fn fft_radix4_simd(data: []Complex) !void {
                     const d_real = x1_rot.sub(x3_rot);
                     // 对于基4，需要乘以-j，即 (a+jb) * (-j) = b - ja
                     const d = Complex{ .re = d_real.im, .im = -d_real.re };
-                    
+
                     data[idx1] = a.add(c);
                     data[idx2] = b.add(d);
                     data[idx3] = a.sub(c);
                     data[idx4] = b.sub(d);
                 }
             }
-            
+
             // 处理剩余元素
             while (k < quarter_stage) : (k += 1) {
                 const base_idx = group_start + k;
@@ -627,26 +622,26 @@ fn fft_radix4_simd(data: []Complex) !void {
                 const idx2 = base_idx + quarter_stage;
                 const idx3 = base_idx + 2 * quarter_stage;
                 const idx4 = base_idx + 3 * quarter_stage;
-                
+
                 const stage_f = @as(f64, @floatFromInt(stage_size));
                 const k_f = @as(f64, @floatFromInt(k));
                 const base_angle = -2.0 * std.math.pi * k_f / stage_f;
-                
+
                 const w1 = Complex{ .re = std.math.cos(base_angle), .im = std.math.sin(base_angle) };
                 const w2 = Complex{ .re = std.math.cos(2.0 * base_angle), .im = std.math.sin(2.0 * base_angle) };
                 const w3 = Complex{ .re = std.math.cos(3.0 * base_angle), .im = std.math.sin(3.0 * base_angle) };
-                
+
                 const x0 = data[idx1];
                 const x1_rot = data[idx2].mul(w1);
                 const x2_rot = data[idx3].mul(w2);
                 const x3_rot = data[idx4].mul(w3);
-                
+
                 const a = x0.add(x2_rot);
                 const b = x0.sub(x2_rot);
                 const c = x1_rot.add(x3_rot);
                 const d_temp = x1_rot.sub(x3_rot);
                 const d = Complex{ .re = d_temp.im, .im = -d_temp.re };
-                
+
                 data[idx1] = a.add(c);
                 data[idx2] = b.add(d);
                 data[idx3] = a.sub(c);
@@ -660,16 +655,16 @@ fn fft_radix4_simd(data: []Complex) !void {
 fn bit_reverse_permute_radix4(data: []Complex) void {
     const n = data.len;
     if (n <= 1) return;
-    
+
     var j: usize = 0;
     for (1..n) |i| {
-        var bit = n >> 2;  // 基4使用2位为一组
+        var bit = n >> 2; // 基4使用2位为一组
         while (j & bit != 0) {
             j ^= bit;
             bit >>= 2;
         }
         j ^= bit;
-        
+
         if (i < j) {
             const temp = data[i];
             data[i] = data[j];

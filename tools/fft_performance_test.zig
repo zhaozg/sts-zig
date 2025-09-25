@@ -27,7 +27,7 @@ pub fn main() !void {
 
     std.debug.print("Testing algorithm selection logic...\n", .{});
     try testAlgorithmSelection(allocator);
-    
+
     std.debug.print("\nTesting SIMD magnitude calculation...\n", .{});
     try testSIMDMagnitude(allocator);
 }
@@ -64,22 +64,22 @@ fn benchmarkFFTSize(allocator: std.mem.Allocator, n: usize) !void {
     const iterations = if (n <= 1024) @as(u32, 100) else if (n <= 4096) @as(u32, 50) else @as(u32, 10);
 
     stat.init(stat.param);
-    
+
     const start_time = std.time.nanoTimestamp();
-    
+
     for (0..iterations) |_| {
         bit_stream.reset();
         stat.init(stat.param);
         _ = stat.iterate(&bit_stream);
     }
-    
+
     const end_time = std.time.nanoTimestamp();
-    
+
     const total_ns = @as(u64, @intCast(end_time - start_time));
     const avg_ns = total_ns / iterations;
     const avg_ms = @as(f64, @floatFromInt(avg_ns)) / 1_000_000.0;
     const throughput = @as(f64, @floatFromInt(n)) / avg_ms * 1000.0; // samples per second
-    
+
     std.debug.print("  Iterations: {d}\n", .{iterations});
     std.debug.print("  Average time: {d:.3} ms\n", .{avg_ms});
     std.debug.print("  Throughput: {d:.0} samples/sec\n", .{throughput});
@@ -91,7 +91,7 @@ fn getAlgorithmName(n: usize) []const u8 {
     const PARALLEL_THRESHOLD = 16384;
     const RADIX4_THRESHOLD = 256;
     const SIMD_THRESHOLD = 64;
-    
+
     if (n >= PARALLEL_THRESHOLD) {
         return "Parallel SIMD FFT";
     } else if (n >= RADIX4_THRESHOLD and isPowerOf4(n)) {
@@ -130,11 +130,7 @@ fn testAlgorithmSelection(_: std.mem.Allocator) !void {
     for (test_cases) |case| {
         const actual = getAlgorithmName(case.size);
         const matches = std.mem.eql(u8, actual, case.expected);
-        std.debug.print("  Size {d:>6}: {s} {s}\n", .{
-            case.size, 
-            actual, 
-            if (matches) "✓" else "✗"
-        });
+        std.debug.print("  Size {d:>6}: {s} {s}\n", .{ case.size, actual, if (matches) "✓" else "✗" });
     }
 }
 
@@ -142,14 +138,14 @@ fn testAlgorithmSelection(_: std.mem.Allocator) !void {
 fn testSIMDMagnitude(allocator: std.mem.Allocator) !void {
     const n = 4096;
     const iterations = 1000;
-    
+
     // 创建测试数据
     var data = try allocator.alloc(Complex, n);
     defer allocator.free(data);
-    
+
     var magnitudes = try allocator.alloc(f64, n);
     defer allocator.free(magnitudes);
-    
+
     // 初始化复数数据
     for (0..n) |i| {
         const angle = 2.0 * std.math.pi * @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(n));
@@ -158,7 +154,7 @@ fn testSIMDMagnitude(allocator: std.mem.Allocator) !void {
             .im = std.math.sin(angle),
         };
     }
-    
+
     // 标量版本测试
     const scalar_start = std.time.nanoTimestamp();
     for (0..iterations) |_| {
@@ -167,18 +163,18 @@ fn testSIMDMagnitude(allocator: std.mem.Allocator) !void {
         }
     }
     const scalar_end = std.time.nanoTimestamp();
-    
+
     // SIMD版本测试
     const simd_start = std.time.nanoTimestamp();
     for (0..iterations) |_| {
         calculateMagnitudesSIMD(data, magnitudes);
     }
     const simd_end = std.time.nanoTimestamp();
-    
+
     const scalar_time = @as(f64, @floatFromInt(scalar_end - scalar_start)) / 1_000_000.0;
     const simd_time = @as(f64, @floatFromInt(simd_end - simd_start)) / 1_000_000.0;
     const speedup = scalar_time / simd_time;
-    
+
     std.debug.print("  Scalar magnitude calculation: {d:.3} ms\n", .{scalar_time});
     std.debug.print("  SIMD magnitude calculation: {d:.3} ms\n", .{simd_time});
     std.debug.print("  SIMD speedup: {d:.2}x\n", .{speedup});
@@ -188,15 +184,15 @@ fn testSIMDMagnitude(allocator: std.mem.Allocator) !void {
 fn calculateMagnitudesSIMD(data: []const Complex, magnitudes: []f64) void {
     const n = data.len;
     var i: usize = 0;
-    
+
     // SIMD向量化处理4个复数
     while (i + 4 <= n) : (i += 4) {
         const re_vec = VectorF64{ data[i].re, data[i + 1].re, data[i + 2].re, data[i + 3].re };
         const im_vec = VectorF64{ data[i].im, data[i + 1].im, data[i + 2].im, data[i + 3].im };
-        
+
         const mag_squared = re_vec * re_vec + im_vec * im_vec;
         const magnitude = @sqrt(mag_squared);
-        
+
         magnitudes[i] = magnitude[0];
         magnitudes[i + 1] = magnitude[1];
         magnitudes[i + 2] = magnitude[2];
