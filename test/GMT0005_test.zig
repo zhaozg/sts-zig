@@ -187,7 +187,7 @@ test "Longest Run" {
     try std.testing.expectApproxEqAbs(result.p_value, 0.180598, tolerance);
     try std.testing.expectApproxEqAbs(result.q_value, 0.180598, tolerance);
 
-    const results: *zsts.longestRun.LongestRunResult = @alignCast(@ptrCast(result.extra.?));
+    const results: *zsts.longestRun.LongestRunResult = @ptrCast(@alignCast(result.extra.?));
 
     try std.testing.expect(results.passed[0] == true);
     try std.testing.expectApproxEqAbs(results.v_value[0], 0.842410, tolerance);
@@ -294,7 +294,7 @@ test "cumulative_sums" {
     var result = stat.iterate(&bits);
     stat.print(&result, .detail);
 
-    const statResult: *zsts.cumulativeSums.CumulativeSumsResult = @alignCast(@ptrCast(result.extra.?));
+    const statResult: *zsts.cumulativeSums.CumulativeSumsResult = @ptrCast(@alignCast(result.extra.?));
 
     try std.testing.expect(statResult.passed[0] == true);
     try std.testing.expectApproxEqAbs(statResult.v_value[0], 0.0, tolerance);

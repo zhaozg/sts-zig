@@ -181,32 +181,32 @@ pub fn compute_r2c_fft(
 fn compute_sampled_fft(x: []const f64, fft_out: []f64, fft_m: []f64) !void {
     const n = x.len;
     const out_len = n / 2 + 1;
-    
+
     // 选择一个合适的2的幂次大小进行采样
     const target_size: usize = 65536; // 64K samples
     const step = n / target_size;
-    
+
     // 创建采样数据
     const sampled_data = try std.heap.page_allocator.alloc(f64, target_size);
     defer std.heap.page_allocator.free(sampled_data);
-    
+
     // 均匀采样原始数据
     for (0..target_size) |i| {
         const idx = @min(i * step, n - 1);
         sampled_data[i] = x[idx];
     }
-    
+
     // 对采样数据计算FFT
     const sampled_out = try std.heap.page_allocator.alloc(f64, 2 * target_size + 1);
     defer std.heap.page_allocator.free(sampled_out);
     const sampled_m = try std.heap.page_allocator.alloc(f64, target_size);
     defer std.heap.page_allocator.free(sampled_m);
-    
+
     try compute_small_fft(sampled_data, sampled_out, sampled_m);
-    
+
     // 将采样结果映射回原始大小的输出
     const sampled_out_len = target_size / 2 + 1;
-    
+
     // 将采样的结果扩展到原始输出大小
     for (0..out_len) |i| {
         if (i < sampled_out_len) {
@@ -740,11 +740,11 @@ fn fft_mixed_radix(data: []Complex) !void {
     if (n > 65536) {
         // 使用Bluestein算法或其他技术处理任意大小
         // 这里先用一个简化的方法：使用零填充到下一个2的幂次
-        
+
         // 计算需要的2的幂次大小
         const next_power_of_2_exp = @as(u6, @intCast(64 - @clz(@as(u64, n - 1))));
         const next_power_of_2 = @as(usize, 1) << next_power_of_2_exp;
-        
+
         // 如果膨胀不超过2倍，使用零填充
         if (next_power_of_2 <= 2 * n) {
             // 需要allocator来扩展数据，但这里没有access
@@ -753,7 +753,7 @@ fn fft_mixed_radix(data: []Complex) !void {
                 try dft_inplace(data);
                 return;
             }
-            
+
             // 对于非常大的数据，返回错误
             return error.SizeNotSupported;
         } else {
