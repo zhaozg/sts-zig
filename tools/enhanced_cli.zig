@@ -107,8 +107,8 @@ fn printUsage(program_name: []const u8) void {
     print("EXAMPLES:\n", .{});
     print("    {s} data.txt                                   # Run all tests on data.txt\n", .{program_name});
     print("    {s} -t frequency,runs data.txt                 # Run specific tests\n", .{program_name});
-    print("    {s} -b -f json -o results.json *.txt          # Batch mode with JSON output\n", .{program_name});
-    print("    {s} -v -f csv data1.txt data2.txt             # Verbose mode with CSV output\n", .{program_name});
+    print("    {s} -b -f json -o results.json *.txt           # Batch mode with JSON output\n", .{program_name});
+    print("    {s} -v -f csv data1.txt data2.txt              # Verbose mode with CSV output\n", .{program_name});
 }
 
 fn parseOutputFormat(format_str: []const u8) !OutputFormat {
@@ -119,7 +119,7 @@ fn parseOutputFormat(format_str: []const u8) !OutputFormat {
     return error.InvalidFormat;
 }
 
-/// Cross-compatible ArrayList append helper  
+/// Cross-compatible ArrayList append helper
 inline fn appendToList(comptime T: type, list: *std.ArrayList(T), allocator: std.mem.Allocator, item: T) !void {
     if (@hasField(std.ArrayList(T), "allocator")) {
         try list.append(item);
@@ -130,15 +130,15 @@ inline fn appendToList(comptime T: type, list: *std.ArrayList(T), allocator: std
 
 fn parseTestTypes(allocator: std.mem.Allocator, tests_str: []const u8) ![]TestType {
     const TestResultsType = std.ArrayList(TestType);
-    var result = if (@hasField(TestResultsType, "allocator")) 
+    var result = if (@hasField(TestResultsType, "allocator"))
         TestResultsType{ .items = &[_]TestType{}, .capacity = 0, .allocator = allocator }
-    else 
+    else
         TestResultsType{};
     var iter = std.mem.splitSequence(u8, tests_str, ",");
-    
+
     while (iter.next()) |test_name| {
         const trimmed = std.mem.trim(u8, test_name, " \t\n\r");
-        
+
         if (std.mem.eql(u8, trimmed, "all")) {
             try appendToList(TestType, &result, allocator, .all);
         } else if (std.mem.eql(u8, trimmed, "frequency")) {
@@ -157,14 +157,14 @@ fn parseTestTypes(allocator: std.mem.Allocator, tests_str: []const u8) ![]TestTy
             print("Warning: Unknown test type '{s}' ignored\n", .{trimmed});
         }
     }
-    
+
     if (result.items.len == 0) {
         try appendToList(TestType, &result, allocator, .all);
     }
-    
-    return if (@hasField(@TypeOf(result), "allocator")) 
+
+    return if (@hasField(@TypeOf(result), "allocator"))
         result.toOwnedSlice()
-    else 
+    else
         result.toOwnedSlice(allocator);
 }
 
@@ -193,10 +193,10 @@ fn runTest(allocator: std.mem.Allocator, test_type: TestType, data: []const u8, 
             };
             const stat = try zsts.frequency.frequencyDetectStatDetect(allocator, param);
             defer stat.destroy();
-            
+
             stat.init(&param);
             const result = stat.iterate(&bits);
-            
+
             test_result.passed = result.passed;
             test_result.p_value = result.p_value;
             test_result.v_value = result.v_value;
@@ -210,10 +210,10 @@ fn runTest(allocator: std.mem.Allocator, test_type: TestType, data: []const u8, 
             };
             const stat = try zsts.runs.runsDetectStatDetect(allocator, param);
             defer stat.destroy();
-            
+
             stat.init(&param);
             const result = stat.iterate(&bits);
-            
+
             test_result.passed = result.passed;
             test_result.p_value = result.p_value;
             test_result.v_value = result.v_value;
@@ -227,10 +227,10 @@ fn runTest(allocator: std.mem.Allocator, test_type: TestType, data: []const u8, 
             };
             const stat = try zsts.rank.rankDetectStatDetect(allocator, param);
             defer stat.destroy();
-            
+
             stat.init(&param);
             const result = stat.iterate(&bits);
-            
+
             test_result.passed = result.passed;
             test_result.p_value = result.p_value;
             test_result.v_value = result.v_value;
@@ -244,10 +244,10 @@ fn runTest(allocator: std.mem.Allocator, test_type: TestType, data: []const u8, 
             };
             const stat = try zsts.dft.dftDetectStatDetect(allocator, param);
             defer stat.destroy();
-            
+
             stat.init(&param);
             const result = stat.iterate(&bits);
-            
+
             test_result.passed = result.passed;
             test_result.p_value = result.p_value;
             test_result.v_value = result.v_value;
@@ -261,14 +261,14 @@ fn runTest(allocator: std.mem.Allocator, test_type: TestType, data: []const u8, 
 
     const end_time = std.time.milliTimestamp();
     test_result.execution_time_ms = @as(f64, @floatFromInt(end_time - start_time));
-    
+
     return test_result;
 }
 
 fn outputConsole(results: []TestResult, config: TestConfig) void {
     print("\n📊 STS-Zig Statistical Test Results\n", .{});
     print("===================================\n\n", .{});
-    
+
     if (config.batch_mode) {
         print("Batch Mode: {d} files processed\n", .{config.input_files.len});
         print("Tests per file: {d}\n", .{config.tests_to_run.len});
@@ -286,23 +286,23 @@ fn outputConsole(results: []TestResult, config: TestConfig) void {
         const status = if (result.passed) "✅ PASS" else "❌ FAIL";
         if (result.passed) passed += 1 else failed += 1;
 
-        const truncated_file = if (result.file_name.len > 16) 
-            result.file_name[0..13] ++ "..." 
-        else 
+        const truncated_file = if (result.file_name.len > 16)
+            result.file_name[0..13] ++ "..."
+        else
             result.file_name;
 
-        const truncated_test = if (result.test_name.len > 15) 
-            result.test_name[0..12] ++ "..." 
-        else 
+        const truncated_test = if (result.test_name.len > 15)
+            result.test_name[0..12] ++ "..."
+        else
             result.test_name;
 
-        print("│ {s:<16} │ {s:<15} │ {s:<6} │ {d:>9.6} │ {d:>9.3} │ {d:>9.6} │ {d:>8.2} │\n", 
+        print("│ {s:<16} │ {s:<15} │ {s:<6} │ {d:>9.6} │ {d:>9.3} │ {d:>9.6} │ {d:>8.2} │\n",
             .{ truncated_file, truncated_test, status, result.p_value, result.v_value, result.q_value, result.execution_time_ms });
     }
 
     print("└──────────────────┴─────────────────┴────────┴───────────┴───────────┴───────────┴──────────┘\n", .{});
     print("\n📈 Summary: {d} passed, {d} failed, {d} total\n", .{ passed, failed, results.len });
-    
+
     var total_time: f64 = 0;
     for (results) |result| {
         total_time += result.execution_time_ms;
@@ -347,11 +347,11 @@ fn outputJson(results: []TestResult, config: TestConfig, allocator: std.mem.Allo
 fn outputCsv(results: []TestResult, config: TestConfig) void {
     _ = config;
     print("File,Test,Status,P_Value,V_Value,Q_Value,Execution_Time_MS,Data_Size\n", .{});
-    
+
     for (results) |result| {
         const status = if (result.passed) "PASS" else "FAIL";
-        print("{s},{s},{s},{d},{d},{d},{d},{d}\n", 
-            .{ result.file_name, result.test_name, status, result.p_value, 
+        print("{s},{s},{s},{d},{d},{d},{d},{d}\n",
+            .{ result.file_name, result.test_name, status, result.p_value,
                result.v_value, result.q_value, result.execution_time_ms, result.data_size });
     }
 }
@@ -382,11 +382,11 @@ pub fn main() !void {
 
     // Use cross-compatible ArrayList initialization
     const ArrayListType = std.ArrayList([]const u8);
-    var input_files = if (@hasField(ArrayListType, "allocator")) 
+    var input_files = if (@hasField(ArrayListType, "allocator"))
         ArrayListType{ .items = &[_][]const u8{}, .capacity = 0, .allocator = allocator }
-    else 
+    else
         ArrayListType{};
-        
+
     defer {
         if (@hasField(ArrayListType, "allocator")) {
             input_files.deinit();
@@ -398,7 +398,7 @@ pub fn main() !void {
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
         const arg = args[i];
-        
+
         if (std.mem.eql(u8, arg, "-h") or std.mem.eql(u8, arg, "--help")) {
             printUsage(args[0]);
             return;
@@ -447,9 +447,9 @@ pub fn main() !void {
 
     // Process files and run tests
     const AllResultsType = std.ArrayList(TestResult);
-    var all_results = if (@hasField(AllResultsType, "allocator")) 
+    var all_results = if (@hasField(AllResultsType, "allocator"))
         AllResultsType{ .items = &[_]TestResult{}, .capacity = 0, .allocator = allocator }
-    else 
+    else
         AllResultsType{};
     defer {
         if (@hasField(AllResultsType, "allocator")) {
@@ -479,7 +479,7 @@ pub fn main() !void {
         // Limit data size if specified
         const actual_content = if (config.data_limit) |limit|
             if (content.len > limit) content[0..limit] else content
-        else 
+        else
             content;
 
         // Run tests
@@ -490,20 +490,20 @@ pub fn main() !void {
                 for (available_tests) |available_test| {
                     const result = try runTest(allocator, available_test, actual_content, file_path);
                     try appendToList(TestResult, &all_results, allocator, result);
-                    
+
                     if (config.verbose) {
                         const status = if (result.passed) "✅" else "❌";
-                        print("  {s} {s}: P={d:.6}, Time={d:.2}ms\n", 
+                        print("  {s} {s}: P={d:.6}, Time={d:.2}ms\n",
                             .{ status, result.test_name, result.p_value, result.execution_time_ms });
                     }
                 }
             } else {
                 const result = try runTest(allocator, test_type, actual_content, file_path);
                 try appendToList(TestResult, &all_results, allocator, result);
-                
+
                 if (config.verbose) {
                     const status = if (result.passed) "✅" else "❌";
-                    print("  {s} {s}: P={d:.6}, Time={d:.2}ms\n", 
+                    print("  {s} {s}: P={d:.6}, Time={d:.2}ms\n",
                         .{ status, result.test_name, result.p_value, result.execution_time_ms });
                 }
             }

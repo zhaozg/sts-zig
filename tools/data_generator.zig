@@ -21,7 +21,7 @@ const GeneratorConfig = struct {
     seed: u64,
     period: ?usize = null, // For periodic patterns
     pattern: ?[]const u8 = null, // For custom patterns
-    
+
     pub fn init(data_type: DataType, size: usize, seed: u64) GeneratorConfig {
         return GeneratorConfig{
             .data_type = data_type,
@@ -34,7 +34,7 @@ const GeneratorConfig = struct {
 /// Generate test data based on configuration
 pub fn generateData(allocator: std.mem.Allocator, config: GeneratorConfig) ![]u8 {
     const data = try allocator.alloc(u8, config.size);
-    
+
     switch (config.data_type) {
         .random => try generateRandomData(data, config.seed),
         .alternating => generateAlternatingData(data),
@@ -46,7 +46,7 @@ pub fn generateData(allocator: std.mem.Allocator, config: GeneratorConfig) ![]u8
         .fibonacci_lfsr => try generateLFSRData(data, config.seed),
         .custom_pattern => try generateCustomPatternData(data, config.pattern orelse "10110100"),
     }
-    
+
     return data;
 }
 
@@ -54,7 +54,7 @@ pub fn generateData(allocator: std.mem.Allocator, config: GeneratorConfig) ![]u8
 fn generateRandomData(data: []u8, seed: u64) !void {
     var prng = std.Random.DefaultPrng.init(seed);
     const random = prng.random();
-    
+
     for (data) |*byte| {
         byte.* = random.int(u8) & 1; // Generate 0 or 1
     }
@@ -77,15 +77,15 @@ fn generateConstantData(data: []u8, value: u8) void {
 /// Generate periodic pattern
 fn generatePeriodicData(data: []u8, period: usize) !void {
     if (period == 0) return error.InvalidPeriod;
-    
+
     var prng = std.Random.DefaultPrng.init(12345);
     const random = prng.random();
-    
+
     // Generate one period of random data
     const PatternListType = std.ArrayList(u8);
-    var pattern = if (@hasField(PatternListType, "allocator")) 
+    var pattern = if (@hasField(PatternListType, "allocator"))
         PatternListType{ .items = &[_]u8{}, .capacity = 0, .allocator = std.heap.page_allocator }
-    else 
+    else
         PatternListType{};
     defer {
         if (@hasField(PatternListType, "allocator")) {
@@ -94,7 +94,7 @@ fn generatePeriodicData(data: []u8, period: usize) !void {
             pattern.deinit(std.heap.page_allocator);
         }
     }
-    
+
     for (0..period) |_| {
         if (@hasField(PatternListType, "allocator")) {
             try pattern.append(random.int(u8) & 1);
@@ -102,7 +102,7 @@ fn generatePeriodicData(data: []u8, period: usize) !void {
             try pattern.append(std.heap.page_allocator, random.int(u8) & 1);
         }
     }
-    
+
     // Repeat the pattern
     for (data, 0..) |*byte, i| {
         byte.* = pattern.items[i % period];
@@ -115,7 +115,7 @@ fn generateLCGData(data: []u8, seed: u64) !void {
     const a: u64 = 1664525;
     const c: u64 = 1013904223;
     const m: u64 = 1 << 32;
-    
+
     for (data) |*byte| {
         state = (a * state + c) % m;
         byte.* = @as(u8, @intCast(state & 1));
@@ -125,7 +125,7 @@ fn generateLCGData(data: []u8, seed: u64) !void {
 /// Generate data using Mersenne Twister
 fn generateMTData(data: []u8, seed: u64) !void {
     var mt = std.Random.Xoshiro256.init(seed);
-    
+
     for (data) |*byte| {
         byte.* = @as(u8, @intCast(mt.next() & 1));
     }
@@ -135,10 +135,10 @@ fn generateMTData(data: []u8, seed: u64) !void {
 fn generateLFSRData(data: []u8, seed: u64) !void {
     var lfsr = seed;
     if (lfsr == 0) lfsr = 1; // LFSR cannot be zero
-    
+
     // Polynomial: x^16 + x^14 + x^13 + x^11 + 1
     const taps: u64 = 0x8016;
-    
+
     for (data) |*byte| {
         const bit = lfsr & 1;
         lfsr >>= 1;
@@ -152,7 +152,7 @@ fn generateLFSRData(data: []u8, seed: u64) !void {
 /// Generate data using custom pattern
 fn generateCustomPatternData(data: []u8, pattern: []const u8) !void {
     if (pattern.len == 0) return error.EmptyPattern;
-    
+
     for (data, 0..) |*byte, i| {
         const pattern_char = pattern[i % pattern.len];
         byte.* = if (pattern_char == '1') 1 else 0;
@@ -163,14 +163,14 @@ fn generateCustomPatternData(data: []u8, pattern: []const u8) !void {
 pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: []const u8, format: enum { binary, ascii, hex }) !void {
     const file = try std.fs.cwd().createFile(filename, .{});
     defer file.close();
-    
+
     switch (format) {
         .binary => {
             // Pack bits into bytes
             const PackedListType = std.ArrayList(u8);
-            var packed_data = if (@hasField(PackedListType, "allocator")) 
+            var packed_data = if (@hasField(PackedListType, "allocator"))
                 PackedListType{ .items = &[_]u8{}, .capacity = 0, .allocator = allocator }
-            else 
+            else
                 PackedListType{};
             defer {
                 if (@hasField(PackedListType, "allocator")) {
@@ -179,7 +179,7 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
                     packed_data.deinit(allocator);
                 }
             }
-            
+
             var byte: u8 = 0;
             for (data, 0..) |bit, i| {
                 byte = (byte << 1) | bit;
@@ -192,7 +192,7 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
                     byte = 0;
                 }
             }
-            
+
             try file.writeAll(packed_data.items);
         },
         .ascii => {
@@ -222,8 +222,8 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
 
 /// Generate comprehensive test data suite
 pub fn generateTestSuite(allocator: std.mem.Allocator, output_dir: []const u8) !void {
-    const test_configs = [_]struct { 
-        name: []const u8, 
+    const test_configs = [_]struct {
+        name: []const u8,
         config: GeneratorConfig,
     }{
         .{ .name = "random_10k", .config = GeneratorConfig.init(.random, 10000, 12345) },
@@ -237,25 +237,25 @@ pub fn generateTestSuite(allocator: std.mem.Allocator, output_dir: []const u8) !
         .{ .name = "lfsr_generated", .config = GeneratorConfig.init(.fibonacci_lfsr, 30000, 13579) },
         .{ .name = "custom_pattern", .config = GeneratorConfig{ .data_type = .custom_pattern, .size = 15000, .seed = 0, .pattern = "110100101" } },
     };
-    
+
     // Create output directory
     std.fs.cwd().makeDir(output_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
-    
+
     for (test_configs) |test_config| {
         const data = try generateData(allocator, test_config.config);
         defer allocator.free(data);
-        
+
         // Save in ASCII format for readability
         var filename_buffer: [256]u8 = undefined;
         const filename = try std.fmt.bufPrint(&filename_buffer, "{s}/{s}.txt", .{ output_dir, test_config.name });
-        
+
         try saveDataToFile(allocator, data, filename, .ascii);
         print("Generated: {s} ({} bits)\n", .{ filename, data.len });
     }
-    
+
     print("Test data suite generated successfully in '{s}' directory\n", .{output_dir});
 }
 
@@ -263,10 +263,10 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
-    
+
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
-    
+
     if (args.len < 2) {
         print("Usage: {s} <command> [options]\n", .{args[0]});
         print("\nCommands:\n", .{});
@@ -276,9 +276,9 @@ pub fn main() !void {
         print("  help                   - Show this help message\n", .{});
         return;
     }
-    
+
     const command = args[1];
-    
+
     if (std.mem.eql(u8, command, "suite")) {
         const output_dir = if (args.len > 2) args[2] else "test_data";
         try generateTestSuite(allocator, output_dir);
@@ -287,17 +287,17 @@ pub fn main() !void {
             print("Usage: random <size> <seed>\n", .{});
             return;
         }
-        
+
         const size = try std.fmt.parseInt(usize, args[2], 10);
         const seed = try std.fmt.parseInt(u64, args[3], 10);
-        
+
         const config = GeneratorConfig.init(.random, size, seed);
         const data = try generateData(allocator, config);
         defer allocator.free(data);
-        
+
         try saveDataToFile(allocator, data, "random_data.txt", .ascii);
         print("Generated {} bits of random data in 'random_data.txt'\n", .{size});
-        
+
     } else if (std.mem.eql(u8, command, "help")) {
         print("STS-Zig Test Data Generator\n", .{});
         print("============================\n", .{});
@@ -319,14 +319,14 @@ pub fn main() !void {
 
 test "data generator: basic functionality" {
     const allocator = std.testing.allocator;
-    
+
     // Test random data generation
     const config = GeneratorConfig.init(.random, 100, 12345);
     const data = try generateData(allocator, config);
     defer allocator.free(data);
-    
+
     try std.testing.expect(data.len == 100);
-    
+
     // Verify all values are 0 or 1
     for (data) |bit| {
         try std.testing.expect(bit == 0 or bit == 1);
@@ -335,11 +335,11 @@ test "data generator: basic functionality" {
 
 test "data generator: alternating pattern" {
     const allocator = std.testing.allocator;
-    
+
     const config = GeneratorConfig.init(.alternating, 10, 0);
     const data = try generateData(allocator, config);
     defer allocator.free(data);
-    
+
     // Verify alternating pattern
     for (data, 0..) |bit, i| {
         const expected = @as(u8, @intCast(i % 2));

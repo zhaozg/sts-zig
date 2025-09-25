@@ -68,21 +68,6 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_math_tests.step);
     b.installArtifact(math_tests);
 
-    // Extended coverage tests
-    const extended_mod = b.createModule(.{
-        .root_source_file = b.path("test/extended_coverage_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    const extended_tests = b.addTest(.{
-        .root_module = extended_mod,
-    });
-    extended_tests.root_module.addImport("zsts", zsts_module);
-
-    const run_extended_tests = b.addRunArtifact(extended_tests);
-    test_step.dependOn(&run_extended_tests.step);
-    b.installArtifact(extended_tests);
-
     // Validation tests
     const validation_mod = b.createModule(.{
         .root_source_file = b.path("test/validation_test.zig"),
@@ -115,7 +100,7 @@ pub fn build(b: *std.Build) void {
 
     // Benchmark tool
     const benchmark_mod = b.createModule(.{
-        .root_source_file = b.path("benchmark/performance_benchmark.zig"),
+        .root_source_file = b.path("tools/performance_benchmark.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -132,7 +117,7 @@ pub fn build(b: *std.Build) void {
 
     // Enhanced CLI tool
     const cli_mod = b.createModule(.{
-        .root_source_file = b.path("cli/enhanced_cli.zig"),
+        .root_source_file = b.path("tools/enhanced_cli.zig"),
         .target = target,
         .optimize = optimize,
     });

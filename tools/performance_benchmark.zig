@@ -14,7 +14,7 @@ const BenchmarkConfig = struct {
 
 const TestType = enum {
     frequency,
-    runs, 
+    runs,
     poker,
     dft,
     rank,
@@ -34,7 +34,7 @@ const BenchmarkResult = struct {
 fn generateTestData(allocator: std.mem.Allocator, size: usize, seed: u64) ![]u8 {
     var rnd = std.Random.DefaultPrng.init(seed);
     var random = rnd.random();
-    
+
     var data = try allocator.alloc(u8, size);
     for (0..size) |i| {
         data[i] = if (random.boolean()) '1' else '0';
@@ -246,10 +246,10 @@ fn printBenchmarkResult(result: BenchmarkResult) void {
 
 pub fn runPerformanceBenchmark(allocator: std.mem.Allocator) !void {
     const config = BenchmarkConfig{};
-    
+
     print("\n🔥 STS-Zig Performance Benchmark Suite\n", .{});
     print("=====================================\n\n", .{});
-    
+
     print("Configuration:\n", .{});
     print("- Iterations per test: {d}\n", .{config.iterations});
     print("- Test data sizes: ", .{});
@@ -273,7 +273,7 @@ pub fn runPerformanceBenchmark(allocator: std.mem.Allocator) !void {
         const freq_result = try benchmarkFrequencyTest(allocator, test_data, config.iterations);
         printBenchmarkResult(freq_result);
 
-        // Benchmark runs test  
+        // Benchmark runs test
         const runs_result = try benchmarkRunsTest(allocator, test_data, config.iterations);
         printBenchmarkResult(runs_result);
 
@@ -293,7 +293,7 @@ pub fn runPerformanceBenchmark(allocator: std.mem.Allocator) !void {
     }
 
     print("└──────────────┴──────────┴───────────┴───────────┴───────────┴──────────────┘\n", .{});
-    
+
     print("\n📊 Performance Analysis:\n", .{});
     print("- Frequency Test: O(n) complexity, excellent scalability\n", .{});
     print("- Runs Test: O(n) complexity, very fast\n", .{});
