@@ -248,7 +248,10 @@ fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.
 }
 
 fn dft_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    // Free the allocated DetectParam
+    self.allocator.destroy(self.param);
+    // Free the StatDetect itself
+    self.allocator.destroy(self);
 }
 
 pub fn dftDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam) !*detect.StatDetect {
