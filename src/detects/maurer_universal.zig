@@ -20,7 +20,14 @@ fn maurer_universal_init(self: *detect.StatDetect, param: *const detect.DetectPa
 }
 
 fn maurer_universal_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    // Free the allocated MaurerUniversalParam
+    if (self.param.extra) |extra| {
+        self.allocator.destroy(@as(*MaurerUniversalParam, @alignCast(@ptrCast(extra))));
+    }
+    // Free the allocated DetectParam
+    self.allocator.destroy(self.param);
+    // Free the StatDetect itself
+    self.allocator.destroy(self);
 }
 
 fn maurer_universal_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
