@@ -47,7 +47,7 @@ pub const DetectResult = struct {
     errno: ?anyerror,
 
     extra: ?*anyopaque, // 支持扩展字段
-    
+
     /// Clean up any memory allocated for the extra field
     pub fn deinit(self: *const DetectResult, allocator: std.mem.Allocator, test_name: []const u8) void {
         if (self.extra) |extra_ptr| {

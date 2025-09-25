@@ -5,6 +5,13 @@ const Complex = std.math.Complex(f64);
 const VectorF64 = @Vector(4, f64);
 
 /// SIMD-enhanced FFT benchmark to demonstrate advanced optimizations
+///
+/// This tool consolidates functionality from:
+/// - fft_performance_comparison.zig (performance comparisons)
+/// - fft_performance_test.zig (statistical test integration)
+/// - simd_test.zig (SIMD syntax testing)
+///
+/// All FFT benchmarking and testing functionality is now unified here.
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();

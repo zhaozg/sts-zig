@@ -156,7 +156,7 @@ pub const DetectSuite = struct {
     pub fn runAll(self: *DetectSuite, bits: *const io.BitInputStream, level: detect.PrintLevel) !void {
         const items = self.detects.toOwnedSlice();
         defer self.allocator.free(items);
-        
+
         for (items) |t| {
             t.init(t.param);
             bits.reset();
@@ -164,10 +164,10 @@ pub const DetectSuite = struct {
             bits.reset();
             const result = t.iterate(bits);
             t.print(&result, level);
-            
+
             // Clean up any allocated memory in the result
             result.deinit(self.allocator, t.name);
-            
+
             t.destroy();
         }
     }

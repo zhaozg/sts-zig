@@ -501,7 +501,7 @@ pub fn main() !void {
         // Use legacy single-file mode for backward compatibility
         try runLegacyMode(allocator, options);
     }
-    
+
     // Clean up allocated memory for tests_to_run if it was expanded
     if (options.tests_to_run.len > 1 or (options.tests_to_run.len == 1 and options.tests_to_run[0] != .all)) {
         allocator.free(options.tests_to_run);
