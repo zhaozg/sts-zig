@@ -121,6 +121,8 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.B
 
     // 检查最小循环数要求
     if (J < min_cycles) {
+        // Free allocated memory before returning
+        self.allocator.free(items);
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -181,6 +183,9 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.B
         }
     }
     const passed = min_p_value > 0.01;
+
+    // Free allocated memory
+    self.allocator.free(items);
 
     return detect.DetectResult{
         .passed = passed,

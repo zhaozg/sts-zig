@@ -134,9 +134,9 @@ pub fn build(b: *std.Build) void {
     datagen_step.dependOn(&run_datagen.step);
     b.installArtifact(datagen_exe);
 
-    // FFT Performance test
+    // FFT Performance test (consolidated)
     const fft_perf_mod = b.createModule(.{
-        .root_source_file = b.path("tools/fft_performance_test.zig"),
+        .root_source_file = b.path("tools/fft_benchmark.zig"),
         .target = target,
         .optimize = optimize,
     });

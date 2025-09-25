@@ -153,6 +153,8 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
 
     // 检查最小循环数要求
     if (J < min_cycles) {
+        // Free allocated memory before returning
+        self.allocator.free(items);
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -246,6 +248,9 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
             all_passed = false;
         }
     }
+
+    // Free allocated memory
+    self.allocator.free(items);
 
     return detect.DetectResult{
         .passed = all_passed,
