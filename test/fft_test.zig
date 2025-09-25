@@ -19,7 +19,7 @@ test "FFT basic functionality" {
 
     // Test basic 4-point FFT
     const input = [_]f64{ 1.0, 2.0, 3.0, 4.0 };
-    var output = try allocator.alloc(Complex, 4);
+    const output = try allocator.alloc(Complex, 4);
     defer allocator.free(output);
 
     try fft.fft(allocator, &input, output);
@@ -44,9 +44,9 @@ test "FFT vs DFT correctness - power of 2 sizes" {
 
     for (sizes) |size| {
         // Generate test signal: sine wave + cosine wave
-        var input = try allocator.alloc(f64, size);
+        const input = try allocator.alloc(f64, size);
         defer allocator.free(input);
-        var complex_input = try allocator.alloc(Complex, size);
+        const complex_input = try allocator.alloc(Complex, size);
         defer allocator.free(complex_input);
 
         for (0..size) |i| {
@@ -56,12 +56,12 @@ test "FFT vs DFT correctness - power of 2 sizes" {
         }
 
         // Compute FFT
-        var fft_result = try allocator.alloc(Complex, size);
+        const fft_result = try allocator.alloc(Complex, size);
         defer allocator.free(fft_result);
         try fft.fft(allocator, input, fft_result);
 
         // Compute reference DFT
-        var dft_result = try allocator.alloc(Complex, size);
+        const dft_result = try allocator.alloc(Complex, size);
         defer allocator.free(dft_result);
         fft.dft(complex_input, dft_result);
 
@@ -79,7 +79,7 @@ test "radix-2 FFT implementation" {
     const allocator = gpa.allocator();
 
     const size = 16;
-    var data = try allocator.alloc(Complex, size);
+    const data = try allocator.alloc(Complex, size);
     defer allocator.free(data);
 
     // Initialize with impulse signal
@@ -102,7 +102,7 @@ test "radix-2 SIMD FFT implementation" {
     const allocator = gpa.allocator();
 
     const size = 64;
-    var data = try allocator.alloc(Complex, size);
+    const data = try allocator.alloc(Complex, size);
     defer allocator.free(data);
 
     // Test with alternating pattern
@@ -110,7 +110,7 @@ test "radix-2 SIMD FFT implementation" {
         data[i] = Complex{ .re = if (i % 2 == 0) 1.0 else -1.0, .im = 0.0 };
     }
 
-    var reference_data = try allocator.alloc(Complex, size);
+    const reference_data = try allocator.alloc(Complex, size);
     defer allocator.free(reference_data);
     @memcpy(reference_data, data);
 
@@ -139,7 +139,7 @@ test "radix-4 FFT implementation" {
         data[i] = Complex{ .re = math.cos(2.0 * math.pi * t / @as(f64, @floatFromInt(size))), .im = 0.0 };
     }
 
-    var reference_data = try allocator.alloc(Complex, size);
+    const reference_data = try allocator.alloc(Complex, size);
     defer allocator.free(reference_data);
     @memcpy(reference_data, data);
 
@@ -169,7 +169,7 @@ test "mixed-radix FFT for non-power-of-2 sizes" {
             data[i] = Complex{ .re = @as(f64, @floatFromInt(i + 1)), .im = 0.0 };
         }
 
-        var reference_data = try allocator.alloc(Complex, size);
+        const reference_data = try allocator.alloc(Complex, size);
         defer allocator.free(reference_data);
         @memcpy(reference_data, data);
 
@@ -200,7 +200,7 @@ test "real-to-complex FFT with magnitude" {
     }
 
     const out_len = size / 2 + 1;
-    var output = try allocator.alloc(f64, 2 * out_len);
+    const output = try allocator.alloc(f64, 2 * out_len);
     defer allocator.free(output);
     var magnitude = try allocator.alloc(f64, out_len);
     defer allocator.free(magnitude);
@@ -243,7 +243,7 @@ test "FFT performance with different algorithms" {
             data[i] = Complex{ .re = @sin(@as(f64, @floatFromInt(i))), .im = 0.0 };
         }
 
-        var reference = try allocator.alloc(Complex, case.size);
+        const reference = try allocator.alloc(Complex, case.size);
         defer allocator.free(reference);
         @memcpy(reference, data);
 
@@ -379,7 +379,7 @@ test "SIMD magnitude calculation accuracy" {
     const size = 16;
     var input = try allocator.alloc(Complex, size);
     defer allocator.free(input);
-    var output = try allocator.alloc(f64, 2 * size);
+    const output = try allocator.alloc(f64, 2 * size);
     defer allocator.free(output);
     var magnitude = try allocator.alloc(f64, size);
     defer allocator.free(magnitude);
@@ -455,7 +455,7 @@ test "integration with detection system interface" {
     }
 
     const out_len = size / 2 + 1;
-    var output = try allocator.alloc(f64, 2 * out_len);
+    const output = try allocator.alloc(f64, 2 * out_len);
     defer allocator.free(output);
     var magnitude = try allocator.alloc(f64, out_len);
     defer allocator.free(magnitude);
