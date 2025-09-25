@@ -153,6 +153,14 @@ pub fn erf(x: f64) f64 {
 }
 
 pub fn erfc(x: f64) f64 {
+    // Handle special cases that could cause infinite loops
+    if (std.math.isNan(x) or std.math.isInf(x)) {
+        if (std.math.isInf(x)) {
+            return if (x > 0) 0.0 else 2.0;
+        }
+        return std.math.nan(f64);
+    }
+    
     if (@abs(x) < 2.2) {
         return 1.0 - erf(x);
     }
@@ -167,8 +175,10 @@ pub fn erfc(x: f64) f64 {
     var q2: f64 = b / d;
     var n: f64 = 1.0;
     var t: f64 = 0.0;
+    var iterations: usize = 0;
+    const max_iterations: usize = 1000;
 
-    while (true) {
+    while (iterations < max_iterations) {
         t = a * n + b * x;
         a = b;
         b = t;
@@ -178,7 +188,14 @@ pub fn erfc(x: f64) f64 {
         n += 0.5;
         q1 = q2;
         q2 = b / d;
+        
+        // Check for convergence or invalid values
+        if (std.math.isNan(q2) or std.math.isInf(q2) or d == 0.0) {
+            return 0.0; // Return safe value for invalid inputs
+        }
+        
         if (@abs(q1 - q2) / @abs(q2) <= rel_error) break;
+        iterations += 1;
     }
     return one_sqrtpi * std.math.exp(-x * x) * q2;
 }
