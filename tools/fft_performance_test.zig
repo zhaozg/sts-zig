@@ -15,20 +15,20 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    std.debug.print("FFT Performance Optimization Test\n");
-    std.debug.print("=================================\n\n");
+    std.debug.print("FFT Performance Optimization Test\n", .{});
+    std.debug.print("=================================\n\n", .{});
 
     const test_sizes = [_]usize{ 256, 512, 1024, 2048, 4096, 8192, 16384 };
 
     for (test_sizes) |size| {
         try benchmarkFFTSize(allocator, size);
-        std.debug.print("\n");
+        std.debug.print("\n", .{});
     }
 
-    std.debug.print("Testing algorithm selection logic...\n");
+    std.debug.print("Testing algorithm selection logic...\n", .{});
     try testAlgorithmSelection(allocator);
     
-    std.debug.print("\nTesting SIMD magnitude calculation...\n");
+    std.debug.print("\nTesting SIMD magnitude calculation...\n", .{});
     try testSIMDMagnitude(allocator);
 }
 

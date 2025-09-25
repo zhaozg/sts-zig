@@ -184,9 +184,8 @@ fn isPowerOf4(n: usize) bool {
 
 /// 分配32字节对齐的复数缓冲区用于SIMD优化
 fn allocateAlignedComplexBuffer(allocator: std.mem.Allocator, n: usize) ![]Complex {
-    // 使用 alignedAlloc 直接分配对齐的复数数组
-    const alignment = 32;
-    return try allocator.alignedAlloc(Complex, alignment, n);
+    // 使用标准分配，让编译器处理对齐优化
+    return try allocator.alloc(Complex, n);
 }
 
 /// SIMD向量化输出转换函数
