@@ -13,7 +13,12 @@ fn approx_entropy_init(self: *detect.StatDetect, param: *const detect.DetectPara
 }
 
 fn approx_entropy_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    if (self.param.extra) |extra| {
+        const param: *ApproxEntropyParam = @ptrCast(@alignCast(extra));
+        self.allocator.destroy(param);
+    }
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn approx_entropy_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {

@@ -9,7 +9,8 @@ fn linear_complexity_init(self: *detect.StatDetect, param: *const detect.DetectP
 }
 
 fn linear_complexity_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 // Berlekamp-Massey算法，返回线性复杂度

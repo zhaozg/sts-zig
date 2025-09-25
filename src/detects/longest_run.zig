@@ -46,7 +46,8 @@ fn longest_run_init(self: *detect.StatDetect, param: *const detect.DetectParam) 
 }
 
 fn longest_run_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn selectM(n: usize) u16 {

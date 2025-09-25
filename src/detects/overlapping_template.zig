@@ -9,7 +9,8 @@ fn overlapping_template_init(self: *detect.StatDetect, param: *const detect.Dete
 }
 
 fn overlapping_template_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {

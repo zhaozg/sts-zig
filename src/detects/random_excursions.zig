@@ -81,8 +81,12 @@ fn random_excursions_init(self: *detect.StatDetect, param: *const detect.DetectP
 }
 
 fn random_excursions_destroy(self: *detect.StatDetect) void {
-    const state: *RandomExcursionsState = @ptrCast(@alignCast(self.state.?));
-    self.allocator.destroy(state);
+    if (self.state) |state_ptr| {
+        const state: *RandomExcursionsState = @ptrCast(@alignCast(state_ptr));
+        self.allocator.destroy(state);
+    }
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {

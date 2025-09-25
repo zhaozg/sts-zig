@@ -9,7 +9,8 @@ fn serial_init(self: *detect.StatDetect, param: *const detect.DetectParam) void 
 }
 
 fn serial_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn psi2(self: *detect.StatDetect, bit_arr: []u1, n: usize, m: u5) !f64 {

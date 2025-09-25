@@ -51,7 +51,8 @@ fn cumulative_sums_init(self: *detect.StatDetect, param: *const detect.DetectPar
 }
 
 fn cumulative_sums_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn cumulative_sums_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {

@@ -51,9 +51,12 @@ fn random_excursions_variant_init(self: *detect.StatDetect, param: *const detect
 }
 
 fn random_excursions_variant_destroy(self: *detect.StatDetect) void {
-    if (self.state == null) return;
-    const result: *RandomExcursionsVariantResult = @ptrCast(@alignCast(self.state.?));
-    self.allocator.destroy(result);
+    if (self.state != null) {
+        const result: *RandomExcursionsVariantResult = @ptrCast(@alignCast(self.state.?));
+        self.allocator.destroy(result);
+    }
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {

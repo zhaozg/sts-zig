@@ -372,6 +372,9 @@ const ByteInputStream = struct {
 
     fn close(ctx: *anyopaque) void {
         const self: *ByteInputStream = @ptrCast(@alignCast(ctx));
+        if (self.array.len > 0) {
+            self.allocator.free(self.array);
+        }
         self.stream.close();
         self.allocator.destroy(self);
     }
@@ -471,6 +474,9 @@ const AsciiInputStream = struct {
 
     fn close(ctx: *anyopaque) void {
         const self: *AsciiInputStream = @ptrCast(@alignCast(ctx));
+        if (self.array.len > 0) {
+            self.allocator.free(self.array);
+        }
         self.stream.close();
         self.allocator.free(self.data);
         self.allocator.destroy(self);

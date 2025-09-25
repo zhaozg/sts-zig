@@ -7,9 +7,10 @@ const compat = @import("../compat.zig");
 pub const NonOverlappingTemplateResult = struct {
     n: usize,
     passed: []bool,
-    template: [][]u1, // 模板
+    template_patterns: []u32, // Store template patterns as integers instead of arrays
     v_value: []f64,
     p_value: []f64,
+    template_size: u4, // Store the template size (m) to reconstruct patterns
 };
 
 fn non_overlapping_template_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
@@ -18,7 +19,8 @@ fn non_overlapping_template_init(self: *detect.StatDetect, param: *const detect.
 }
 
 fn non_overlapping_template_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn non_veerlapping_template_print(self: *detect.StatDetect, result: *const detect.DetectResult, level: detect.PrintLevel) void {
@@ -39,17 +41,21 @@ fn non_veerlapping_template_print(self: *detect.StatDetect, result: *const detec
     if (level == .detail) {
         std.debug.print("\n", .{});
         for (0..results.n) |i| {
+            // Reconstruct template pattern for display
+            var template_bits = [_]u1{0} ** 9;
+            patternToBits(results.template_patterns[i], results.template_size, template_bits[0..results.template_size]);
+            
             std.debug.print("\tState {d:3}: {}{}{}{}{}{}{}{}{} passed={s}, V = {d:10.6} P = {d:.6}\n", .{
                 i,
-                results.template[i][0],
-                results.template[i][1],
-                results.template[i][2],
-                results.template[i][3],
-                results.template[i][4],
-                results.template[i][5],
-                results.template[i][6],
-                results.template[i][7],
-                results.template[i][8],
+                template_bits[0],
+                template_bits[1],
+                template_bits[2],
+                template_bits[3],
+                template_bits[4],
+                template_bits[5],
+                template_bits[6],
+                template_bits[7],
+                template_bits[8],
                 if (results.passed[i]) "Yes" else "No ",
                 results.v_value[i],
                 results.p_value[i],
@@ -61,21 +67,27 @@ fn non_veerlapping_template_print(self: *detect.StatDetect, result: *const detec
 
 const BLOCKS_NON_OVERLAPPING = 8; // 可根据实际情况调整
 
-fn generateNonPeriodicTemplates(m: u4, allocator: std.mem.Allocator) ![][]u1 {
-    var templates = compat.ArrayList([]u1).init(allocator);
+fn generateNonPeriodicTemplatePatterns(m: u4, allocator: std.mem.Allocator) ![]u32 {
+    var patterns = compat.ArrayList(u32).init(allocator);
     const max_num: usize = @as(usize, 1) << m;
     for (1..max_num) |val| {
         var arr = try allocator.alloc(u1, m);
+        defer allocator.free(arr);
+        
         for (0..m) |i| {
             arr[i] = if (((val >> @as(u6, @intCast(m - 1 - i))) & 1) == 1) 1 else 0;
         }
         if (!isPeriodic(arr)) {
-            try templates.append(arr);
-        } else {
-            allocator.free(arr);
+            try patterns.append(@as(u32, @intCast(val)));
         }
     }
-    return templates.toOwnedSlice();
+    return patterns.toOwnedSlice();
+}
+
+fn patternToBits(pattern: u32, m: u4, bits: []u1) void {
+    for (0..m) |i| {
+        bits[i] = if (((pattern >> @as(u5, @intCast(m - 1 - i))) & 1) == 1) 1 else 0;
+    }
 }
 
 fn isPeriodic(arr: []u1) bool {
@@ -135,7 +147,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
     }
 
     // 生成模板
-    const templates = generateNonPeriodicTemplates(m, self.allocator) catch |err| {
+    const template_patterns = generateNonPeriodicTemplatePatterns(m, self.allocator) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -145,7 +157,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
             .errno = err,
         };
     };
-    // defer for (templates) |t| self.allocator.free(t);
+    defer self.allocator.free(template_patterns);
 
     var results: *NonOverlappingTemplateResult = self.allocator.create(NonOverlappingTemplateResult) catch |err| {
         return detect.DetectResult{
@@ -158,8 +170,9 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
         };
     };
 
-    results.n = templates.len;
-    results.passed = self.allocator.alloc(bool, templates.len) catch |err| {
+    results.n = template_patterns.len;
+    results.template_size = m;
+    results.template_patterns = self.allocator.alloc(u32, template_patterns.len) catch |err| {
         self.allocator.destroy(results);
         return detect.DetectResult{
             .passed = false,
@@ -170,7 +183,10 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
             .errno = err,
         };
     };
-    results.p_value = self.allocator.alloc(f64, templates.len) catch |err| {
+    std.mem.copyForwards(u32, results.template_patterns, template_patterns);
+    
+    results.passed = self.allocator.alloc(bool, template_patterns.len) catch |err| {
+        self.allocator.free(results.template_patterns);
         self.allocator.destroy(results);
         return detect.DetectResult{
             .passed = false,
@@ -181,7 +197,9 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
             .errno = err,
         };
     };
-    results.v_value = self.allocator.alloc(f64, templates.len) catch |err| {
+    results.p_value = self.allocator.alloc(f64, template_patterns.len) catch |err| {
+        self.allocator.free(results.template_patterns);
+        self.allocator.free(results.passed);
         self.allocator.destroy(results);
         return detect.DetectResult{
             .passed = false,
@@ -192,12 +210,39 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
             .errno = err,
         };
     };
-    results.template = templates;
+    results.v_value = self.allocator.alloc(f64, template_patterns.len) catch |err| {
+        self.allocator.free(results.template_patterns);
+        self.allocator.free(results.passed);
+        self.allocator.free(results.p_value);
+        self.allocator.destroy(results);
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
 
     var p_min: f64 = 1.0;
     var v_min: f64 = 0.0;
 
-    for (templates, 0..templates.len) |template, i| {
+    for (template_patterns, 0..template_patterns.len) |pattern, i| {
+        // Temporarily reconstruct the template for processing
+        const template = self.allocator.alloc(u1, m) catch |err| {
+            return detect.DetectResult{
+                .passed = false,
+                .v_value = 0.0,
+                .p_value = 0.0,
+                .q_value = 0.0,
+                .extra = null,
+                .errno = err,
+            };
+        };
+        defer self.allocator.free(template);
+        patternToBits(pattern, m, template);
+        
         var Wj = [_]usize{0} ** BLOCKS_NON_OVERLAPPING;
         for (0..BLOCKS_NON_OVERLAPPING) |block_idx| {
             var count: usize = 0;
