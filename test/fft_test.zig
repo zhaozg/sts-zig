@@ -681,3 +681,160 @@ test "FFT algorithm threshold validation" {
 
     std.debug.print("✅ Algorithm threshold validation successful!\n", .{});
 }
+
+test "FFT EXTREME HUGE data validation - 100M samples" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    // Use conditional sizing for CI vs local testing
+    const is_ci = std.process.hasEnvVar(allocator, "CI") catch false;
+    
+    // Determine size at runtime but handle memory allocation appropriately
+    const target_size: usize = if (is_ci) 10000000 else 100000000; // 10M for CI, 100M for local
+    const size = target_size;
+
+    std.debug.print("\n=== Testing EXTREME HUGE data FFT with {d} samples ===\n", .{size});
+    if (is_ci) {
+        std.debug.print("(CI mode: using reduced size for time constraints)\n", .{});
+    }
+
+    // For 100M samples, we need to be very memory conscious
+    // Use a more memory-efficient approach
+    std.debug.print("Allocating {d:.1} MB for input data...\n", .{@as(f64, @floatFromInt(size * @sizeOf(f64))) / (1024.0 * 1024.0)});
+
+    const input = try allocator.alloc(f64, size);
+    defer allocator.free(input);
+
+    // Generate simple but predictable test pattern to minimize memory usage
+    std.debug.print("Generating test signal...\n", .{});
+    for (0..size) |i| {
+        // Simple pattern with very low frequency content to be memory/time efficient
+        if (i % 1000000 == 0) {
+            input[i] = 1.0; // Sparse impulse pattern
+        } else if (i % 100000 == 0) {
+            input[i] = 0.1; // Secondary impulse pattern
+        } else {
+            input[i] = 0.01; // Low background level
+        }
+    }
+
+    const out_len = size / 2 + 1;
+    std.debug.print("Allocating {d:.1} MB for output data...\n", .{@as(f64, @floatFromInt(out_len * 2 * @sizeOf(f64))) / (1024.0 * 1024.0)});
+
+    const output = try allocator.alloc(f64, 2 * out_len);
+    defer allocator.free(output);
+    const magnitude = try allocator.alloc(f64, out_len);
+    defer allocator.free(magnitude);
+
+    // Measure performance for extreme scale
+    std.debug.print("Starting EXTREME HUGE FFT processing...\n", .{});
+    const start_time = std.time.nanoTimestamp();
+
+    try fft.fftR2C(allocator, input, output, magnitude);
+
+    const end_time = std.time.nanoTimestamp();
+    const elapsed_ms = @as(f64, @floatFromInt(@as(u64, @intCast(end_time - start_time)))) / 1e6;
+    const throughput = (@as(f64, @floatFromInt(size)) / (elapsed_ms / 1000.0)) / 1e6;
+
+    std.debug.print("EXTREME HUGE processing time: {d:.2}ms ({d:.1}s)\n", .{ elapsed_ms, elapsed_ms / 1000.0 });
+    std.debug.print("EXTREME HUGE throughput: {d:.1} MSamples/s\n", .{throughput});
+    std.debug.print("Data throughput: {d:.1} GB/s\n", .{(@as(f64, @floatFromInt(size)) * @sizeOf(f64) / (elapsed_ms / 1000.0)) / (1024.0 * 1024.0 * 1024.0)});
+
+    if (!is_ci and size >= 100000000) {
+        std.debug.print("🎉 Successfully processed 100M samples - demonstrating extreme scale capability!\n", .{});
+    }
+
+    // Validate extreme scale processing results
+    try expect(magnitude[0] > 0.0); // Should have DC component from our pattern
+    try expect(!math.isNan(magnitude[0])); // Should not be NaN
+    try expect(math.isFinite(magnitude[0])); // Should be finite
+
+    // Check that we can find the expected pattern in the frequency domain
+    // With 100M samples and impulses every 1M samples, we should see peaks
+    var peak_count: usize = 0;
+    var total_energy: f64 = 0.0;
+
+    // Sample the first 1000 frequency bins to check for expected behavior
+    for (0..@min(1000, out_len)) |i| {
+        try expect(!math.isNan(magnitude[i]));
+        try expect(math.isFinite(magnitude[i]));
+        try expect(magnitude[i] >= 0.0); // Magnitude should be non-negative
+
+        total_energy += magnitude[i] * magnitude[i];
+        if (magnitude[i] > 1000.0) { // Threshold for significant peaks
+            peak_count += 1;
+        }
+    }
+
+    // Verify that our sparse impulse pattern created detectable frequency content
+    try expect(total_energy > 1000.0); // Should have significant energy
+    try expect(peak_count >= 1); // Should have at least one significant peak (DC)
+
+    std.debug.print("Peak count in first 1000 bins: {d}\n", .{peak_count});
+    std.debug.print("Total energy in first 1000 bins: {d:.1}\n", .{total_energy});
+    std.debug.print("Peak magnitude ratio: {d:.1}\n", .{magnitude[0] / (total_energy / 1000.0)});
+
+    std.debug.print("✅ EXTREME HUGE data ({d}M samples) FFT validation successful!\n", .{size / 1000000});
+    if (!is_ci) {
+        std.debug.print("💡 Note: Full 100M sample capability demonstrated in local testing\n", .{});
+    }
+}
+
+test "FFT Ultra-large memory stress test" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    // Test a range of very large sizes to ensure memory handling is robust
+    const test_sizes = [_]usize{
+        10000000, // 10M
+        25000000, // 25M
+        50000000, // 50M
+        // Note: 100M test is separate due to time/memory constraints
+    };
+
+    for (test_sizes) |size| {
+        std.debug.print("\n=== Memory stress test with {d} samples ({d:.1} MB) ===\n", .{ size, @as(f64, @floatFromInt(size * @sizeOf(f64))) / (1024.0 * 1024.0) });
+
+        const input = try allocator.alloc(f64, size);
+        defer allocator.free(input);
+
+        // Simple test pattern
+        for (0..size) |i| {
+            input[i] = if (i == 0) 1.0 else 0.001; // Impulse with tiny background
+        }
+
+        const out_len = size / 2 + 1;
+        const output = try allocator.alloc(f64, 2 * out_len);
+        defer allocator.free(output);
+        const magnitude = try allocator.alloc(f64, out_len);
+        defer allocator.free(magnitude);
+
+        // Test that processing completes without memory issues
+        const start_time = std.time.nanoTimestamp();
+        try fft.fftR2C(allocator, input, output, magnitude);
+        const end_time = std.time.nanoTimestamp();
+
+        const elapsed_ms = @as(f64, @floatFromInt(@as(u64, @intCast(end_time - start_time)))) / 1e6;
+        const throughput = (@as(f64, @floatFromInt(size)) / (elapsed_ms / 1000.0)) / 1e6;
+
+        std.debug.print("  Processing: {d:.1}ms, {d:.1} MSamples/s\n", .{ elapsed_ms, throughput });
+
+        // Verify results are valid
+        try expect(magnitude[0] > 0.8); // DC should be close to 1.0 from impulse
+        try expect(!math.isNan(magnitude[0]));
+        try expect(math.isFinite(magnitude[0]));
+
+        // Check a few more bins for sanity
+        for (1..@min(10, out_len)) |i| {
+            try expect(!math.isNan(magnitude[i]));
+            try expect(math.isFinite(magnitude[i]));
+            try expect(magnitude[i] >= 0.0);
+        }
+
+        std.debug.print("  ✅ {d} samples processed successfully\n", .{size});
+    }
+
+    std.debug.print("✅ Ultra-large memory stress tests completed!\n", .{});
+}
