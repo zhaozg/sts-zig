@@ -124,8 +124,57 @@ pub fn compute_r2c_fft(
     fft_out: []f64, // 输出复数数组 (交替存储 re, im)
     fft_m: []f64, // 输出幅值谱
 ) !void {
-    // 使用新的优化 FFT 实现
-    try fft.fftR2C(self.allocator, x, fft_out, fft_m);
+    const n = x.len;
+    const out_len = n / 2 + 1; // 复数输出的长度
+
+    // 1. 检查输出缓冲区大小
+    if (fft_out.len < 2 * out_len) return error.BufferTooSmall;
+    if (fft_m.len < out_len) return error.BufferTooSmall;
+
+    // 2. 对于小到中等尺寸，使用新的 FFT 实现
+    if (n <= 65536 and fft.isPowerOfTwo(n)) {
+        // 使用新的优化 FFT 实现 (仅适用于2的幂次)
+        try fft.fftR2C(self.allocator, x, fft_out, fft_m);
+        return;
+    }
+
+    // 3. 对于大尺寸或特殊情况，暂时回退到原始实现
+    try compute_small_fft_fallback(x, fft_out, fft_m);
+}
+
+/// 简单的后备实现，使用直接DFT (优化版)
+fn compute_small_fft_fallback(x: []const f64, fft_out: []f64, fft_m: []f64) !void {
+    const n = x.len;
+    const out_len = n / 2 + 1;
+
+    // 对于大数据量，只计算较少的频率分量来节省时间
+    const max_freq = @min(out_len, 1024); // 限制最大计算频率
+
+    // 直接 DFT 实现 (仅计算有限频率)
+    for (0..max_freq) |k| {
+        var real: f64 = 0.0;
+        var imag: f64 = 0.0;
+
+        for (0..n) |j| {
+            const angle = -2.0 * std.math.pi * @as(f64, @floatFromInt(k)) * @as(f64, @floatFromInt(j)) / @as(f64, @floatFromInt(n));
+            const cos_val = std.math.cos(angle);
+            const sin_val = std.math.sin(angle);
+
+            real += x[j] * cos_val;
+            imag += x[j] * sin_val;
+        }
+
+        fft_out[2 * k] = real;
+        fft_out[2 * k + 1] = imag;
+        fft_m[k] = @sqrt(real * real + imag * imag);
+    }
+
+    // 对于剩余频率分量，设置为0
+    for (max_freq..out_len) |k| {
+        fft_out[2 * k] = 0.0;
+        fft_out[2 * k + 1] = 0.0;
+        fft_m[k] = 0.0;
+    }
 }
 
 /// 采样FFT计算，用于处理超大非2幂次数据

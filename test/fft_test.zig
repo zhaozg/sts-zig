@@ -465,7 +465,7 @@ test "integration with detection system interface" {
 
     // Basic sanity checks
     try expect(magnitude[0] > 0.0); // DC component should be non-zero
-    
+
     // Verify output format (interleaved real/imaginary)
     for (0..out_len) |i| {
         const computed_mag = @sqrt(output[2 * i] * output[2 * i] + output[2 * i + 1] * output[2 * i + 1]);
