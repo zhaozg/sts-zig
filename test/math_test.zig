@@ -458,3 +458,110 @@ test "consistency with existing test cases" {
     // 允许较大的容差，因为测试数据可能来自不同的实现
     try testing.expect(relative_error < 1e-3);
 }
+
+test "erf and erfc performance test" {
+    // Performance test to ensure erf and erfc functions execute efficiently
+    // This test verifies that the functions don't hang or take excessive time
+
+    const test_values = [_]f64{ 0.0, 0.5, 1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 4.0, -4.0 };
+
+    std.debug.print("\n=== erf and erfc Performance Test ===\n", .{});
+
+    for (test_values) |x| {
+        // Test erf performance
+        const start_time_erf = std.time.nanoTimestamp();
+        const erf_result = math.erf(x);
+        const erf_time = std.time.nanoTimestamp() - start_time_erf;
+
+        // Test erfc performance
+        const start_time_erfc = std.time.nanoTimestamp();
+        const erfc_result = math.erfc(x);
+        const erfc_time = std.time.nanoTimestamp() - start_time_erfc;
+
+        std.debug.print("x = {d:.1}: erf({d:.1}) = {d:.10} (time: {}ns), erfc({d:.1}) = {d:.10} (time: {}ns)\n", .{ x, x, erf_result, erf_time, x, erfc_result, erfc_time });
+
+        // Verify mathematical identity: erf(x) + erfc(x) = 1
+        const identity_error = @abs(erf_result + erfc_result - 1.0);
+        std.debug.print("  Identity check: erf + erfc = {d:.15} (error: {e:.2})\n", .{ erf_result + erfc_result, identity_error });
+
+        // Performance requirements: functions should complete within reasonable time
+        const max_time_ns = 1_000_000; // 1 millisecond threshold
+        try testing.expect(erf_time < max_time_ns);
+        try testing.expect(erfc_time < max_time_ns);
+
+        // Mathematical identity should hold with high precision
+        try testing.expect(identity_error < 1e-14);
+    }
+
+    std.debug.print("✅ All performance tests passed\n", .{});
+}
+
+test "erf and erfc extended accuracy test" {
+    // Extended accuracy test with additional test cases from standalone test files
+    std.debug.print("\n=== Extended erf and erfc Accuracy Test ===\n", .{});
+
+    const extended_erf_cases = [_]struct {
+        x: f64,
+        expected: f64,
+    }{
+        // Additional test cases for more comprehensive coverage
+        .{ .x = 0.0, .expected = 0.0 },
+        .{ .x = 0.1, .expected = 0.1124629160182849 },
+        .{ .x = 0.5, .expected = 0.5204998778130465 },
+        .{ .x = 1.0, .expected = 0.8427007929497149 },
+        .{ .x = 1.5, .expected = 0.9661051464753107 },
+        .{ .x = 2.0, .expected = 0.9953222650189527 },
+        .{ .x = 2.5, .expected = 0.9995930479825550 },
+        .{ .x = 3.0, .expected = 0.9999779095030014 },
+        .{ .x = -0.1, .expected = -0.1124629160182849 },
+        .{ .x = -0.5, .expected = -0.5204998778130465 },
+        .{ .x = -1.0, .expected = -0.8427007929497149 },
+        .{ .x = -1.5, .expected = -0.9661051464753107 },
+        .{ .x = -2.0, .expected = -0.9953222650189527 },
+    };
+
+    const extended_erfc_cases = [_]struct {
+        x: f64,
+        expected: f64,
+    }{
+        .{ .x = 0.0, .expected = 1.0 },
+        .{ .x = 0.1, .expected = 0.8875370839817151 },
+        .{ .x = 0.5, .expected = 0.4795001221869535 },
+        .{ .x = 1.0, .expected = 0.1572992070502851 },
+        .{ .x = 1.5, .expected = 0.0338948535246893 },
+        .{ .x = 2.0, .expected = 0.004677734981047266 },
+        .{ .x = 2.5, .expected = 0.0004069520174450 },
+        .{ .x = 3.0, .expected = 0.00002209049699858544 },
+        .{ .x = -0.1, .expected = 1.1124629160182849 },
+        .{ .x = -0.5, .expected = 1.5204998778130465 },
+        .{ .x = -1.0, .expected = 1.8427007929497149 },
+        .{ .x = -1.5, .expected = 1.9661051464753107 },
+        .{ .x = -2.0, .expected = 1.9953222650189527 },
+    };
+
+    // Test erf extended cases
+    std.debug.print("Testing erf extended accuracy...\n", .{});
+    for (extended_erf_cases) |case| {
+        const result = math.erf(case.x);
+        const relative_error = @abs(result - case.expected) / (@abs(case.expected) + 1e-15);
+
+        std.debug.print("erf({d:.1}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.x, result, case.expected, relative_error });
+
+        // Use slightly relaxed tolerance for extended test cases
+        try testing.expect(relative_error < tolerance * 10); // 1e-9
+    }
+
+    // Test erfc extended cases
+    std.debug.print("Testing erfc extended accuracy...\n", .{});
+    for (extended_erfc_cases) |case| {
+        const result = math.erfc(case.x);
+        const relative_error = @abs(result - case.expected) / (@abs(case.expected) + 1e-15);
+
+        std.debug.print("erfc({d:.1}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.x, result, case.expected, relative_error });
+
+        // Use slightly relaxed tolerance for extended test cases
+        try testing.expect(relative_error < tolerance * 10); // 1e-9
+    }
+
+    std.debug.print("✅ All extended accuracy tests passed\n", .{});
+}
