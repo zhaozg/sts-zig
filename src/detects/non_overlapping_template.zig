@@ -44,7 +44,7 @@ fn non_veerlapping_template_print(self: *detect.StatDetect, result: *const detec
             // Reconstruct template pattern for display
             var template_bits = [_]u1{0} ** 9;
             patternToBits(results.template_patterns[i], results.template_size, template_bits[0..results.template_size]);
-            
+
             std.debug.print("\tState {d:3}: {}{}{}{}{}{}{}{}{} passed={s}, V = {d:10.6} P = {d:.6}\n", .{
                 i,
                 template_bits[0],
@@ -73,7 +73,7 @@ fn generateNonPeriodicTemplatePatterns(m: u4, allocator: std.mem.Allocator) ![]u
     for (1..max_num) |val| {
         var arr = try allocator.alloc(u1, m);
         defer allocator.free(arr);
-        
+
         for (0..m) |i| {
             arr[i] = if (((val >> @as(u6, @intCast(m - 1 - i))) & 1) == 1) 1 else 0;
         }
@@ -184,7 +184,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
         };
     };
     std.mem.copyForwards(u32, results.template_patterns, template_patterns);
-    
+
     results.passed = self.allocator.alloc(bool, template_patterns.len) catch |err| {
         self.allocator.free(results.template_patterns);
         self.allocator.destroy(results);
@@ -242,7 +242,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
         };
         defer self.allocator.free(template);
         patternToBits(pattern, m, template);
-        
+
         var Wj = [_]usize{0} ** BLOCKS_NON_OVERLAPPING;
         for (0..BLOCKS_NON_OVERLAPPING) |block_idx| {
             var count: usize = 0;

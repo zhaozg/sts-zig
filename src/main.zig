@@ -15,6 +15,10 @@ const OutputFormat = enum {
 /// Test type options
 const TestType = enum {
     all,
+    // Suite options
+    nist800,
+    gmt0005,
+    // Individual tests
     frequency,
     block_frequency,
     runs,
@@ -32,10 +36,15 @@ const TestType = enum {
     overlapping_template,
     non_overlapping_template,
     universal,
+    binary_derivative,
+    run_distribution,
+    overlapping_sequency,
 
     pub fn toString(self: TestType) []const u8 {
         return switch (self) {
             .all => "all",
+            .nist800 => "NIST800",
+            .gmt0005 => "GMT0005",
             .frequency => "frequency",
             .block_frequency => "block_frequency",
             .runs => "runs",
@@ -53,6 +62,9 @@ const TestType = enum {
             .overlapping_template => "overlapping_template",
             .non_overlapping_template => "non_overlapping_template",
             .universal => "universal",
+            .binary_derivative => "binary_derivative",
+            .run_distribution => "run_distribution",
+            .overlapping_sequency => "overlapping_sequency",
         };
     }
 };
@@ -114,18 +126,50 @@ fn parseTestTypes(allocator: std.mem.Allocator, tests_str: []const u8) ![]TestTy
 
         if (std.mem.eql(u8, trimmed, "all")) {
             try result.append(.all);
+        } else if (std.mem.eql(u8, trimmed, "NIST800") or std.mem.eql(u8, trimmed, "nist800")) {
+            try result.append(.nist800);
+        } else if (std.mem.eql(u8, trimmed, "GMT0005") or std.mem.eql(u8, trimmed, "gmt0005")) {
+            try result.append(.gmt0005);
         } else if (std.mem.eql(u8, trimmed, "frequency")) {
             try result.append(.frequency);
         } else if (std.mem.eql(u8, trimmed, "block_frequency")) {
             try result.append(.block_frequency);
         } else if (std.mem.eql(u8, trimmed, "runs")) {
             try result.append(.runs);
+        } else if (std.mem.eql(u8, trimmed, "longest_runs")) {
+            try result.append(.longest_runs);
         } else if (std.mem.eql(u8, trimmed, "rank")) {
             try result.append(.rank);
         } else if (std.mem.eql(u8, trimmed, "dft")) {
             try result.append(.dft);
         } else if (std.mem.eql(u8, trimmed, "poker")) {
             try result.append(.poker);
+        } else if (std.mem.eql(u8, trimmed, "autocorrelation")) {
+            try result.append(.autocorrelation);
+        } else if (std.mem.eql(u8, trimmed, "cumulative_sums")) {
+            try result.append(.cumulative_sums);
+        } else if (std.mem.eql(u8, trimmed, "approximate_entropy")) {
+            try result.append(.approximate_entropy);
+        } else if (std.mem.eql(u8, trimmed, "random_excursions")) {
+            try result.append(.random_excursions);
+        } else if (std.mem.eql(u8, trimmed, "random_excursions_variant")) {
+            try result.append(.random_excursions_variant);
+        } else if (std.mem.eql(u8, trimmed, "serial")) {
+            try result.append(.serial);
+        } else if (std.mem.eql(u8, trimmed, "linear_complexity")) {
+            try result.append(.linear_complexity);
+        } else if (std.mem.eql(u8, trimmed, "overlapping_template")) {
+            try result.append(.overlapping_template);
+        } else if (std.mem.eql(u8, trimmed, "non_overlapping_template")) {
+            try result.append(.non_overlapping_template);
+        } else if (std.mem.eql(u8, trimmed, "universal")) {
+            try result.append(.universal);
+        } else if (std.mem.eql(u8, trimmed, "binary_derivative")) {
+            try result.append(.binary_derivative);
+        } else if (std.mem.eql(u8, trimmed, "run_distribution")) {
+            try result.append(.run_distribution);
+        } else if (std.mem.eql(u8, trimmed, "overlapping_sequency")) {
+            try result.append(.overlapping_sequency);
         } else {
             std.debug.print("Warning: Unknown test type '{s}' ignored\n", .{trimmed});
         }
@@ -136,6 +180,51 @@ fn parseTestTypes(allocator: std.mem.Allocator, tests_str: []const u8) ![]TestTy
     }
 
     return result.toOwnedSlice();
+}
+
+fn expandTestSuites(allocator: std.mem.Allocator, tests: []TestType) ![]TestType {
+    var result = compat.ArrayList(TestType).init(allocator);
+    defer result.deinit();
+
+    for (tests) |test_type| {
+        switch (test_type) {
+            .all => {
+                // Add all available tests
+                const all_tests = [_]TestType{ .frequency, .block_frequency, .poker, .overlapping_sequency, .runs, .run_distribution, .longest_runs, .binary_derivative, .autocorrelation, .rank, .cumulative_sums, .approximate_entropy, .universal, .dft, .overlapping_template, .non_overlapping_template, .random_excursions, .random_excursions_variant, .serial, .linear_complexity };
+                for (all_tests) |t| {
+                    try result.append(t);
+                }
+            },
+            .gmt0005 => {
+                // GMT0005 test suite
+                const gmt_tests = [_]TestType{ .frequency, .block_frequency, .poker, .overlapping_sequency, .runs, .run_distribution, .longest_runs, .binary_derivative, .autocorrelation, .rank, .cumulative_sums, .approximate_entropy, .universal, .dft };
+                for (gmt_tests) |t| {
+                    try result.append(t);
+                }
+            },
+            .nist800 => {
+                // NIST SP800-22r1 test suite
+                const nist_tests = [_]TestType{ .overlapping_template, .non_overlapping_template, .random_excursions, .random_excursions_variant, .serial };
+                for (nist_tests) |t| {
+                    try result.append(t);
+                }
+            },
+            else => {
+                // Individual test - add as is
+                try result.append(test_type);
+            },
+        }
+    }
+
+    return result.toOwnedSlice();
+}
+
+fn testTypesToStrings(allocator: std.mem.Allocator, tests: []TestType) ![][]const u8 {
+    var result = try allocator.alloc([]const u8, tests.len);
+    for (tests, 0..) |test_type, i| {
+        result[i] = test_type.toString();
+    }
+    return result;
 }
 
 fn outputConsole(results: []TestResult, options: Options) void {
@@ -245,14 +334,27 @@ fn printHelp() void {
         \\    -l, --limit SIZE        Limit data size (in bits)
         \\
         \\AVAILABLE TESTS:
-        \\    all, frequency, block_frequency, runs, longest_runs, rank, dft,
-        \\    poker, autocorrelation, cumulative_sums, approximate_entropy,
-        \\    random_excursions, random_excursions_variant, serial,
-        \\    linear_complexity, overlapping_template, non_overlapping_template, universal
+        \\    all                     - Run all available tests
+        \\    NIST800, GMT0005        - Run specific test suites
+        \\    Individual tests:
+        \\      frequency, block_frequency, runs, longest_runs, rank, dft, poker,
+        \\      autocorrelation, cumulative_sums, approximate_entropy, random_excursions,
+        \\      random_excursions_variant, serial, linear_complexity, overlapping_template,
+        \\      non_overlapping_template, universal, binary_derivative, run_distribution,
+        \\      overlapping_sequency
+        \\
+        \\TEST SUITES:
+        \\    GMT0005: frequency, block_frequency, poker, overlapping_sequency, runs, 
+        \\             run_distribution, longest_runs, binary_derivative, autocorrelation,
+        \\             rank, cumulative_sums, approximate_entropy, universal, dft
+        \\    NIST800: overlapping_template, non_overlapping_template, random_excursions,
+        \\             random_excursions_variant, serial
         \\
         \\EXAMPLES:
         \\    zsts data.txt                                   # Run all tests on data.txt
         \\    zsts -t frequency,runs data.txt                 # Run specific tests
+        \\    zsts -t GMT0005 data.txt                        # Run GMT0005 test suite
+        \\    zsts -t NIST800,frequency data.txt              # Run NIST800 suite + frequency test
         \\    zsts --batch -f json -o results.json *.txt      # Batch mode with JSON output
         \\    zsts -V -f csv data1.txt data2.txt              # Verbose mode with CSV output
     ;
@@ -305,7 +407,9 @@ pub fn main() !void {
                     std.debug.print("Error: --tests requires a value\n", .{});
                     return error.MissingTestsArgument;
                 }
-                options.tests_to_run = try parseTestTypes(allocator, args[i]);
+                const parsed_tests = try parseTestTypes(allocator, args[i]);
+                defer allocator.free(parsed_tests);
+                options.tests_to_run = try expandTestSuites(allocator, parsed_tests);
             } else if (std.mem.eql(u8, arg, "-l") or std.mem.eql(u8, arg, "--limit")) {
                 i += 1;
                 if (i >= args.len) {
@@ -374,6 +478,11 @@ pub fn main() !void {
     } else {
         options.input_files = input_files.items();
         options.batch_mode = input_files.items().len > 1 or options.batch_mode;
+    }
+
+    // Expand test suites if not already done
+    if (options.tests_to_run.len == 1 and options.tests_to_run[0] == .all) {
+        options.tests_to_run = try expandTestSuites(allocator, options.tests_to_run);
     }
 
     if (options.verbose) {
@@ -491,7 +600,9 @@ fn runLegacyMode(allocator: std.mem.Allocator, options: Options) !void {
 
     var detect_suite = try suite.DetectSuite.init(allocator);
 
-    try detect_suite.registerAll(param);
+    const test_strings = try testTypesToStrings(allocator, options.tests_to_run);
+    defer allocator.free(test_strings);
+    try detect_suite.registerSelected(param, test_strings);
 
     const level = if (options.verbose) detect.PrintLevel.detail else detect.PrintLevel.summary;
     try detect_suite.runAll(&input, level);

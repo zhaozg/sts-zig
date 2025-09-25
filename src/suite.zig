@@ -37,65 +37,120 @@ pub const DetectSuite = struct {
     }
 
     pub fn registerAll(self: *DetectSuite, param: detect.DetectParam) !void {
-        const freq = try frequency.frequencyDetectStatDetect(self.allocator, param);
-        try self.detects.append(freq);
+        // Register all tests - kept for backward compatibility
+        return self.registerSelected(param, null);
+    }
 
-        const block_freq = try block_frequency.blockFrequencyDetectStatDetect(self.allocator, param, 10);
-        try self.detects.append(block_freq);
+    pub fn registerSelected(self: *DetectSuite, param: detect.DetectParam, selected_tests: ?[][]const u8) !void {
+        const shouldInclude = struct {
+            fn call(test_name: []const u8, tests: ?[][]const u8) bool {
+                if (tests == null) return true; // Include all if no filter
+                for (tests.?) |selected| {
+                    if (std.mem.eql(u8, test_name, selected)) return true;
+                }
+                return false;
+            }
+        }.call;
 
-        const pok = try poker.pokerDetectStatDetect(self.allocator, param, 4);
-        try self.detects.append(pok);
+        if (shouldInclude("frequency", selected_tests)) {
+            const freq = try frequency.frequencyDetectStatDetect(self.allocator, param);
+            try self.detects.append(freq);
+        }
 
-        const overseq = try overlappingseq.overlappingSequencyDetectStatDetect(self.allocator, param, 3);
-        try self.detects.append(overseq);
+        if (shouldInclude("block_frequency", selected_tests)) {
+            const block_freq = try block_frequency.blockFrequencyDetectStatDetect(self.allocator, param, 10);
+            try self.detects.append(block_freq);
+        }
 
-        const run = try runs.runsDetectStatDetect(self.allocator, param);
-        try self.detects.append(run);
+        if (shouldInclude("poker", selected_tests)) {
+            const pok = try poker.pokerDetectStatDetect(self.allocator, param, 4);
+            try self.detects.append(pok);
+        }
 
-        const run_dist = try runDist.runDistributionDetectStatDetect(self.allocator, param);
-        try self.detects.append(run_dist);
+        if (shouldInclude("overlapping_sequency", selected_tests)) {
+            const overseq = try overlappingseq.overlappingSequencyDetectStatDetect(self.allocator, param, 3);
+            try self.detects.append(overseq);
+        }
 
-        const longest = try longestRun.longestRunDetectStatDetect(self.allocator, param);
-        try self.detects.append(longest);
+        if (shouldInclude("runs", selected_tests)) {
+            const run = try runs.runsDetectStatDetect(self.allocator, param);
+            try self.detects.append(run);
+        }
 
-        const binary = try binaryDerivative.binaryDerivativeDetectStatDetect(self.allocator, param, 3);
-        try self.detects.append(binary);
+        if (shouldInclude("run_distribution", selected_tests)) {
+            const run_dist = try runDist.runDistributionDetectStatDetect(self.allocator, param);
+            try self.detects.append(run_dist);
+        }
 
-        const corr = try autocorrelation.autocorrelationDetectStatDetect(self.allocator, param, 1);
-        try self.detects.append(corr);
+        if (shouldInclude("longest_runs", selected_tests)) {
+            const longest = try longestRun.longestRunDetectStatDetect(self.allocator, param);
+            try self.detects.append(longest);
+        }
 
-        const rnk = try rank.rankDetectStatDetect(self.allocator, param);
-        try self.detects.append(rnk);
+        if (shouldInclude("binary_derivative", selected_tests)) {
+            const binary = try binaryDerivative.binaryDerivativeDetectStatDetect(self.allocator, param, 3);
+            try self.detects.append(binary);
+        }
 
-        const sumsums = try cumulativeSums.cumulativeSumsDetectStatDetect(self.allocator, param);
-        try self.detects.append(sumsums);
+        if (shouldInclude("autocorrelation", selected_tests)) {
+            const corr = try autocorrelation.autocorrelationDetectStatDetect(self.allocator, param, 1);
+            try self.detects.append(corr);
+        }
 
-        const approx = try approximateEntropy.approxEntropyDetectStatDetect(self.allocator, param, 2);
-        try self.detects.append(approx);
+        if (shouldInclude("rank", selected_tests)) {
+            const rnk = try rank.rankDetectStatDetect(self.allocator, param);
+            try self.detects.append(rnk);
+        }
 
-        const linear = try linearComplexity.linearComplexityDetectStatDetect(self.allocator, param);
-        try self.detects.append(linear);
+        if (shouldInclude("cumulative_sums", selected_tests)) {
+            const sumsums = try cumulativeSums.cumulativeSumsDetectStatDetect(self.allocator, param);
+            try self.detects.append(sumsums);
+        }
 
-        const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param, 6, 10 * (1 << 6));
-        try self.detects.append(univ);
+        if (shouldInclude("approximate_entropy", selected_tests)) {
+            const approx = try approximateEntropy.approxEntropyDetectStatDetect(self.allocator, param, 2);
+            try self.detects.append(approx);
+        }
 
-        const dft_detect = try dft.dftDetectStatDetect(self.allocator, param);
-        try self.detects.append(dft_detect);
+        if (shouldInclude("linear_complexity", selected_tests)) {
+            const linear = try linearComplexity.linearComplexityDetectStatDetect(self.allocator, param);
+            try self.detects.append(linear);
+        }
 
-        const non_overlapping = try nonOverlappingTemplate.nonOverlappingTemplateDetectStatDetect(self.allocator, param);
-        try self.detects.append(non_overlapping);
+        if (shouldInclude("universal", selected_tests)) {
+            const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param, 6, 10 * (1 << 6));
+            try self.detects.append(univ);
+        }
 
-        const overlapping = try overlappingTemplate.overlappingTemplateDetectStatDetect(self.allocator, param);
-        try self.detects.append(overlapping);
+        if (shouldInclude("dft", selected_tests)) {
+            const dft_detect = try dft.dftDetectStatDetect(self.allocator, param);
+            try self.detects.append(dft_detect);
+        }
 
-        const serial_detect = try serial.serialDetectStatDetect(self.allocator, param);
-        try self.detects.append(serial_detect);
+        if (shouldInclude("non_overlapping_template", selected_tests)) {
+            const non_overlapping = try nonOverlappingTemplate.nonOverlappingTemplateDetectStatDetect(self.allocator, param);
+            try self.detects.append(non_overlapping);
+        }
 
-        const random_excursions = try randomExcursions.randomExcursionsDetectStatDetect(self.allocator, param);
-        try self.detects.append(random_excursions);
+        if (shouldInclude("overlapping_template", selected_tests)) {
+            const overlapping = try overlappingTemplate.overlappingTemplateDetectStatDetect(self.allocator, param);
+            try self.detects.append(overlapping);
+        }
 
-        const random_excursions_variant = try randomExcursionsVarariant.randomExcursionsVariantDetectStatDetect(self.allocator, param);
-        try self.detects.append(random_excursions_variant);
+        if (shouldInclude("serial", selected_tests)) {
+            const serial_detect = try serial.serialDetectStatDetect(self.allocator, param);
+            try self.detects.append(serial_detect);
+        }
+
+        if (shouldInclude("random_excursions", selected_tests)) {
+            const random_excursions = try randomExcursions.randomExcursionsDetectStatDetect(self.allocator, param);
+            try self.detects.append(random_excursions);
+        }
+
+        if (shouldInclude("random_excursions_variant", selected_tests)) {
+            const random_excursions_variant = try randomExcursionsVarariant.randomExcursionsVariantDetectStatDetect(self.allocator, param);
+            try self.detects.append(random_excursions_variant);
+        }
     }
 
     pub fn runAll(self: *DetectSuite, bits: *const io.BitInputStream, level: detect.PrintLevel) !void {
