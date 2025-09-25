@@ -27,7 +27,7 @@ fn non_veerlapping_template_print(self: *detect.StatDetect, result: *const detec
         return;
     }
 
-    const results = @as(*NonOverlappingTemplateResult, @alignCast(@ptrCast(result.extra.?)));
+    const results = @as(*NonOverlappingTemplateResult, @ptrCast(@alignCast(result.extra.?)));
     var passed: usize = 0;
     for (0..results.passed.len) |i| {
         if (results.passed[i]) {

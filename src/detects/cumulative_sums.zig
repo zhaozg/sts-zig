@@ -22,7 +22,7 @@ fn cumulative_sums_print(self: *detect.StatDetect, result: *const detect.DetectR
         return;
     }
 
-    const results = @as(*CumulativeSumsResult, @alignCast(@ptrCast(result.extra.?)));
+    const results = @as(*CumulativeSumsResult, @ptrCast(@alignCast(result.extra.?)));
     var passed: usize = 0;
     for (0..results.passed.len) |i| {
         if (results.passed[i]) {

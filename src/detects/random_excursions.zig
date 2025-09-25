@@ -28,7 +28,7 @@ fn random_excursions_print(self: *detect.StatDetect, result: *const detect.Detec
         return;
     }
 
-    const results = @as(*RandomExcursionsResult, @alignCast(@ptrCast(result.extra.?)));
+    const results = @as(*RandomExcursionsResult, @ptrCast(@alignCast(result.extra.?)));
     var passed: usize = 0;
     for (0..results.passed.len) |i| {
         if (results.passed[i]) {
@@ -81,7 +81,7 @@ fn random_excursions_init(self: *detect.StatDetect, param: *const detect.DetectP
 }
 
 fn random_excursions_destroy(self: *detect.StatDetect) void {
-    const state: *RandomExcursionsState = @alignCast(@ptrCast(self.state.?));
+    const state: *RandomExcursionsState = @ptrCast(@alignCast(self.state.?));
     self.allocator.destroy(state);
 }
 
@@ -189,7 +189,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
         }
     }
 
-    const state: *RandomExcursionsState = @alignCast(@ptrCast(self.state.?));
+    const state: *RandomExcursionsState = @ptrCast(@alignCast(self.state.?));
 
     // 准备结果存储
     const result = allocator.create(RandomExcursionsResult) catch |err| {
