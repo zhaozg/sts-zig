@@ -18,7 +18,7 @@ fn longest_run_print(self: *detect.StatDetect, result: *const detect.DetectResul
         return;
     }
 
-    const results = @as(*LongestRunResult, @alignCast(@ptrCast(result.extra.?)));
+    const results = @as(*LongestRunResult, @ptrCast(@alignCast(result.extra.?)));
     var passed: usize = 0;
     for (0..results.passed.len) |i| {
         if (results.passed[i]) {

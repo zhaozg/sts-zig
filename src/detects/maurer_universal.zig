@@ -22,7 +22,7 @@ fn maurer_universal_init(self: *detect.StatDetect, param: *const detect.DetectPa
 fn maurer_universal_destroy(self: *detect.StatDetect) void {
     // Free the allocated MaurerUniversalParam
     if (self.param.extra) |extra| {
-        self.allocator.destroy(@as(*MaurerUniversalParam, @alignCast(@ptrCast(extra))));
+        self.allocator.destroy(@as(*MaurerUniversalParam, @ptrCast(@alignCast(extra))));
     }
     // Free the allocated DetectParam
     self.allocator.destroy(self.param);
@@ -36,7 +36,7 @@ fn maurer_universal_iterate(self: *detect.StatDetect, bits: *const io.BitInputSt
     const n = self.param.n;
 
     if (self.param.extra) |extra| {
-        const maruer: *MaurerUniversalParam = @alignCast(@ptrCast(extra));
+        const maruer: *MaurerUniversalParam = @ptrCast(@alignCast(extra));
         L = maruer.L;
         Q = maruer.Q;
     }

@@ -36,7 +36,6 @@ test "OverlappingTemplateMatch" {
     try std.testing.expectApproxEqAbs(result.q_value, 0.159037, tolerance);
 }
 
-
 test "NonOverlappingTemplateMatch" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();

@@ -22,7 +22,7 @@ fn random_excursions_variant_print(self: *detect.StatDetect, result: *const dete
         return;
     }
 
-    const results = @as(*RandomExcursionsVariantResult, @alignCast(@ptrCast(result.extra.?)));
+    const results = @as(*RandomExcursionsVariantResult, @ptrCast(@alignCast(result.extra.?)));
     var passed: usize = 0;
     for (0..results.passed.len) |i| {
         if (results.passed[i]) {
@@ -52,7 +52,7 @@ fn random_excursions_variant_init(self: *detect.StatDetect, param: *const detect
 
 fn random_excursions_variant_destroy(self: *detect.StatDetect) void {
     if (self.state == null) return;
-    const result: *RandomExcursionsVariantResult = @alignCast(@ptrCast(self.state.?));
+    const result: *RandomExcursionsVariantResult = @ptrCast(@alignCast(self.state.?));
     self.allocator.destroy(result);
 }
 
