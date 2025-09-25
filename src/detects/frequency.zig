@@ -63,7 +63,8 @@ fn frequency_metrics(self: *detect.StatDetect, result: *const detect.DetectResul
 }
 
 fn frequency_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn frequency_summary(self: *detect.StatDetect, result: *const detect.DetectResult) void {

@@ -127,8 +127,12 @@ fn poker_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detec
 }
 
 fn poker_destroy(self: *detect.StatDetect) void {
-    const param: *PokerParam = @ptrCast(self.param.extra);
-    _ = param;
+    if (self.param.extra) |extra| {
+        const param: *PokerParam = @ptrCast(@alignCast(extra));
+        self.allocator.destroy(param);
+    }
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 const PokerParam = struct {

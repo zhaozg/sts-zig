@@ -67,9 +67,12 @@ fn runs_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
 }
 
 fn runs_destroy(self: *detect.StatDetect) void {
-    const Param: *RunsParam = @ptrCast(self.param.extra);
-    _ = Param;
-    // 清理
+    if (self.param.extra) |extra| {
+        const param: *RunsParam = @ptrCast(@alignCast(extra));
+        self.allocator.destroy(param);
+    }
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 const RunsParam = struct {

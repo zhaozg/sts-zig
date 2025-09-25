@@ -15,7 +15,12 @@ fn block_frequency_init(self: *detect.StatDetect, param: *const detect.DetectPar
 }
 
 fn block_frequency_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    if (self.param.extra) |extra| {
+        const param: *BlockFrequencyParam = @ptrCast(@alignCast(extra));
+        self.allocator.destroy(param);
+    }
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn block_frequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
