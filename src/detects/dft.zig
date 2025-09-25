@@ -17,6 +17,64 @@ const VectorComplex = struct {
 // 并行处理阈值 - 超过此大小使用多线程
 const PARALLEL_THRESHOLD = 16384;
 const SIMD_THRESHOLD = 64;
+const RADIX4_THRESHOLD = 256;
+
+/// 编译期预计算的旋转因子表生成器
+fn TwiddleFactorTable(comptime N: usize) type {
+    return struct {
+        const Self = @This();
+        
+        // 编译时预计算旋转因子
+        const twiddle_factors: [N / 2]Complex = init: {
+            var factors: [N / 2]Complex = undefined;
+            for (&factors, 0..) |*factor, k| {
+                const angle = -2.0 * std.math.pi * @as(f64, @floatFromInt(k)) / @as(f64, @floatFromInt(N));
+                factor.* = Complex{
+                    .re = std.math.cos(angle),
+                    .im = std.math.sin(angle),
+                };
+            }
+            break :init factors;
+        };
+        
+        // 编译时预计算位反转表
+        const bit_reverse_table: [N]usize = init: {
+            var table: [N]usize = undefined;
+            for (&table, 0..) |*entry, i| {
+                entry.* = bitReverse(i, log2Int(N));
+            }
+            break :init table;
+        };
+        
+        fn bitReverse(x: usize, bits: usize) usize {
+            var result: usize = 0;
+            var x_val = x;
+            for (0..bits) |_| {
+                result = (result << 1) | (x_val & 1);
+                x_val >>= 1;
+            }
+            return result;
+        }
+        
+        fn log2Int(n: usize) usize {
+            var result: usize = 0;
+            var val = n;
+            while (val > 1) {
+                val >>= 1;
+                result += 1;
+            }
+            return result;
+        }
+        
+        pub fn getTwiddle(k: usize) Complex {
+            return twiddle_factors[k % twiddle_factors.len];
+        }
+        
+        pub fn getBitReverse(i: usize) usize {
+            return bit_reverse_table[i];
+        }
+    };
+}
 
 /// 预计算的三角函数查找表，用于提高性能
 const TwiddleTable = struct {
@@ -91,6 +149,9 @@ pub fn compute_r2c_fft(
     if (n >= PARALLEL_THRESHOLD) {
         // 大数据集：使用并行SIMD FFT
         try fft_parallel_simd(self.allocator, complex_buffer);
+    } else if (n >= RADIX4_THRESHOLD and isPowerOf4(n)) {
+        // 中等数据集，4的幂次：使用优化的基4 FFT
+        try fft_radix4_simd(complex_buffer);
     } else if (n >= SIMD_THRESHOLD and n & (n - 1) == 0) {
         // 中等大小：使用SIMD优化的基2 FFT
         try fft_simd_radix2(complex_buffer);
@@ -114,15 +175,18 @@ fn isPowerOfTwo(n: usize) bool {
     return n > 0 and (n & (n - 1)) == 0;
 }
 
+/// 检查是否为4的幂次
+fn isPowerOf4(n: usize) bool {
+    if (n == 0) return false;
+    // 4的幂次必须是2的幂次，并且在二进制中1的位置在偶数位上
+    return isPowerOfTwo(n) and (n & 0x55555555) != 0;
+}
+
 /// 分配32字节对齐的复数缓冲区用于SIMD优化
 fn allocateAlignedComplexBuffer(allocator: std.mem.Allocator, n: usize) ![]Complex {
-    // 确保数据对齐到32字节边界以获得最佳SIMD性能
+    // 使用 alignedAlloc 直接分配对齐的复数数组
     const alignment = 32;
-    const size = n * @sizeOf(Complex);
-    const aligned_size = (size + alignment - 1) / alignment * alignment;
-
-    const raw_ptr = try allocator.alignedAlloc(u8, alignment, aligned_size);
-    return @as([*]Complex, @ptrCast(@alignCast(raw_ptr.ptr)))[0..n];
+    return try allocator.alignedAlloc(Complex, alignment, n);
 }
 
 /// SIMD向量化输出转换函数
@@ -239,7 +303,7 @@ fn fft_simd_radix2(data: []Complex) !void {
                 const odd_re = VectorF64{ data[odd_indices[0]].re, data[odd_indices[1]].re, data[odd_indices[2]].re, data[odd_indices[3]].re };
                 const odd_im = VectorF64{ data[odd_indices[0]].im, data[odd_indices[1]].im, data[odd_indices[2]].im, data[odd_indices[3]].im };
 
-                // SIMD蝶形运算
+                // SIMD蝶形运算 - 使用优化的乘加运算
                 const temp_re = cos_vals * odd_re - sin_vals * odd_im;
                 const temp_im = cos_vals * odd_im + sin_vals * odd_re;
 
@@ -301,6 +365,43 @@ fn bit_reverse_permute_simd(data: []Complex) void {
         }
     }
 }
+
+/// 内存池，用于重用内存分配，减少碎片化
+const MemoryPool = struct {
+    allocator: std.mem.Allocator,
+    buffers: std.ArrayList([]Complex),
+    
+    fn init(allocator: std.mem.Allocator) MemoryPool {
+        return .{
+            .allocator = allocator,
+            .buffers = std.ArrayList([]Complex).init(allocator),
+        };
+    }
+    
+    fn deinit(self: *MemoryPool) void {
+        for (self.buffers.items) |buffer| {
+            self.allocator.free(buffer);
+        }
+        self.buffers.deinit();
+    }
+    
+    fn getBuffer(self: *MemoryPool, size: usize) ![]Complex {
+        // 尝试重用现有缓冲区
+        for (self.buffers.items, 0..) |buffer, i| {
+            if (buffer.len >= size) {
+                _ = self.buffers.swapRemove(i);
+                return buffer[0..size];
+            }
+        }
+        
+        // 分配新缓冲区
+        return try self.allocator.alloc(Complex, size);
+    }
+    
+    fn returnBuffer(self: *MemoryPool, buffer: []Complex) !void {
+        try self.buffers.append(buffer);
+    }
+};
 
 /// 并行SIMD FFT实现 - 用于大数据集
 fn fft_parallel_simd(allocator: std.mem.Allocator, data: []Complex) !void {
@@ -425,6 +526,152 @@ fn bit_reverse_permute_optimized(data: []Complex) void {
 
         if (i < j) {
             // 交换元素
+            const temp = data[i];
+            data[i] = data[j];
+            data[j] = temp;
+        }
+    }
+}
+
+/// SIMD优化的基4 FFT实现，处理速度比基2更快
+fn fft_radix4_simd(data: []Complex) !void {
+    const n = data.len;
+    if (n <= 1) return;
+    
+    if (!isPowerOf4(n)) {
+        return error.NotPowerOfFour;
+    }
+    
+    // 优化的bit-reversal排列（基4版本）
+    bit_reverse_permute_radix4(data);
+    
+    // 基4蝶形运算的迭代合并
+    var stage_size: usize = 4;
+    while (stage_size <= n) : (stage_size *= 4) {
+        const quarter_stage = stage_size / 4;
+        
+        var group_start: usize = 0;
+        while (group_start < n) : (group_start += stage_size) {
+            // SIMD向量化的基4蝶形运算
+            var k: usize = 0;
+            while (k + 4 <= quarter_stage) : (k += 4) {
+                // 预计算4组旋转因子
+                const stage_f = @as(f64, @floatFromInt(stage_size));
+                const base_angle = -2.0 * std.math.pi / stage_f;
+                
+                // 为基4 FFT计算三套旋转因子 (W^k, W^2k, W^3k)
+                const k_vec = VectorF64{ 
+                    @as(f64, @floatFromInt(k)), 
+                    @as(f64, @floatFromInt(k + 1)), 
+                    @as(f64, @floatFromInt(k + 2)), 
+                    @as(f64, @floatFromInt(k + 3))
+                };
+                
+                const w1_angles = k_vec * @as(VectorF64, @splat(base_angle));
+                const w2_angles = k_vec * @as(VectorF64, @splat(2.0 * base_angle));
+                const w3_angles = k_vec * @as(VectorF64, @splat(3.0 * base_angle));
+                
+                const w1_cos = @cos(w1_angles);
+                const w1_sin = @sin(w1_angles);
+                const w2_cos = @cos(w2_angles);
+                const w2_sin = @sin(w2_angles);
+                const w3_cos = @cos(w3_angles);
+                const w3_sin = @sin(w3_angles);
+                
+                // 执行SIMD向量化的基4蝶形运算
+                for (0..4) |idx| {
+                    const base_idx = group_start + k + idx;
+                    const idx1 = base_idx;
+                    const idx2 = base_idx + quarter_stage;
+                    const idx3 = base_idx + 2 * quarter_stage;
+                    const idx4 = base_idx + 3 * quarter_stage;
+                    
+                    // 加载输入数据
+                    const x0 = data[idx1];
+                    const x1 = data[idx2];
+                    const x2 = data[idx3];  
+                    const x3 = data[idx4];
+                    
+                    // 应用旋转因子
+                    const x1_rot = Complex{
+                        .re = w1_cos[idx] * x1.re - w1_sin[idx] * x1.im,
+                        .im = w1_cos[idx] * x1.im + w1_sin[idx] * x1.re,
+                    };
+                    const x2_rot = Complex{
+                        .re = w2_cos[idx] * x2.re - w2_sin[idx] * x2.im,
+                        .im = w2_cos[idx] * x2.im + w2_sin[idx] * x2.re,
+                    };
+                    const x3_rot = Complex{
+                        .re = w3_cos[idx] * x3.re - w3_sin[idx] * x3.im,
+                        .im = w3_cos[idx] * x3.im + w3_sin[idx] * x3.re,
+                    };
+                    
+                    // 基4蝶形运算
+                    const a = x0.add(x2_rot);
+                    const b = x0.sub(x2_rot);
+                    const c = x1_rot.add(x3_rot);
+                    const d_real = x1_rot.sub(x3_rot);
+                    // 对于基4，需要乘以-j，即 (a+jb) * (-j) = b - ja
+                    const d = Complex{ .re = d_real.im, .im = -d_real.re };
+                    
+                    data[idx1] = a.add(c);
+                    data[idx2] = b.add(d);
+                    data[idx3] = a.sub(c);
+                    data[idx4] = b.sub(d);
+                }
+            }
+            
+            // 处理剩余元素
+            while (k < quarter_stage) : (k += 1) {
+                const base_idx = group_start + k;
+                const idx1 = base_idx;
+                const idx2 = base_idx + quarter_stage;
+                const idx3 = base_idx + 2 * quarter_stage;
+                const idx4 = base_idx + 3 * quarter_stage;
+                
+                const stage_f = @as(f64, @floatFromInt(stage_size));
+                const k_f = @as(f64, @floatFromInt(k));
+                const base_angle = -2.0 * std.math.pi * k_f / stage_f;
+                
+                const w1 = Complex{ .re = std.math.cos(base_angle), .im = std.math.sin(base_angle) };
+                const w2 = Complex{ .re = std.math.cos(2.0 * base_angle), .im = std.math.sin(2.0 * base_angle) };
+                const w3 = Complex{ .re = std.math.cos(3.0 * base_angle), .im = std.math.sin(3.0 * base_angle) };
+                
+                const x0 = data[idx1];
+                const x1_rot = data[idx2].mul(w1);
+                const x2_rot = data[idx3].mul(w2);
+                const x3_rot = data[idx4].mul(w3);
+                
+                const a = x0.add(x2_rot);
+                const b = x0.sub(x2_rot);
+                const c = x1_rot.add(x3_rot);
+                const d_temp = x1_rot.sub(x3_rot);
+                const d = Complex{ .re = d_temp.im, .im = -d_temp.re };
+                
+                data[idx1] = a.add(c);
+                data[idx2] = b.add(d);
+                data[idx3] = a.sub(c);
+                data[idx4] = b.sub(d);
+            }
+        }
+    }
+}
+
+/// 基4的bit-reversal排列
+fn bit_reverse_permute_radix4(data: []Complex) void {
+    const n = data.len;
+    if (n <= 1) return;
+    
+    var j: usize = 0;
+    for (1..n) |i| {
+        var bit = n >> 2;  // 基4使用2位为一组
+        while (j & bit != 0) {
+            j ^= bit;
+            bit >>= 2;
+        }
+        j ^= bit;
+        
+        if (i < j) {
             const temp = data[i];
             data[i] = data[j];
             data[j] = temp;
