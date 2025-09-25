@@ -53,9 +53,9 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_nist_tests.step);
     b.installArtifact(nist_tests);
 
-    // Math accuracy tests
+    // Math tests
     const math_mod = b.createModule(.{
-        .root_source_file = b.path("test/math_accuracy_test.zig"),
+        .root_source_file = b.path("test/math_test.zig"),
         .target = target,
         .optimize = optimize,
     });
