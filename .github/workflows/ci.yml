@@ -30,5 +30,12 @@ jobs:
     - name: Run build tests
       run: zig build test
 
+    - name: Check code style
+      run: |
+        zig fmt --check src
+        zig fmt --check tools
+
     - name: Run check with data.sha1
-      run: zig-out/bin/zsts data/data.sha1
+      run: |
+        zig build -Doptimize=ReleaseFast
+        zig-out/bin/zsts data/data.sha1
