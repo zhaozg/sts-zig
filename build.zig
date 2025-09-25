@@ -133,4 +133,21 @@ pub fn build(b: *std.Build) void {
     }
     datagen_step.dependOn(&run_datagen.step);
     b.installArtifact(datagen_exe);
+
+    // FFT Performance test
+    const fft_perf_mod = b.createModule(.{
+        .root_source_file = b.path("tools/fft_performance_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const fft_perf_exe = b.addExecutable(.{
+        .name = "fft_perf",
+        .root_module = fft_perf_mod,
+    });
+    fft_perf_exe.root_module.addImport("zsts", zsts_module);
+
+    const fft_perf_step = b.step("fft-perf", "Run FFT performance tests");
+    const run_fft_perf = b.addRunArtifact(fft_perf_exe);
+    fft_perf_step.dependOn(&run_fft_perf.step);
+    b.installArtifact(fft_perf_exe);
 }
