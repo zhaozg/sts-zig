@@ -13,7 +13,12 @@ fn overlapping_sequency_init(self: *detect.StatDetect, param: *const detect.Dete
 }
 
 fn overlapping_sequency_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    if (self.param.extra) |extra| {
+        const param: *OverlappingSequencyParam = @ptrCast(@alignCast(extra));
+        self.allocator.destroy(param);
+    }
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn overlapping_sequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
