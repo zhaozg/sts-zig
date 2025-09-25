@@ -115,26 +115,6 @@ pub fn build(b: *std.Build) void {
     benchmark_step.dependOn(&run_benchmark.step);
     b.installArtifact(benchmark_exe);
 
-    // Enhanced CLI tool
-    const cli_mod = b.createModule(.{
-        .root_source_file = b.path("tools/enhanced_cli.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    const cli_exe = b.addExecutable(.{
-        .name = "cli",
-        .root_module = cli_mod,
-    });
-    cli_exe.root_module.addImport("zsts", zsts_module);
-
-    const cli_step = b.step("cli", "Run enhanced CLI");
-    const run_cli = b.addRunArtifact(cli_exe);
-    if (b.args) |args| {
-        run_cli.addArgs(args);
-    }
-    cli_step.dependOn(&run_cli.step);
-    b.installArtifact(cli_exe);
-
     // Data generator tool
     const datagen_mod = b.createModule(.{
         .root_source_file = b.path("tools/data_generator.zig"),
