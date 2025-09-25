@@ -46,6 +46,7 @@ fn overlapping_sequency_iterate(self: *detect.StatDetect, bits: *const io.BitInp
     var i: usize = 0;
 
     while (bits.fetchBit()) |b| {
+        if (i >= arr.len) break;  // Prevent array bounds overflow
         arr[i] = b;
         i += 1;
     }

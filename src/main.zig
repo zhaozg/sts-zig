@@ -498,9 +498,9 @@ fn runLegacyMode(allocator: std.mem.Allocator, options: Options) !void {
 fn runTestsOnFile(allocator: std.mem.Allocator, results: *compat.ArrayList(TestResult), content: []const u8, file_path: []const u8, options: Options) !void {
     const byteStream = io.createMemoryStream(allocator, content);
     const input = if (options.ascii)
-        io.BitInputStream.fromAsciiInputStreamWithLength(allocator, byteStream, content.len * 8)
+        io.BitInputStream.fromAsciiInputStreamWithLength(allocator, byteStream, @min(content.len * 8, options.blocksize))
     else
-        io.BitInputStream.fromByteInputStreamWithLength(allocator, byteStream, content.len * 8);
+        io.BitInputStream.fromByteInputStreamWithLength(allocator, byteStream, @min(content.len * 8, options.blocksize));
 
     defer input.close();
 
@@ -509,7 +509,7 @@ fn runTestsOnFile(allocator: std.mem.Allocator, results: *compat.ArrayList(TestR
 
     const param = detect.DetectParam{
         .type = detect.DetectType.General,
-        .n = if (options.ascii) content.len * 8 else content.len,
+        .n = @min(content.len * 8, options.blocksize),  // Use smaller of content size or blocksize
         .extra = null,
     };
 
