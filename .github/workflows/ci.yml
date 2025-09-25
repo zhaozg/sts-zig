@@ -16,11 +16,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup dependencies
-      run: |
-        # Pure Zig implementation - no external dependencies required
-        echo "Using pure Zig implementation with zero external dependencies"
-
     - name: Setup Zig
       uses: goto-bus-stop/setup-zig@v2
       with:
@@ -34,3 +29,6 @@ jobs:
 
     - name: Run build tests
       run: zig build test
+
+    - name: Run check with data.sha1
+      run: zig-out/bin/zsts data/data.sha1

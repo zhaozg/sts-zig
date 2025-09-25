@@ -13,13 +13,13 @@ pub const DetectType = enum {
     LongestRun,
     BinaryDerivative,
     AutoCorrelation,
-    Autocorrelation,  // Alias for AutoCorrelation 
+    Autocorrelation, // Alias for AutoCorrelation
     Rank,
     CumulativeSums,
     ApproxEntropy,
     LinearComplexity,
     MaurerUniversal,
-    Universal,  // Alias for MaurerUniversal
+    Universal, // Alias for MaurerUniversal
     Dft,
 
     NonOverlappingTemplate,
@@ -30,8 +30,8 @@ pub const DetectType = enum {
 };
 
 pub const DetectParam = struct {
-    type: DetectType,  // 检测类型
-    n: usize,   // 比特数目
+    type: DetectType, // 检测类型
+    n: usize, // 比特数目
 
     // 可扩展更多参数
     extra: ?*anyopaque, // 支持算法特有参数
@@ -60,10 +60,9 @@ pub const PrintLevel = enum {
 
 pub fn detectPrint(self: *StatDetect, result: *const DetectResult, level: PrintLevel) void {
     _ = level;
-    std.debug.print("Test {s:>24}: passed={s}, V={d:>14.6} P={d:<10.6} Q={d:<10.6}\n",
-    .{
+    std.debug.print("Test {s:>24}: passed={s}, V={d:>14.6} P={d:<10.6} Q={d:<10.6}\n", .{
         self.name,
-        if(result.passed) "Yes" else "No ",
+        if (result.passed) "Yes" else "No ",
         result.v_value,
         result.p_value,
         result.q_value,
@@ -102,4 +101,3 @@ pub const StatDetect = struct {
         self._reset.?(self);
     }
 };
-

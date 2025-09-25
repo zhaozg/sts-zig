@@ -8,16 +8,16 @@ pub fn igamc(a: f64, x: f64) f64 {
     if (x < 0.0 or a <= 0.0) {
         return std.math.nan(f64);
     }
-    
+
     if (x == 0.0) {
         return 1.0;
     }
-    
+
     // 对于 x >> a 的情况，使用连分数展开
     if (x > a + 1.0) {
         return igamc_cf(a, x);
     }
-    
+
     // 对于 x <= a + 1 的情况，使用级数展开计算 P(a,x) = γ(a,x)/Γ(a)
     // 然后返回 Q(a,x) = 1 - P(a,x)
     return 1.0 - igam_series(a, x);
@@ -27,12 +27,12 @@ pub fn igamc(a: f64, x: f64) f64 {
 fn igamc_cf(a: f64, x: f64) f64 {
     const max_iterations = 1000;
     const epsilon = std.math.floatEps(f64);
-    
+
     var b = x + 1.0 - a;
     var c = 1.0 / std.math.floatMin(f64);
     var d = 1.0 / b;
     var h = d;
-    
+
     var i: usize = 1;
     while (i <= max_iterations) : (i += 1) {
         const an = -(@as(f64, @floatFromInt(i))) * (@as(f64, @floatFromInt(i)) - a);
@@ -52,7 +52,7 @@ fn igamc_cf(a: f64, x: f64) f64 {
             break;
         }
     }
-    
+
     return std.math.exp(-x + a * std.math.log(f64, std.math.e, x) - gammaln(a)) * h;
 }
 
@@ -60,15 +60,15 @@ fn igamc_cf(a: f64, x: f64) f64 {
 fn igam_series(a: f64, x: f64) f64 {
     const max_iterations = 1000;
     const epsilon = std.math.floatEps(f64);
-    
+
     if (x == 0.0) {
         return 0.0;
     }
-    
+
     var sum = 1.0 / a;
     var del = sum;
     var ap = a;
-    
+
     var n: usize = 1;
     while (n <= max_iterations) : (n += 1) {
         ap += 1.0;
@@ -78,7 +78,7 @@ fn igam_series(a: f64, x: f64) f64 {
             break;
         }
     }
-    
+
     return sum * std.math.exp(-x + a * std.math.log(f64, std.math.e, x) - gammaln(a));
 }
 
@@ -98,19 +98,19 @@ pub fn gammaln(x: f64) f64 {
         9.98436957801957085956266828503e-6,
         1.50563273514931155834849228193e-7,
     };
-    
+
     if (x < 0.5) {
         // 使用反射公式：Γ(z)Γ(1-z) = π/sin(πz)
         return std.math.log(f64, std.math.e, std.math.pi) - std.math.log(f64, std.math.e, std.math.sin(std.math.pi * x)) - gammaln(1.0 - x);
     }
-    
+
     const z = x - 1.0;
     var sum = lanczos_coeff[0];
-    
+
     for (1..lanczos_coeff.len) |i| {
         sum += lanczos_coeff[i] / (z + @as(f64, @floatFromInt(i)));
     }
-    
+
     const t = z + lanczos_g + 0.5;
     return 0.5 * std.math.log(f64, std.math.e, 2.0 * std.math.pi) + (z + 0.5) * std.math.log(f64, std.math.e, t) - t + std.math.log(f64, std.math.e, sum);
 }
@@ -121,7 +121,7 @@ const two_sqrtpi = 1.128379167095512574;
 const one_sqrtpi = 0.564189583547756287;
 
 pub const MACHEP = 1.11022302462515654042363e-16; // 2**-53
-pub const MAXLOG = 7.0978271289338399673222e2;    // ln(2**1024*(1-MACHEP))
+pub const MAXLOG = 7.0978271289338399673222e2; // ln(2**1024*(1-MACHEP))
 pub const MAXNUM = 1.79769313486231570814527e308; // 2**1024*(1-MACHEP)
 
 pub const PI = math.pi;
@@ -129,7 +129,6 @@ pub const SQRT2 = math.sqrt2;
 
 const big = 4.503599627370496e15;
 const biginv = 2.22044604925031308085e-16;
-
 
 pub fn erf(x: f64) f64 {
     if (@abs(x) > 2.2) {
@@ -160,7 +159,7 @@ pub fn erfc(x: f64) f64 {
         }
         return std.math.nan(f64);
     }
-    
+
     if (@abs(x) < 2.2) {
         return 1.0 - erf(x);
     }
@@ -188,12 +187,12 @@ pub fn erfc(x: f64) f64 {
         n += 0.5;
         q1 = q2;
         q2 = b / d;
-        
+
         // Check for convergence or invalid values
         if (std.math.isNan(q2) or std.math.isInf(q2) or d == 0.0) {
             return 0.0; // Return safe value for invalid inputs
         }
-        
+
         if (@abs(q1 - q2) / @abs(q2) <= rel_error) break;
         iterations += 1;
     }
@@ -228,17 +227,10 @@ pub fn chi2_cdf(x: f64, k: usize) f64 {
     return gamma_regularized(k2, x2);
 }
 
-
 // --- cephes_lgam 相关常量和辅助函数 ---
-const A = [_]f64{
-    0.07380429510868722534, -0.008928618946611337, 0.07380429510868722534, -0.013007825212709276, 0.08449074074074074
-};
-const B = [_]f64{
-    -109.47878603242664, -455.3391535341431, -563.553360323574, -704.937469663959, -754.973505034529, -682.187043448273
-};
-const C = [_]f64{
-    -62.295147253049, -208.556784690339, -545.029709549274, -704.937469663959, -755.973505034529, -734.973505034529
-};
+const A = [_]f64{ 0.07380429510868722534, -0.008928618946611337, 0.07380429510868722534, -0.013007825212709276, 0.08449074074074074 };
+const B = [_]f64{ -109.47878603242664, -455.3391535341431, -563.553360323574, -704.937469663959, -754.973505034529, -682.187043448273 };
+const C = [_]f64{ -62.295147253049, -208.556784690339, -545.029709549274, -704.937469663959, -755.973505034529, -734.973505034529 };
 const MAXLGM = 2.556348e305;
 
 fn polevl(x: f64, coef: []const f64) f64 {
@@ -332,8 +324,5 @@ pub fn factorial(n: usize) u64 {
 
 // 泊松分布概率
 pub fn poisson(lambda: f64, k: usize) f64 {
-    return std.math.exp(-lambda)
-        * std.math.pow(f64, lambda, @as(f64, @floatFromInt(k)))
-        / @as(f64, @floatFromInt(factorial(k)));
+    return std.math.exp(-lambda) * std.math.pow(f64, lambda, @as(f64, @floatFromInt(k))) / @as(f64, @floatFromInt(factorial(k)));
 }
-

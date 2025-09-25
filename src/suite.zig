@@ -76,7 +76,7 @@ pub const DetectSuite = struct {
         const linear = try linearComplexity.linearComplexityDetectStatDetect(self.allocator, param);
         try self.detects.append(linear);
 
-        const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param, 6, 10*(1<<6));
+        const univ = try maurerUniversal.maurerUniversalDetectStatDetect(self.allocator, param, 6, 10 * (1 << 6));
         try self.detects.append(univ);
 
         const dft_detect = try dft.dftDetectStatDetect(self.allocator, param);

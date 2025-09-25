@@ -5,7 +5,6 @@ const print = std.debug.print;
 
 /// Performance Benchmarking Suite for Statistical Tests
 /// 性能基准测试套件
-
 const BenchmarkConfig = struct {
     iterations: u32 = 100,
     data_sizes: []const usize = &[_]usize{ 1000, 10000, 100000, 1000000 },

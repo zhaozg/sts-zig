@@ -12,14 +12,13 @@ fn serial_destroy(self: *detect.StatDetect) void {
     _ = self;
 }
 
-
 fn psi2(self: *detect.StatDetect, bit_arr: []u1, n: usize, m: u5) !f64 {
     if (m == 0) return 0.0;
 
     const patterns: u32 = @as(u32, 1) << m;
     var counts = try self.allocator.alloc(usize, patterns);
     defer self.allocator.free(counts);
-    for(0..patterns) |i| {
+    for (0..patterns) |i| {
         counts[i] = 0;
     }
     for (0..n) |i| {
@@ -37,7 +36,6 @@ fn psi2(self: *detect.StatDetect, bit_arr: []u1, n: usize, m: u5) !f64 {
 }
 
 fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
-
     const m = 2;
     const n = self.param.n;
 
@@ -63,7 +61,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
             .errno = null,
         };
     }
-    const psi2_m   = psi2(self, arr, n, m) catch |err| {
+    const psi2_m = psi2(self, arr, n, m) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -74,7 +72,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
         };
     };
 
-    const psi2_m1  = psi2(self, arr, n, m - 1) catch |err| {
+    const psi2_m1 = psi2(self, arr, n, m - 1) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -85,7 +83,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
         };
     };
 
-    const psi2_m2  = psi2(self, arr, n, m - 2) catch |err| {
+    const psi2_m2 = psi2(self, arr, n, m - 2) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,

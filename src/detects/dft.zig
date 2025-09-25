@@ -10,9 +10,9 @@ const Complex = std.math.Complex(f64);
 /// 纯 Zig 实现，使用 std.math.Complex 和迭代算法
 pub fn compute_r2c_fft(
     self: *detect.StatDetect,
-    x: []const f64,          // 输入实数数据
-    fft_out: []f64,          // 输出复数数组 (交替存储 re, im)
-    fft_m: []f64,            // 输出幅值谱
+    x: []const f64, // 输入实数数据
+    fft_out: []f64, // 输出复数数组 (交替存储 re, im)
+    fft_m: []f64, // 输出幅值谱
 ) !void {
     const n = x.len;
     const out_len = n / 2 + 1; // 复数输出的长度
@@ -24,7 +24,7 @@ pub fn compute_r2c_fft(
     // 2. 创建复数输入数组
     const complex_input = try self.allocator.alloc(Complex, n);
     defer self.allocator.free(complex_input);
-    
+
     for (0..n) |i| {
         complex_input[i] = Complex{ .re = x[i], .im = 0.0 };
     }
@@ -32,7 +32,7 @@ pub fn compute_r2c_fft(
     // 3. 执行 FFT
     const complex_output = try self.allocator.alloc(Complex, n);
     defer self.allocator.free(complex_output);
-    
+
     try fft_iterative(complex_input, complex_output);
 
     // 4. 转换为交替存储格式并计算幅值谱
@@ -48,33 +48,33 @@ pub fn compute_r2c_fft(
 /// 相比递归实现具有更好的内存访问模式和栈安全性
 fn fft_iterative(input: []const Complex, output: []Complex) !void {
     const n = input.len;
-    
+
     // 检查是否是 2 的幂次
     if (n & (n - 1) != 0) {
         // 不是 2 的幂次，使用直接 DFT
         try dft(input, output);
         return;
     }
-    
+
     if (n <= 1) {
         if (n == 1) output[0] = input[0];
         return;
     }
-    
+
     // 复制输入到输出缓冲区
     @memcpy(output, input);
-    
+
     // 第一步：bit-reversal 排列
     bit_reverse_permute(output);
-    
+
     // 第二步：迭代合并 (自底向上)
     var stage_size: usize = 2;
     while (stage_size <= n) : (stage_size *= 2) {
         const half_stage = stage_size / 2;
-        
+
         // 计算该阶段的旋转因子
         const theta = -2.0 * std.math.pi / @as(f64, @floatFromInt(stage_size));
-        
+
         // 处理每个大小为 stage_size 的子组
         var group_start: usize = 0;
         while (group_start < n) : (group_start += stage_size) {
@@ -85,10 +85,10 @@ fn fft_iterative(input: []const Complex, output: []Complex) !void {
                     .re = std.math.cos(theta * @as(f64, @floatFromInt(k))),
                     .im = std.math.sin(theta * @as(f64, @floatFromInt(k))),
                 };
-                
+
                 const even_idx = group_start + k;
                 const odd_idx = group_start + k + half_stage;
-                
+
                 // 蝶形运算
                 const temp = w.mul(output[odd_idx]);
                 output[odd_idx] = output[even_idx].sub(temp);
@@ -104,9 +104,9 @@ fn fft_iterative(input: []const Complex, output: []Complex) !void {
 fn bit_reverse_permute(data: []Complex) void {
     const n = data.len;
     if (n <= 1) return;
-    
+
     const bits = @as(u6, @intCast(std.math.log2_int(usize, n)));
-    
+
     for (0..n) |i| {
         const j = bit_reverse(@as(u32, @intCast(i)), bits);
         if (i < j) {
@@ -125,12 +125,12 @@ fn bit_reverse_permute(data: []Complex) void {
 fn bit_reverse(value: u32, bits: u6) u32 {
     var result: u32 = 0;
     var v = value;
-    
+
     for (0..bits) |_| {
         result = (result << 1) | (v & 1);
         v >>= 1;
     }
-    
+
     return result;
 }
 
@@ -138,17 +138,17 @@ fn bit_reverse(value: u32, bits: u6) u32 {
 /// 用于处理非 2 的幂次长度的序列
 fn dft(input: []const Complex, output: []Complex) !void {
     const n = input.len;
-    
+
     for (0..n) |k| {
         output[k] = Complex{ .re = 0.0, .im = 0.0 };
-        
+
         for (0..n) |j| {
             const angle = -2.0 * std.math.pi * @as(f64, @floatFromInt(k)) * @as(f64, @floatFromInt(j)) / @as(f64, @floatFromInt(n));
             const w = Complex{
                 .re = std.math.cos(angle),
                 .im = std.math.sin(angle),
             };
-            
+
             output[k] = output[k].add(input[j].mul(w));
         }
     }
@@ -179,7 +179,7 @@ fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.
     }
 
     // 申请实数存储空间
-    const fft_out = self.allocator.alloc(f64, 2*n+1) catch |err| {
+    const fft_out = self.allocator.alloc(f64, 2 * n + 1) catch |err| {
         return detect.DetectResult{
             .passed = false,
             .v_value = 0.0,
@@ -223,7 +223,7 @@ fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.
     const threshold = std.math.sqrt(2.995732274 * @as(f64, @floatFromInt(n)));
     // 统计低于阈值的峰值数量 N1
     var N1: usize = 0;
-    for (0.. (n / 2)) |k| {
+    for (0..(n / 2)) |k| {
         if (fft_m[k] < threshold) N1 += 1;
     }
 

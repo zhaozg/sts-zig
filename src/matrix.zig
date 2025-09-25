@@ -26,7 +26,7 @@ fn swap_rows(matrix: [][]BitSequence, row1: usize, row2: usize) void {
 
 fn perform_elementary_row_operations(matrix: [][]BitSequence, flag: u8, i: usize, M: usize, Q: usize) void {
     if (flag == 0) { // forward
-        for ((i+1)..M) |j| {
+        for ((i + 1)..M) |j| {
             if (matrix[j][i] == 1) {
                 for (i..Q) |k| {
                     matrix[j][k] = (matrix[j][k] ^ matrix[i][k]);
@@ -70,7 +70,7 @@ fn find_unit_element_and_swap(matrix: [][]BitSequence, flag: u8, i: usize, M: us
 
 pub fn determine_rank(matrix: [][]BitSequence, m: usize, M: usize, Q: usize) usize {
     var rank = m;
-    for (0..M)|i| {
+    for (0..M) |i| {
         var allZeroes = true;
         for (0..Q) |j| {
             if (matrix[i][j] == 1) {
@@ -86,7 +86,7 @@ pub fn determine_rank(matrix: [][]BitSequence, m: usize, M: usize, Q: usize) usi
 pub fn computeRank(matrix: [][]BitSequence, M: usize, Q: usize) usize {
     const m = if (M < Q) M else Q;
     // Forward elimination
-    for (0..(m-1))|i| {
+    for (0..(m - 1)) |i| {
         if (matrix[i][i] == 1) {
             perform_elementary_row_operations(matrix, 0, i, M, Q);
         } else if (matrix[i][i] == 0) {
@@ -129,9 +129,15 @@ test "matrix" {
     const Q = 3;
     var matrix = try createMatrix(M, Q);
     // 例子: 3x3 单位矩阵
-    matrix[0][0] = 1; matrix[0][1] = 0; matrix[0][2] = 0;
-    matrix[1][0] = 0; matrix[1][1] = 1; matrix[1][2] = 0;
-    matrix[2][0] = 0; matrix[2][1] = 0; matrix[2][2] = 1;
+    matrix[0][0] = 1;
+    matrix[0][1] = 0;
+    matrix[0][2] = 0;
+    matrix[1][0] = 0;
+    matrix[1][1] = 1;
+    matrix[1][2] = 0;
+    matrix[2][0] = 0;
+    matrix[2][1] = 0;
+    matrix[2][2] = 1;
     const rank = computeRank(matrix, M, Q);
     std.debug.print("Rank = {}\n", .{rank});
 }

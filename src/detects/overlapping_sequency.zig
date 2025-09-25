@@ -17,9 +17,8 @@ fn overlapping_sequency_destroy(self: *detect.StatDetect) void {
 }
 
 fn overlapping_sequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
-
-    var m : u8 = 3;
-    if(self.param.extra != null) {
+    var m: u8 = 3;
+    if (self.param.extra != null) {
         const osParam: *OverlappingSequencyParam = @ptrCast(self.param.extra);
         m = osParam.*.m;
     }
@@ -40,82 +39,75 @@ fn overlapping_sequency_iterate(self: *detect.StatDetect, bits: *const io.BitInp
 
     defer self.allocator.free(arr);
 
-    var n_arr: [1<<8]usize = [_]usize{0}**(1<<8);
-    var n1_arr: [1<<8]usize = [_]usize{0}**(1<<8);
-    var n2_arr: [1<<8]usize = [_]usize{0}**(1<<8);
+    var n_arr: [1 << 8]usize = [_]usize{0} ** (1 << 8);
+    var n1_arr: [1 << 8]usize = [_]usize{0} ** (1 << 8);
+    var n2_arr: [1 << 8]usize = [_]usize{0} ** (1 << 8);
 
     var i: usize = 0;
 
-    while(bits.fetchBit())|b| {
+    while (bits.fetchBit()) |b| {
         arr[i] = b;
-        i+=1;
+        i += 1;
     }
-    for (0..m-1) |j| {
-        arr[n+j] = arr[j];
+    for (0..m - 1) |j| {
+        arr[n + j] = arr[j];
     }
 
-
-    for(0..n)|k| {
+    for (0..n) |k| {
         var M: u8 = 0;
-        for(0..m) |j| {
-            M = (M << 1) | arr[k+j];
+        for (0..m) |j| {
+            M = (M << 1) | arr[k + j];
         }
         n_arr[M] += 1;
     }
 
-    for(0..n)|k| {
+    for (0..n) |k| {
         var M: u8 = 0;
-        for(0..m - 1) |j| {
-            M = (M << 1) | arr[k+j];
+        for (0..m - 1) |j| {
+            M = (M << 1) | arr[k + j];
         }
         n1_arr[M] += 1;
     }
 
     if (m > 2) {
-        for(0..n)|k| {
+        for (0..n) |k| {
             var M: u8 = 0;
-            for(0..m - 2) |j| {
-                M = (M << 1) | arr[k+j];
+            for (0..m - 2) |j| {
+                M = (M << 1) | arr[k + j];
             }
             n2_arr[M] += 1;
         }
     }
 
     // 步骤3: 计算Ψ^2统计量
-    var psi2_m : f64 = 0;
-    var psi2_m1 : f64 = 0;
-    var psi2_m2 : f64 = 0;
+    var psi2_m: f64 = 0;
+    var psi2_m1: f64 = 0;
+    var psi2_m2: f64 = 0;
 
-    for(0 .. (@as(usize, 1) << @as(u3, @intCast(m))))|j| {
+    for (0..(@as(usize, 1) << @as(u3, @intCast(m)))) |j| {
         psi2_m += @as(f64, @floatFromInt(n_arr[j])) * @as(f64, @floatFromInt(n_arr[j]));
     }
 
-    psi2_m = (   @as(f64, @floatFromInt(@as(usize, 1) << @as(u3, @intCast(m))))
-               / @as(f64, @floatFromInt(n)) ) * psi2_m
-           - @as(f64, @floatFromInt(n));
+    psi2_m = (@as(f64, @floatFromInt(@as(usize, 1) << @as(u3, @intCast(m)))) / @as(f64, @floatFromInt(n))) * psi2_m - @as(f64, @floatFromInt(n));
 
-    for(0 .. (@as(usize, 1) << @as(u3, @intCast(m-1))))|j| {
+    for (0..(@as(usize, 1) << @as(u3, @intCast(m - 1)))) |j| {
         psi2_m1 += @as(f64, @floatFromInt(n1_arr[j])) * @as(f64, @floatFromInt(n1_arr[j]));
     }
 
-    psi2_m1 = (   @as(f64, @floatFromInt(@as(usize, 1) << @as(u3, @intCast(m-1))))
-                / @as(f64, @floatFromInt(n)) ) * psi2_m1
-           - @as(f64, @floatFromInt(n));
+    psi2_m1 = (@as(f64, @floatFromInt(@as(usize, 1) << @as(u3, @intCast(m - 1)))) / @as(f64, @floatFromInt(n))) * psi2_m1 - @as(f64, @floatFromInt(n));
 
-    if ( m > 2 ) {
-        for(0 .. (@as(usize, 1) << @as(u3, @intCast(m-2))))|j| {
+    if (m > 2) {
+        for (0..(@as(usize, 1) << @as(u3, @intCast(m - 2)))) |j| {
             psi2_m2 += @as(f64, @floatFromInt(n2_arr[j])) * @as(f64, @floatFromInt(n2_arr[j]));
         }
-        psi2_m2 = (   @as(f64, @floatFromInt(@as(usize, 1) << @as(u3, @intCast(m-2))))
-        / @as(f64, @floatFromInt(n)) ) * psi2_m2
-        - @as(f64, @floatFromInt(n));
+        psi2_m2 = (@as(f64, @floatFromInt(@as(usize, 1) << @as(u3, @intCast(m - 2)))) / @as(f64, @floatFromInt(n))) * psi2_m2 - @as(f64, @floatFromInt(n));
     }
 
     const nabla1: f64 = psi2_m - psi2_m1;
     const nabla2: f64 = psi2_m - 2 * psi2_m1 + psi2_m2;
 
-    const P1 = math.igamc(std.math.pow(f64,2.0, @as(f64, @floatFromInt(m-2))), nabla1 / 2.0);
-    const P2 = math.igamc(std.math.pow(f64,2.0, @as(f64, @floatFromInt(@as(i8,  @intCast(m))-3))), nabla2 / 2.0);
+    const P1 = math.igamc(std.math.pow(f64, 2.0, @as(f64, @floatFromInt(m - 2))), nabla1 / 2.0);
+    const P2 = math.igamc(std.math.pow(f64, 2.0, @as(f64, @floatFromInt(@as(i8, @intCast(m)) - 3))), nabla2 / 2.0);
 
     const passed = P1 > 0.01 and P2 > 0.01;
 
@@ -134,7 +126,7 @@ pub fn overlappingSequencyDetectStatDetect(allocator: std.mem.Allocator, param: 
     const param_ptr = try allocator.create(detect.DetectParam);
     param_ptr.* = param;
     param_ptr.*.type = detect.DetectType.OverlappingSequency;
-    const osParam : *OverlappingSequencyParam = try allocator.create(OverlappingSequencyParam);
+    const osParam: *OverlappingSequencyParam = try allocator.create(OverlappingSequencyParam);
     osParam.*.m = m;
     param_ptr.*.extra = @ptrCast(osParam);
 

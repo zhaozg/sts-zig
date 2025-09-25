@@ -56,14 +56,14 @@ fn binary_derivative_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     std.mem.copyForwards(u1, arr, origin);
 
     for (0..k) |i| {
-        for (0..n-i-1) |j| {
-            arr[j] = arr[j] ^ arr[j+1];
+        for (0..n - i - 1) |j| {
+            arr[j] = arr[j] ^ arr[j + 1];
         }
     }
 
     var S: isize = 0;
-    for (0..n-k) |i| {
-        S += if (arr[i]==1) 1 else -1;
+    for (0..n - k) |i| {
+        S += if (arr[i] == 1) 1 else -1;
     }
 
     const V = @as(f64, @floatFromInt(S)) / @sqrt(@as(f64, @floatFromInt(n - k)));

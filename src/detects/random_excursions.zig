@@ -7,20 +7,19 @@ const compat = @import("../compat.zig");
 
 const MAX_EXCURSION_RND_EXCURSION = 4;
 // Number of states for TEST_RND_EXCURSION
-const NUMBER_OF_STATES_RND_EXCURSION = 2*MAX_EXCURSION_RND_EXCURSION;
+const NUMBER_OF_STATES_RND_EXCURSION = 2 * MAX_EXCURSION_RND_EXCURSION;
 const DEGREES_OF_FREEDOM_RND_EXCURSION = 6;
 
 const RandomExcursionsState = struct {
-    pi: [MAX_EXCURSION_RND_EXCURSION][DEGREES_OF_FREEDOM_RND_EXCURSION]f64
-      = .{[_]f64{0}**DEGREES_OF_FREEDOM_RND_EXCURSION} ** MAX_EXCURSION_RND_EXCURSION,
+    pi: [MAX_EXCURSION_RND_EXCURSION][DEGREES_OF_FREEDOM_RND_EXCURSION]f64 = .{[_]f64{0} ** DEGREES_OF_FREEDOM_RND_EXCURSION} ** MAX_EXCURSION_RND_EXCURSION,
 };
 
 pub const RandomExcursionsResult = struct {
-    counter: [NUMBER_OF_STATES_RND_EXCURSION]usize = .{0} ** NUMBER_OF_STATES_RND_EXCURSION,  // 每个状态的卡方统计量
-    v_value: [NUMBER_OF_STATES_RND_EXCURSION]f64 =   .{0} ** NUMBER_OF_STATES_RND_EXCURSION,  // 每个状态的卡方统计量
-    p_value: [NUMBER_OF_STATES_RND_EXCURSION]f64 =   .{0} ** NUMBER_OF_STATES_RND_EXCURSION,  // 每个状态的p值
-    passed:  [NUMBER_OF_STATES_RND_EXCURSION]bool = .{true} ** NUMBER_OF_STATES_RND_EXCURSION,// 每个状态是否通过
-    nCycles: usize = 0,             // 每个状态的循环数
+    counter: [NUMBER_OF_STATES_RND_EXCURSION]usize = .{0} ** NUMBER_OF_STATES_RND_EXCURSION, // 每个状态的卡方统计量
+    v_value: [NUMBER_OF_STATES_RND_EXCURSION]f64 = .{0} ** NUMBER_OF_STATES_RND_EXCURSION, // 每个状态的卡方统计量
+    p_value: [NUMBER_OF_STATES_RND_EXCURSION]f64 = .{0} ** NUMBER_OF_STATES_RND_EXCURSION, // 每个状态的p值
+    passed: [NUMBER_OF_STATES_RND_EXCURSION]bool = .{true} ** NUMBER_OF_STATES_RND_EXCURSION, // 每个状态是否通过
+    nCycles: usize = 0, // 每个状态的循环数
 };
 
 fn random_excursions_print(self: *detect.StatDetect, result: *const detect.DetectResult, level: detect.PrintLevel) void {
@@ -36,14 +35,12 @@ fn random_excursions_print(self: *detect.StatDetect, result: *const detect.Detec
             passed += 1;
         }
     }
-    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n",
-    .{passed, results.passed.len, results.passed.len - passed, results.passed.len});
+    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n", .{ passed, results.passed.len, results.passed.len - passed, results.passed.len });
 
     if (level == .detail) {
         std.debug.print("\n", .{});
         for (0..results.passed.len) |i| {
-            std.debug.print("\tState {d:>3}: passed={s}, V = {d:10.6} P = {d:.6}\n",
-            .{
+            std.debug.print("\tState {d:>3}: passed={s}, V = {d:10.6} P = {d:.6}\n", .{
                 i,
                 if (results.passed[i]) "Yes" else "No ",
                 results.v_value[i],
@@ -62,24 +59,23 @@ fn random_excursions_init(self: *detect.StatDetect, param: *const detect.DetectP
         return;
     };
 
-    for(0..MAX_EXCURSION_RND_EXCURSION) |i| {
+    for (0..MAX_EXCURSION_RND_EXCURSION) |i| {
         // Compute the theoretical probabilities when k = 0
-	state.pi[i][0] = 1.0 - 1.0 / (2.0 * @as(f64, @floatFromInt(i + 1)));
+        state.pi[i][0] = 1.0 - 1.0 / (2.0 * @as(f64, @floatFromInt(i + 1)));
     }
 
-    for(1..DEGREES_OF_FREEDOM_RND_EXCURSION - 1) |j| {
-	// Compute the theoretical probabilities when 0 < k < DEGREES_OF_FREEDOM_RND_EXCURSION - 1
-        for(0 .. MAX_EXCURSION_RND_EXCURSION) |i| {
-	    state.pi[i][j] = 1.0 / (4.0 * std.math.pow(f64, @as(f64, @floatFromInt(i + 1)), 2))
-                * std.math.pow(f64, state.pi[i][0], @as(f64, @floatFromInt(j - 1)));
+    for (1..DEGREES_OF_FREEDOM_RND_EXCURSION - 1) |j| {
+        // Compute the theoretical probabilities when 0 < k < DEGREES_OF_FREEDOM_RND_EXCURSION - 1
+        for (0..MAX_EXCURSION_RND_EXCURSION) |i| {
+            state.pi[i][j] = 1.0 / (4.0 * std.math.pow(f64, @as(f64, @floatFromInt(i + 1)), 2)) * std.math.pow(f64, state.pi[i][0], @as(f64, @floatFromInt(j - 1)));
         }
     }
 
     // Compute the theoretical probabilities when k = DEGREES_OF_FREEDOM_RND_EXCURSION - 1
-    for(0..MAX_EXCURSION_RND_EXCURSION) |i| {
+    for (0..MAX_EXCURSION_RND_EXCURSION) |i| {
         // Compute the theoretical probabilities when k = 0
-	state.pi[i][DEGREES_OF_FREEDOM_RND_EXCURSION - 1] =
-            1.0 / (2.0 *  @as(f64, @floatFromInt(i + 1))) * std.math.pow(f64, state.pi[i][0], 4);
+        state.pi[i][DEGREES_OF_FREEDOM_RND_EXCURSION - 1] =
+            1.0 / (2.0 * @as(f64, @floatFromInt(i + 1))) * std.math.pow(f64, state.pi[i][0], 4);
     }
     self.state = state;
 }
@@ -133,9 +129,9 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     defer cycle_idx.deinit();
 
     // 计算累积、收集零交叉点
-    S[0] = @as(i32, if(arr[0]==1) 1 else -1); // 初始化第一个元素 ;
+    S[0] = @as(i32, if (arr[0] == 1) 1 else -1); // 初始化第一个元素 ;
     for (1..n) |i| {
-        S[i] = S[i-1] + @as(i32, if(arr[i]==1) 1 else -1);
+        S[i] = S[i - 1] + @as(i32, if (arr[i] == 1) 1 else -1);
         // 收集零交叉点
         if (S[i] == 0) {
             cycle_idx.append(i) catch {};
@@ -188,7 +184,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
 
         // 更新频次分布表
         inline for (count, 0..) |cnt, idx| {
-            const bucket = if (cnt < DEGREES_OF_FREEDOM_RND_EXCURSION-1) cnt else DEGREES_OF_FREEDOM_RND_EXCURSION-1;
+            const bucket = if (cnt < DEGREES_OF_FREEDOM_RND_EXCURSION - 1) cnt else DEGREES_OF_FREEDOM_RND_EXCURSION - 1;
             freq_table[idx][bucket] += 1;
         }
     }
@@ -215,20 +211,19 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
         var chi2: f64 = 0.0;
         var V: f64 = 0.0;
 
-	const x: usize = @abs(states[state_idx]);
+        const x: usize = @abs(states[state_idx]);
 
         // 计算卡方统计量
         // ∑(0..K) (Vk - j*pi)^2 / (j*pi)
         for (0..DEGREES_OF_FREEDOM_RND_EXCURSION) |k| {
             const Vk = @as(f64, @floatFromInt(freq_table[state_idx][k]));
-            const pi = state.pi[x-1][k];
+            const pi = state.pi[x - 1][k];
             const j = @as(f64, @floatFromInt(J));
 
-            V = (Vk - (j*pi)) * (Vk - (j*pi)) / (j*pi);
+            V = (Vk - (j * pi)) * (Vk - (j * pi)) / (j * pi);
 
             chi2 += V; // 卡方统计量
         }
-
 
         // 计算p值 (自由度=K-1=5)
         const p_value = math.igamc(2.5, chi2 / 2.0); // 5/2=2.5, 卡方/2

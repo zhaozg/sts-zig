@@ -15,12 +15,11 @@ fn rank_destroy(self: *detect.StatDetect) void {
 }
 
 fn rank_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
-
     const M = 32;
     const Q = 32;
     const n = self.param.n;
 
-    const N = n / (M*Q);
+    const N = n / (M * Q);
 
     if (N == 0) {
         return detect.DetectResult{
@@ -49,7 +48,6 @@ fn rank_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
     for (0..N) |_| {
         matrix.resetMatrix(mat);
 
-
         for (0..M) |x| {
             for (0..Q) |y| {
                 mat[x][y] = bits.fetchBit() orelse 0;
@@ -58,11 +56,11 @@ fn rank_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
         const r = matrix.computeRank(mat, M, Q);
 
         if (r == 32)
-           freq[0] += 1
+            freq[0] += 1
         else if (r == 31)
-           freq[1] += 1
+            freq[1] += 1
         else
-           freq[2] += 1;
+            freq[2] += 1;
     }
 
     //std.debug.print("F1={d:.6}, F2={d:.6}, F3 = {d:.6}\n", .{freq[0], freq[1], freq[2]});
@@ -77,9 +75,7 @@ fn rank_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
     var chi2: f64 = 0.0;
     for (0..3) |i| {
         const exp = pi[i] * @as(f64, @floatFromInt(N));
-        chi2 += ( @as(f64, @floatFromInt(freq[i])) - exp )
-              * ( @as(f64, @floatFromInt(freq[i])) - exp )
-              / exp;
+        chi2 += (@as(f64, @floatFromInt(freq[i])) - exp) * (@as(f64, @floatFromInt(freq[i])) - exp) / exp;
     }
 
     const P = math.igamc(1.0, chi2 / 2.0);

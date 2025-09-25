@@ -6,10 +6,10 @@ const std = @import("std");
 const NUMBER_OF_STATES_LONGEST_RUN = 2;
 
 pub const LongestRunResult = struct {
-    v_value: [NUMBER_OF_STATES_LONGEST_RUN]f64 =   .{0} ** NUMBER_OF_STATES_LONGEST_RUN,  // 每个状态的卡方统计量
-    p_value: [NUMBER_OF_STATES_LONGEST_RUN]f64 =   .{0} ** NUMBER_OF_STATES_LONGEST_RUN,  // 每个状态的p值
-    q_value: [NUMBER_OF_STATES_LONGEST_RUN]f64 =   .{0} ** NUMBER_OF_STATES_LONGEST_RUN,  // 每个状态的q值
-    passed:  [NUMBER_OF_STATES_LONGEST_RUN]bool = .{true} ** NUMBER_OF_STATES_LONGEST_RUN,// 每个状态是否通过
+    v_value: [NUMBER_OF_STATES_LONGEST_RUN]f64 = .{0} ** NUMBER_OF_STATES_LONGEST_RUN, // 每个状态的卡方统计量
+    p_value: [NUMBER_OF_STATES_LONGEST_RUN]f64 = .{0} ** NUMBER_OF_STATES_LONGEST_RUN, // 每个状态的p值
+    q_value: [NUMBER_OF_STATES_LONGEST_RUN]f64 = .{0} ** NUMBER_OF_STATES_LONGEST_RUN, // 每个状态的q值
+    passed: [NUMBER_OF_STATES_LONGEST_RUN]bool = .{true} ** NUMBER_OF_STATES_LONGEST_RUN, // 每个状态是否通过
 };
 
 fn longest_run_print(self: *detect.StatDetect, result: *const detect.DetectResult, level: detect.PrintLevel) void {
@@ -25,14 +25,12 @@ fn longest_run_print(self: *detect.StatDetect, result: *const detect.DetectResul
             passed += 1;
         }
     }
-    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n",
-    .{passed, results.passed.len, results.passed.len - passed, results.passed.len});
+    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n", .{ passed, results.passed.len, results.passed.len - passed, results.passed.len });
 
     if (level == .detail) {
         std.debug.print("\n", .{});
         for (0..results.passed.len) |i| {
-            std.debug.print("\tState({d}): passed={s}, V = {d:10.6} P = {d:.6}\n",
-            .{
+            std.debug.print("\tState({d}): passed={s}, V = {d:10.6} P = {d:.6}\n", .{
                 i,
                 if (results.passed[i]) "Yes" else "No ",
                 results.v_value[i],
@@ -86,11 +84,11 @@ fn selectSet(m: u16, r: u16) u3 {
             else => 5, // >= 9
         };
     } else if (m == 10000) {
-        if ( r <= 10)
-          return 0;
+        if (r <= 10)
+            return 0;
         if (r >= 16)
-          return 6;
-        return @as(u3, @intCast(r-10));
+            return 6;
+        return @as(u3, @intCast(r - 10));
     }
     return 0;
 }
@@ -103,8 +101,7 @@ fn selectPi(m: u16, i: u3) f64 {
         const list = [_]f64{ 0.1174, 0.2430, 0.2494, 0.1752, 0.0127, 0.1124 };
         return list[i];
     } else if (m == 10000) {
-        const list = [_]f64{ 0.086632, 0.208201, 0.248419, 0.193913,
-                             0.121458, 0.068011, 0.073366 };
+        const list = [_]f64{ 0.086632, 0.208201, 0.248419, 0.193913, 0.121458, 0.068011, 0.073366 };
         return list[i];
     }
     return 0.0; // 默认值
@@ -143,7 +140,7 @@ fn longest_run_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream)
         var run1: u16 = 0;
         var max_run1: u16 = 0;
 
-        for (0 .. M) |_| {
+        for (0..M) |_| {
             const bit = bits.fetchBit() orelse 0;
             if (bit == 0) {
                 if (run1 > max_run1) max_run1 = run1;
@@ -155,7 +152,7 @@ fn longest_run_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream)
                 if (run0 > max_run0) max_run0 = run0;
                 run0 = 0;
 
-                run1+= 1;
+                run1 += 1;
                 if (run1 > max_run1) max_run1 = run1;
             }
         }
@@ -172,11 +169,11 @@ fn longest_run_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream)
         const pi: f64 = selectPi(M, @as(u3, @intCast(i)));
 
         const f0 = @as(f64, @floatFromInt(v0[i])) - @as(f64, @floatFromInt(N)) * pi;
-        const x0 = ( f0 * f0 ) / (@as(f64, @floatFromInt(N)) * pi);
+        const x0 = (f0 * f0) / (@as(f64, @floatFromInt(N)) * pi);
         V0 += x0;
 
         const f1 = @as(f64, @floatFromInt(v1[i])) - @as(f64, @floatFromInt(N)) * pi;
-        const x1 = ( f1 * f1 ) / (@as(f64, @floatFromInt(N)) * pi);
+        const x1 = (f1 * f1) / (@as(f64, @floatFromInt(N)) * pi);
         V1 += x1;
     }
 

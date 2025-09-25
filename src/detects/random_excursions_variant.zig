@@ -6,14 +6,14 @@ const compat = @import("../compat.zig");
 
 const MAX_EXCURSION_RND_EXCURSION_VAR = 9;
 // Number of states for TEST_RND_EXCURSION_VAR
-const NUMBER_OF_STATES_RND_EXCURSION_VAR = 2*MAX_EXCURSION_RND_EXCURSION_VAR;
+const NUMBER_OF_STATES_RND_EXCURSION_VAR = 2 * MAX_EXCURSION_RND_EXCURSION_VAR;
 
 pub const RandomExcursionsVariantResult = struct {
-    counter: [NUMBER_OF_STATES_RND_EXCURSION_VAR]usize = .{0} ** NUMBER_OF_STATES_RND_EXCURSION_VAR,  // 每个状态的卡方统计量
-    v_value: [NUMBER_OF_STATES_RND_EXCURSION_VAR]f64 =   .{0} ** NUMBER_OF_STATES_RND_EXCURSION_VAR,  // 每个状态的卡方统计量
-    p_value: [NUMBER_OF_STATES_RND_EXCURSION_VAR]f64 =   .{0} ** NUMBER_OF_STATES_RND_EXCURSION_VAR,  // 每个状态的p值
-    passed:  [NUMBER_OF_STATES_RND_EXCURSION_VAR]bool = .{true} ** NUMBER_OF_STATES_RND_EXCURSION_VAR,// 每个状态是否通过
-    nCycles: usize = 0,             // 每个状态的循环数
+    counter: [NUMBER_OF_STATES_RND_EXCURSION_VAR]usize = .{0} ** NUMBER_OF_STATES_RND_EXCURSION_VAR, // 每个状态的卡方统计量
+    v_value: [NUMBER_OF_STATES_RND_EXCURSION_VAR]f64 = .{0} ** NUMBER_OF_STATES_RND_EXCURSION_VAR, // 每个状态的卡方统计量
+    p_value: [NUMBER_OF_STATES_RND_EXCURSION_VAR]f64 = .{0} ** NUMBER_OF_STATES_RND_EXCURSION_VAR, // 每个状态的p值
+    passed: [NUMBER_OF_STATES_RND_EXCURSION_VAR]bool = .{true} ** NUMBER_OF_STATES_RND_EXCURSION_VAR, // 每个状态是否通过
+    nCycles: usize = 0, // 每个状态的循环数
 };
 
 fn random_excursions_variant_print(self: *detect.StatDetect, result: *const detect.DetectResult, level: detect.PrintLevel) void {
@@ -29,14 +29,12 @@ fn random_excursions_variant_print(self: *detect.StatDetect, result: *const dete
             passed += 1;
         }
     }
-    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n",
-    .{passed, results.passed.len, results.passed.len - passed, results.passed.len});
+    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n", .{ passed, results.passed.len, results.passed.len - passed, results.passed.len });
 
     if (level == .detail) {
         std.debug.print("\n", .{});
         for (0..results.passed.len) |i| {
-            std.debug.print("\tState {d:>3}: passed={s}, V = {d:10.6} P = {d:.6}\n",
-            .{
+            std.debug.print("\tState {d:>3}: passed={s}, V = {d:10.6} P = {d:.6}\n", .{
                 i,
                 if (results.passed[i]) "Yes" else "No ",
                 results.v_value[i],
@@ -101,9 +99,9 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.B
     defer cycle_idx.deinit();
 
     // 计算累积、收集零交叉点
-    S[0] = @as(i32, if(arr[0]==1) 1 else -1); // 初始化第一个元素 ;
+    S[0] = @as(i32, if (arr[0] == 1) 1 else -1); // 初始化第一个元素 ;
     for (1..n) |i| {
-        S[i] = S[i-1] + @as(i32, if(arr[i]==1) 1 else -1);
+        S[i] = S[i - 1] + @as(i32, if (arr[i] == 1) 1 else -1);
         // 收集零交叉点
         if (S[i] == 0) {
             cycle_idx.append(i) catch {};
@@ -168,12 +166,11 @@ fn random_excursions_variant_iterate(self: *detect.StatDetect, bits: *const io.B
     var min_p_value: f64 = 1.0;
     var min_z_value: f64 = 0.0;
     for (0..NUMBER_OF_STATES_RND_EXCURSION_VAR) |k| {
-        const K = @as(f64, @floatFromInt(if (k < 9) @as(isize, @intCast(k)) - MAX_EXCURSION_RND_EXCURSION_VAR  else @as(isize, @intCast(k)) - 8));
-        const V = @as(f64, @floatFromInt(@abs( @as(isize, @intCast(result.counter[k])) - @as(isize, @intCast(result.nCycles)))))
-                / ( @sqrt(2.0 * @as(f64, @floatFromInt(result.nCycles)) * (4.0 * @abs(K) - 2.0)));
-        const P = math.erfc( V );
+        const K = @as(f64, @floatFromInt(if (k < 9) @as(isize, @intCast(k)) - MAX_EXCURSION_RND_EXCURSION_VAR else @as(isize, @intCast(k)) - 8));
+        const V = @as(f64, @floatFromInt(@abs(@as(isize, @intCast(result.counter[k])) - @as(isize, @intCast(result.nCycles))))) / (@sqrt(2.0 * @as(f64, @floatFromInt(result.nCycles)) * (4.0 * @abs(K) - 2.0)));
+        const P = math.erfc(V);
 
-	result.p_value[k] = P;
+        result.p_value[k] = P;
         result.v_value[k] = V;
         if (P < min_p_value) {
             min_p_value = P;

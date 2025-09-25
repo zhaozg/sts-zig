@@ -48,17 +48,11 @@ pub fn ArrayList(comptime T: type) type {
             pub const Self = @This();
 
             pub fn init(allocator: std.mem.Allocator) Self {
-                return .{
-                    .inner = .empty,
-                    .allocator = allocator
-                };
+                return .{ .inner = .empty, .allocator = allocator };
             }
 
             pub fn initCapacity(allocator: std.mem.Allocator, initial_capacity: usize) !Self {
-                return .{
-                    .inner = try std.ArrayList(T).initCapacity(allocator, initial_capacity),
-                    .allocator = allocator
-                };
+                return .{ .inner = try std.ArrayList(T).initCapacity(allocator, initial_capacity), .allocator = allocator };
             }
 
             pub fn deinit(self: *Self) void {

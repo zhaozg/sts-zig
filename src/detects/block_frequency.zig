@@ -5,7 +5,7 @@ const std = @import("std");
 
 const DEFAULT_BLOCK_SIZE = 128; // 默认块大小
 
-pub const BlockFrequencyParam= struct {
+pub const BlockFrequencyParam = struct {
     m: u8,
 };
 
@@ -58,9 +58,7 @@ fn block_frequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
     const V: f64 = 4.0 * @as(f64, @floatFromInt(M)) * sum;
 
     // 计算 P 值
-    const P = math.igamc(
-        @as(f64, @floatFromInt(N)) / 2.0,
-        V / 2.0);
+    const P = math.igamc(@as(f64, @floatFromInt(N)) / 2.0, V / 2.0);
 
     const passed = P > 0.01;
     return detect.DetectResult{
@@ -72,7 +70,6 @@ fn block_frequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
         .errno = null,
     };
 }
-
 
 pub fn blockFrequencyDetectStatDetect(allocator: std.mem.Allocator, param: detect.DetectParam, m: u8) !*detect.StatDetect {
     const ptr = try allocator.create(detect.StatDetect);

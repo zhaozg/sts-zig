@@ -167,10 +167,7 @@ const FileStream = struct {
 /// Create a file-based InputStream
 pub fn createFileStream(allocator: std.mem.Allocator, file: std.fs.File) InputStream {
     const stream = allocator.create(FileStream) catch unreachable;
-    stream.* = .{
-        .allocator = allocator,
-        .file = file
-    };
+    stream.* = .{ .allocator = allocator, .file = file };
     return InputStream{
         .vtable = &FileStream.vtable,
         .context = stream,
@@ -322,7 +319,7 @@ pub const BitInputStream = struct {
 const ByteInputStream = struct {
     allocator: std.mem.Allocator,
     stream: InputStream,
-    data: [1]u8 = [1]u8{0}**1,
+    data: [1]u8 = [1]u8{0} ** 1,
     bit_index: usize,
     len: usize,
     array: []u1 = &[0]u1{},
@@ -406,7 +403,7 @@ const ByteInputStream = struct {
 };
 
 // ===== Concrete AsciiInputStream Implementations =====
-const Ascii_MAX_BUFFER=4096;
+const Ascii_MAX_BUFFER = 4096;
 
 const AsciiInputStream = struct {
     allocator: std.mem.Allocator,
@@ -415,10 +412,10 @@ const AsciiInputStream = struct {
     array: []u1 = &[0]u1{},
 
     byteslength: usize, // piece bytes from stream
-    byte_index: usize,  // index byte in piece data
+    byte_index: usize, // index byte in piece data
 
-    bit_index: usize,   // index bit in total
-    len: usize,         // length in bits total
+    bit_index: usize, // index bit in total
+    len: usize, // length in bits total
 
     fn fetchBit(ctx: *anyopaque) ?u1 {
         const self: *AsciiInputStream = @ptrCast(@alignCast(ctx));
@@ -430,7 +427,7 @@ const AsciiInputStream = struct {
                 self.byte_index = 0;
                 self.byteslength = self.stream.read(self.data);
             }
-            if(self.byteslength == 0) return null; // No more data to read
+            if (self.byteslength == 0) return null; // No more data to read
             for (self.byte_index..self.byteslength) |i| {
                 const char = self.data[i];
                 self.byte_index += 1;
@@ -455,7 +452,7 @@ const AsciiInputStream = struct {
         if (self.array.len == 0) {
             self.array = self.allocator.alloc(u1, self.len) catch unreachable;
 
-            for(0..self.array.len) |i| {
+            for (0..self.array.len) |i| {
                 self.array[i] = fetchBit(ctx) orelse return self.array[0..i];
             }
         }
@@ -554,7 +551,7 @@ const AsciiBitStream = struct {
             const sz = len(ctx);
             self.array = self.allocator.alloc(u1, sz) catch unreachable;
 
-            for(0..self.array.len) |i| {
+            for (0..self.array.len) |i| {
                 self.array[i] = fetchBit(ctx) orelse return self.array[0..i];
             }
         }
@@ -760,7 +757,7 @@ test "InputStream readAt, avail, len, readAll, fromArray, fromCString" {
     try std.testing.expectEqualStrings(data, all);
 
     // fromArray
-    const arr = [_]u8{1,2,3,4,5};
+    const arr = [_]u8{ 1, 2, 3, 4, 5 };
     var arr_stream = InputStream.fromArray(allocator, u8, &arr, 5);
     var arr_buf: [5]u8 = undefined;
     const arr_n = arr_stream.read(&arr_buf);
@@ -803,7 +800,7 @@ test "BitInputStream API: fromByteInputStream, fromByteInputStreamWithLength, fr
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const data = [2]u8{0b11001100, 0b10101010};
+    const data = [2]u8{ 0b11001100, 0b10101010 };
     const byte_stream = createMemoryStream(allocator, &data);
 
     // fromByteInputStream

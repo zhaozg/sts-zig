@@ -34,18 +34,22 @@ fn non_veerlapping_template_print(self: *detect.StatDetect, result: *const detec
             passed += 1;
         }
     }
-    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n",
-    .{passed, results.passed.len, results.passed.len - passed, results.passed.len});
+    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n", .{ passed, results.passed.len, results.passed.len - passed, results.passed.len });
 
     if (level == .detail) {
         std.debug.print("\n", .{});
         for (0..results.n) |i| {
-            std.debug.print("\tState {d:3}: {}{}{}{}{}{}{}{}{} passed={s}, V = {d:10.6} P = {d:.6}\n",
-            .{
+            std.debug.print("\tState {d:3}: {}{}{}{}{}{}{}{}{} passed={s}, V = {d:10.6} P = {d:.6}\n", .{
                 i,
-                results.template[i][0], results.template[i][1], results.template[i][2],
-                results.template[i][3], results.template[i][4], results.template[i][5],
-                results.template[i][6], results.template[i][7], results.template[i][8],
+                results.template[i][0],
+                results.template[i][1],
+                results.template[i][2],
+                results.template[i][3],
+                results.template[i][4],
+                results.template[i][5],
+                results.template[i][6],
+                results.template[i][7],
+                results.template[i][8],
                 if (results.passed[i]) "Yes" else "No ",
                 results.v_value[i],
                 results.p_value[i],
@@ -98,7 +102,6 @@ fn isEquals(arr: []const u1, mat: []const u1) bool {
 }
 
 fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
-
     const m = 9;
     const n = self.param.n;
     const M = n / BLOCKS_NON_OVERLAPPING;
@@ -115,10 +118,8 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
     }
 
     const mu = @as(f64, @floatFromInt(M - m + 1)) / @as(f64, @floatFromInt(1 << m));
-    const sigma_squared = @as(f64, @floatFromInt(M)) * (
-        1.0 / @as(f64, @floatFromInt(1 << m)) -
-        (2.0 * m - 1.0) / @as(f64, @floatFromInt(1 << (2 * m)))
-    );
+    const sigma_squared = @as(f64, @floatFromInt(M)) * (1.0 / @as(f64, @floatFromInt(1 << m)) -
+        (2.0 * m - 1.0) / @as(f64, @floatFromInt(1 << (2 * m))));
     // std.debug.print("u={d:.6} sigma_squared = {d:.6}\n", .{mu, sigma_squared});
 
     const arr = bits.bits();

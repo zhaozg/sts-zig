@@ -22,7 +22,7 @@ pub const TestSummary = struct {
     max_p_value: f64,
     avg_p_value: f64,
     execution_time_ms: f64,
-    
+
     pub fn init() TestSummary {
         return TestSummary{
             .total_tests = 0,
@@ -35,7 +35,7 @@ pub const TestSummary = struct {
             .execution_time_ms = 0.0,
         };
     }
-    
+
     pub fn addResult(self: *TestSummary, result: *const detect.DetectResult, execution_time: f64) void {
         self.total_tests += 1;
         if (result.passed) {
@@ -43,16 +43,16 @@ pub const TestSummary = struct {
         } else {
             self.failed_tests += 1;
         }
-        
+
         self.pass_rate = @as(f64, @floatFromInt(self.passed_tests)) / @as(f64, @floatFromInt(self.total_tests));
-        
+
         if (result.p_value < self.min_p_value) {
             self.min_p_value = result.p_value;
         }
         if (result.p_value > self.max_p_value) {
             self.max_p_value = result.p_value;
         }
-        
+
         self.avg_p_value = (self.avg_p_value * @as(f64, @floatFromInt(self.total_tests - 1)) + result.p_value) / @as(f64, @floatFromInt(self.total_tests));
         self.execution_time_ms += execution_time;
     }
@@ -61,7 +61,7 @@ pub const TestSummary = struct {
 /// Generate detailed console report
 pub fn generateConsoleReport(allocator: std.mem.Allocator, test_name: []const u8, result: *const detect.DetectResult, execution_time: f64, data_size: usize) !void {
     _ = allocator;
-    
+
     print("\n═══════════════════════════════════════════════\n", .{});
     print("📊 Statistical Test Report\n", .{});
     print("═══════════════════════════════════════════════\n", .{});
@@ -69,25 +69,25 @@ pub fn generateConsoleReport(allocator: std.mem.Allocator, test_name: []const u8
     print("📏 Data Size: {} bits\n", .{data_size});
     print("⏱️  Execution Time: {d:.3} ms\n", .{execution_time});
     print("───────────────────────────────────────────────\n", .{});
-    
+
     const status_icon = if (result.passed) "✅" else "❌";
     const status_text = if (result.passed) "PASS" else "FAIL";
-    
+
     print("{s} Status: {s}\n", .{ status_icon, status_text });
     print("📈 Test Statistic (V): {d:.6}\n", .{result.v_value});
     print("🎯 P-Value: {d:.6}\n", .{result.p_value});
     print("🎲 Q-Value: {d:.6}\n", .{result.q_value});
-    
+
     if (result.p_value >= 0.01) {
         print("📋 Interpretation: The sequence appears random (p ≥ 0.01)\n", .{});
     } else {
         print("⚠️  Interpretation: The sequence may not be random (p < 0.01)\n", .{});
     }
-    
+
     if (result.errno) |err| {
         print("🚫 Error: {}\n", .{err});
     }
-    
+
     print("═══════════════════════════════════════════════\n\n", .{});
 }
 
@@ -95,9 +95,9 @@ pub fn generateConsoleReport(allocator: std.mem.Allocator, test_name: []const u8
 pub fn generateJsonReport(allocator: std.mem.Allocator, test_name: []const u8, result: *const detect.DetectResult, execution_time: f64, data_size: usize) ![]u8 {
     var json_obj = std.json.ObjectMap.init(allocator);
     defer json_obj.deinit();
-    
+
     // This is a simplified JSON generation - in practice, you'd use std.json.stringify
-    const format_str = 
+    const format_str =
         \\{{
         \\  "test_name": "{s}",
         \\  "data_size": {},
@@ -111,29 +111,17 @@ pub fn generateJsonReport(allocator: std.mem.Allocator, test_name: []const u8, r
         \\  "timestamp": "{d}"
         \\}}
     ;
-    
+
     const status = if (result.passed) "PASS" else "FAIL";
     const interpretation = if (result.p_value >= 0.01) "Random" else "Non-random";
     const timestamp = std.time.timestamp();
-    
-    return std.fmt.allocPrint(allocator, format_str, .{
-        test_name, 
-        data_size, 
-        execution_time, 
-        status, 
-        result.passed, 
-        result.v_value, 
-        result.p_value, 
-        result.q_value, 
-        interpretation, 
-        timestamp
-    });
+
+    return std.fmt.allocPrint(allocator, format_str, .{ test_name, data_size, execution_time, status, result.passed, result.v_value, result.p_value, result.q_value, interpretation, timestamp });
 }
 
 /// Generate CSV report header
 pub fn generateCsvHeader(allocator: std.mem.Allocator) ![]u8 {
-    return std.fmt.allocPrint(allocator, 
-        "Test Name,Data Size,Execution Time (ms),Status,Passed,Test Statistic,P-Value,Q-Value,Interpretation,Timestamp\n", .{});
+    return std.fmt.allocPrint(allocator, "Test Name,Data Size,Execution Time (ms),Status,Passed,Test Statistic,P-Value,Q-Value,Interpretation,Timestamp\n", .{});
 }
 
 /// Generate CSV report line
@@ -141,10 +129,8 @@ pub fn generateCsvReport(allocator: std.mem.Allocator, test_name: []const u8, re
     const status = if (result.passed) "PASS" else "FAIL";
     const interpretation = if (result.p_value >= 0.01) "Random" else "Non-random";
     const timestamp = std.time.timestamp();
-    
-    return std.fmt.allocPrint(allocator, 
-        "{s},{},{d:.3},{s},{},{d:.6},{d:.6},{d:.6},{s},{d}\n", 
-        .{ test_name, data_size, execution_time, status, result.passed, result.v_value, result.p_value, result.q_value, interpretation, timestamp });
+
+    return std.fmt.allocPrint(allocator, "{s},{},{d:.3},{s},{},{d:.6},{d:.6},{d:.6},{s},{d}\n", .{ test_name, data_size, execution_time, status, result.passed, result.v_value, result.p_value, result.q_value, interpretation, timestamp });
 }
 
 /// Generate XML report
@@ -152,8 +138,8 @@ pub fn generateXmlReport(allocator: std.mem.Allocator, test_name: []const u8, re
     const status = if (result.passed) "PASS" else "FAIL";
     const interpretation = if (result.p_value >= 0.01) "Random" else "Non-random";
     const timestamp = std.time.timestamp();
-    
-    const xml_template = 
+
+    const xml_template =
         \\<test_result>
         \\  <test_name>{s}</test_name>
         \\  <data_size>{}</data_size>
@@ -169,19 +155,8 @@ pub fn generateXmlReport(allocator: std.mem.Allocator, test_name: []const u8, re
         \\  <timestamp>{d}</timestamp>
         \\</test_result>
     ;
-    
-    return std.fmt.allocPrint(allocator, xml_template, .{
-        test_name, 
-        data_size, 
-        execution_time, 
-        status, 
-        result.passed, 
-        result.v_value, 
-        result.p_value, 
-        result.q_value, 
-        interpretation, 
-        timestamp
-    });
+
+    return std.fmt.allocPrint(allocator, xml_template, .{ test_name, data_size, execution_time, status, result.passed, result.v_value, result.p_value, result.q_value, interpretation, timestamp });
 }
 
 /// Generate summary report for multiple tests
@@ -225,7 +200,7 @@ pub fn generateSummaryReport(allocator: std.mem.Allocator, summary: *const TestS
         },
         else => {
             return try allocator.dupe(u8, "Format not implemented");
-        }
+        },
     }
 }
 
@@ -234,7 +209,7 @@ pub fn generateMarkdownReport(allocator: std.mem.Allocator, test_name: []const u
     const status_icon = if (result.passed) "✅" else "❌";
     const status_text = if (result.passed) "**PASS**" else "**FAIL**";
     const interpretation = if (result.p_value >= 0.01) "The sequence appears random" else "⚠️ The sequence may not be random";
-    
+
     return std.fmt.allocPrint(allocator,
         \\## {s} Test Report
         \\
@@ -252,26 +227,15 @@ pub fn generateMarkdownReport(allocator: std.mem.Allocator, test_name: []const u
         \\
         \\{s}
         \\
-    , .{
-        test_name,
-        status_icon,
-        status_text,
-        data_size,
-        execution_time,
-        result.v_value,
-        result.p_value,
-        result.q_value,
-        interpretation,
-        if (result.p_value >= 0.01) 
-            "The p-value ≥ 0.01 indicates that the null hypothesis (randomness) is not rejected. The sequence passes the statistical randomness test."
-        else
-            "The p-value < 0.01 suggests that the null hypothesis (randomness) should be rejected. The sequence may exhibit non-random patterns."
-    });
+    , .{ test_name, status_icon, status_text, data_size, execution_time, result.v_value, result.p_value, result.q_value, interpretation, if (result.p_value >= 0.01)
+        "The p-value ≥ 0.01 indicates that the null hypothesis (randomness) is not rejected. The sequence passes the statistical randomness test."
+    else
+        "The p-value < 0.01 suggests that the null hypothesis (randomness) should be rejected. The sequence may exhibit non-random patterns." });
 }
 
 test "reporting: summary calculation" {
     var summary = TestSummary.init();
-    
+
     var result1 = detect.DetectResult{
         .passed = true,
         .v_value = 1.23,
@@ -280,7 +244,7 @@ test "reporting: summary calculation" {
         .extra = null,
         .errno = null,
     };
-    
+
     var result2 = detect.DetectResult{
         .passed = false,
         .v_value = 2.34,
@@ -289,10 +253,10 @@ test "reporting: summary calculation" {
         .extra = null,
         .errno = null,
     };
-    
+
     summary.addResult(&result1, 10.5);
     summary.addResult(&result2, 8.3);
-    
+
     try std.testing.expect(summary.total_tests == 2);
     try std.testing.expect(summary.passed_tests == 1);
     try std.testing.expect(summary.failed_tests == 1);

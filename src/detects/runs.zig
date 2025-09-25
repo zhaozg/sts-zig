@@ -11,7 +11,7 @@ fn runs_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
 
 fn runs_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     const n: usize = self.param.n;
-    
+
     // Early return for invalid/empty data
     if (n == 0) {
         return detect.DetectResult{
@@ -23,7 +23,7 @@ fn runs_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
             .errno = null,
         };
     }
-    
+
     var Vobs: usize = 0;
     var ones: usize = 0;
     var prev: u1 = 0;
@@ -35,7 +35,7 @@ fn runs_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
     while (bits.fetchBit()) |bit| {
         if (bit == 1) ones += 1; // 统计 1 的数量
         if (bit != prev) {
-          Vobs += 1;
+            Vobs += 1;
         }
         prev = bit;
     }
@@ -47,11 +47,10 @@ fn runs_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
     // Step 3: 计算统计量值
     const t = 2.0 * pi * (1.0 - pi);
 
-    const V = (@as(f64, @floatFromInt(Vobs)) -  t * @as(f64, @floatFromInt(n)))
-            / (t * @sqrt(@as(f64, @floatFromInt(n))));
+    const V = (@as(f64, @floatFromInt(Vobs)) - t * @as(f64, @floatFromInt(n))) / (t * @sqrt(@as(f64, @floatFromInt(n))));
 
-    const P = math.erfc( @abs(V) / @sqrt(2.0) );
-    const Q = 0.5 * math.erfc( V / @sqrt(2.0) );
+    const P = math.erfc(@abs(V) / @sqrt(2.0));
+    const Q = 0.5 * math.erfc(V / @sqrt(2.0));
 
     const passed = P > 0.01;
 

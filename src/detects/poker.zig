@@ -10,28 +10,14 @@ fn poker_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
 
 fn poker_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     if (self.param.extra == null) {
-        return detect.DetectResult{
-            .passed = false,
-            .v_value = 0.0,
-            .p_value = 0.0,
-            .q_value = 0.0,
-            .errno = error.InvalidArgument,
-            .extra = null
-        };
+        return detect.DetectResult{ .passed = false, .v_value = 0.0, .p_value = 0.0, .q_value = 0.0, .errno = error.InvalidArgument, .extra = null };
     }
 
     const param: *PokerParam = @ptrCast(self.param.extra);
     const m = @as(u4, @intCast(param.m));
 
     if (!(m == 2 or m == 4 or m == 8)) {
-        return detect.DetectResult{
-            .passed = false,
-            .v_value = 0.0,
-            .p_value = 0.0,
-            .q_value = 0.0,
-            .errno = error.InvalidArgument,
-            .extra = null
-        };
+        return detect.DetectResult{ .passed = false, .v_value = 0.0, .p_value = 0.0, .q_value = 0.0, .errno = error.InvalidArgument, .extra = null };
     }
     const M = @as(u16, 1) << m;
 
@@ -90,7 +76,6 @@ fn poker_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detec
     // Step 2.1: 子序列计数
     var Ni: usize = 0;
     while (Ni < N) {
-
         var value: u8 = 0;
         for (0..m) |_| {
             if (bits.fetchBit()) |bit| {
@@ -109,11 +94,10 @@ fn poker_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detec
         sum += @as(f64, @floatFromInt(c)) * @as(f64, @floatFromInt(c));
     }
 
-    const V = @as(f64, @floatFromInt(M)) * sum / @as(f64, @floatFromInt(N))
-            - @as(f64, @floatFromInt(N));
+    const V = @as(f64, @floatFromInt(M)) * sum / @as(f64, @floatFromInt(N)) - @as(f64, @floatFromInt(N));
 
     // 卡方分布自由度为 num_patterns-1
-    const P = math.igamc(( @as(f64, @floatFromInt(M)) - 1) / 2, V / 2 );
+    const P = math.igamc((@as(f64, @floatFromInt(M)) - 1) / 2, V / 2);
     const passed = P > 0.01;
 
     return detect.DetectResult{

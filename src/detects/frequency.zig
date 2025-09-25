@@ -21,7 +21,7 @@ fn frequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) d
             .errno = null,
         };
     }
-    
+
     var n: isize = 0;
 
     // Step 2: compute S_n
@@ -34,8 +34,7 @@ fn frequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) d
     }
 
     // Step 3: compute the test statistic
-    const V: f64 = @as(f64, @floatFromInt(n))
-                 / @as(f64, @sqrt(@as(f64, @floatFromInt(self.param.n))));
+    const V: f64 = @as(f64, @floatFromInt(n)) / @as(f64, @sqrt(@as(f64, @floatFromInt(self.param.n))));
 
     // Step 4: compute the test P-value
     const P = math.erfc(@abs(V) / @sqrt(2.0));
@@ -97,4 +96,3 @@ pub fn frequencyDetectStatDetect(allocator: std.mem.Allocator, param: detect.Det
 
     return freq_ptr;
 }
-

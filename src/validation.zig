@@ -60,7 +60,7 @@ pub fn validateDataSize(algorithm: detect.DetectType, data_size: usize) Validati
         .LinearComplexity => MinDataRequirements.LINEAR_COMPLEXITY,
         else => 100, // Default minimum
     };
-    
+
     if (data_size < min_size) {
         return ValidationError.InsufficientData;
     }
@@ -73,7 +73,7 @@ pub fn validateBitSequence(bits: *const io.BitInputStream) ValidationError!void 
     if (stream_len == 0) {
         return ValidationError.InvalidBitSequence;
     }
-    
+
     // Since we can't restore position, just check that stream is accessible
     // The actual validation will happen during test execution
 }
@@ -84,7 +84,7 @@ pub fn validateParameters(param: *const detect.DetectParam) ValidationError!bool
     if (param.n == 0) {
         return ValidationError.InvalidDataSize;
     }
-    
+
     // Algorithm-specific parameter validation
     switch (param.type) {
         .Poker => {
@@ -109,9 +109,9 @@ pub fn validateParameters(param: *const detect.DetectParam) ValidationError!bool
         },
         else => {
             // Standard validation for other algorithms
-        }
+        },
     }
-    
+
     return true;
 }
 
@@ -119,10 +119,10 @@ pub fn validateParameters(param: *const detect.DetectParam) ValidationError!bool
 pub fn validateInput(param: *const detect.DetectParam, bits: *const io.BitInputStream) ValidationError!void {
     // Validate data size
     try validateDataSize(param.type, param.n);
-    
+
     // Validate bit sequence
     try validateBitSequence(bits);
-    
+
     // Validate parameters
     _ = try validateParameters(param);
 }
@@ -156,7 +156,7 @@ pub fn getRecommendedDataSize(algorithm: detect.DetectType) usize {
 test "validation: data size requirements" {
     try validateDataSize(.Frequency, 1000);
     try std.testing.expectError(ValidationError.InsufficientData, validateDataSize(.Frequency, 50));
-    
+
     try validateDataSize(.Rank, 2048);
     try std.testing.expectError(ValidationError.InsufficientData, validateDataSize(.Rank, 512));
 }
@@ -165,7 +165,7 @@ test "validation: recommended data sizes" {
     const freq_size = getRecommendedDataSize(.Frequency);
     const rank_size = getRecommendedDataSize(.Rank);
     const universal_size = getRecommendedDataSize(.Universal);
-    
+
     try std.testing.expect(freq_size >= MinDataRequirements.FREQUENCY);
     try std.testing.expect(rank_size >= MinDataRequirements.RANK);
     try std.testing.expect(universal_size >= MinDataRequirements.UNIVERSAL);

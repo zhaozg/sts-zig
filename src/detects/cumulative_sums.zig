@@ -10,10 +10,10 @@ pub const CumulativeSumsParam = struct {
 const NUMBER_OF_STATES_CUMULATIVESUMS = 2;
 
 pub const CumulativeSumsResult = struct {
-    v_value: [NUMBER_OF_STATES_CUMULATIVESUMS]f64 =   .{0} ** NUMBER_OF_STATES_CUMULATIVESUMS,  // 每个状态的卡方统计量
-    p_value: [NUMBER_OF_STATES_CUMULATIVESUMS]f64 =   .{0} ** NUMBER_OF_STATES_CUMULATIVESUMS,  // 每个状态的p值
-    q_value: [NUMBER_OF_STATES_CUMULATIVESUMS]f64 =   .{0} ** NUMBER_OF_STATES_CUMULATIVESUMS,  // 每个状态的q值
-    passed:  [NUMBER_OF_STATES_CUMULATIVESUMS]bool = .{true} ** NUMBER_OF_STATES_CUMULATIVESUMS,// 每个状态是否通过
+    v_value: [NUMBER_OF_STATES_CUMULATIVESUMS]f64 = .{0} ** NUMBER_OF_STATES_CUMULATIVESUMS, // 每个状态的卡方统计量
+    p_value: [NUMBER_OF_STATES_CUMULATIVESUMS]f64 = .{0} ** NUMBER_OF_STATES_CUMULATIVESUMS, // 每个状态的p值
+    q_value: [NUMBER_OF_STATES_CUMULATIVESUMS]f64 = .{0} ** NUMBER_OF_STATES_CUMULATIVESUMS, // 每个状态的q值
+    passed: [NUMBER_OF_STATES_CUMULATIVESUMS]bool = .{true} ** NUMBER_OF_STATES_CUMULATIVESUMS, // 每个状态是否通过
 };
 
 fn cumulative_sums_print(self: *detect.StatDetect, result: *const detect.DetectResult, level: detect.PrintLevel) void {
@@ -29,15 +29,13 @@ fn cumulative_sums_print(self: *detect.StatDetect, result: *const detect.DetectR
             passed += 1;
         }
     }
-    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n",
-    .{passed, results.passed.len, results.passed.len - passed, results.passed.len});
+    std.debug.print("\tStatus passed: {d}/{d}  failed: {d}/{d}\n", .{ passed, results.passed.len, results.passed.len - passed, results.passed.len });
 
     if (level == .detail) {
         std.debug.print("\n", .{});
         for (0..results.passed.len) |i| {
-            std.debug.print("\tState({s}): passed={s}, V = {d:10.6} P = {d:.6}\n",
-            .{
-                if (i==0) "|==>" else "<==|",
+            std.debug.print("\tState({s}): passed={s}, V = {d:10.6} P = {d:.6}\n", .{
+                if (i == 0) "|==>" else "<==|",
                 if (results.passed[i]) "Yes" else "No ",
                 results.v_value[i],
                 results.p_value[i],
@@ -101,7 +99,7 @@ fn cumulative_sums_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
         } else {
             var j: usize = n;
             while (j > 0) : (j -= 1) {
-                const bit = arr[j-1];
+                const bit = arr[j - 1];
                 sum += if (bit == 1) 1 else -1;
                 if (@abs(sum) > z) {
                     z = @abs(sum);
@@ -120,14 +118,14 @@ fn cumulative_sums_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
         var k = @divTrunc(-nz + 1, @as(isize, 4));
         var u = @divTrunc(nz - 1, @as(isize, 4));
 
-        while ( k <= u ): (k+=1) {
+        while (k <= u) : (k += 1) {
             sum1 += math.normal(@as(f64, @floatFromInt(4 * k + 1)) * zf / @sqrt(nf));
             sum1 -= math.normal(@as(f64, @floatFromInt(4 * k - 1)) * zf / @sqrt(nf));
         }
 
         k = @divTrunc(-nz - 3, @as(isize, 4));
         u = @divTrunc(nz - 1, @as(isize, 4));
-        while ( k <= u ): (k+=1) {
+        while (k <= u) : (k += 1) {
             sum2 += math.normal(@as(f64, @floatFromInt(4 * k + 3)) * zf / @sqrt(nf));
             sum2 -= math.normal(@as(f64, @floatFromInt(4 * k + 1)) * zf / @sqrt(nf));
         }

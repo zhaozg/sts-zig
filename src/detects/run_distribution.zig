@@ -13,10 +13,8 @@ fn run_distribution_destroy(self: *detect.StatDetect) void {
 }
 
 fn calcK(n: usize) usize {
-
-    for (1..n+1) |k| {
-        const e: f64 = @as(f64, @floatFromInt(n - k + 3))
-                     / @as(f64, @floatFromInt(std.math.pow(u64,2, k+2)));
+    for (1..n + 1) |k| {
+        const e: f64 = @as(f64, @floatFromInt(n - k + 3)) / @as(f64, @floatFromInt(std.math.pow(u64, 2, k + 2)));
         if (e < 5.0)
             return k - 1;
     }
@@ -32,7 +30,7 @@ fn run_distribution_iterate(self: *detect.StatDetect, bits: *const io.BitInputSt
     // Step 2: 分别统计0-run和1-run
     var v0: [64]usize = [_]usize{0} ** 64;
     var v1: [64]usize = [_]usize{0} ** 64;
-    var e: [64]f64= [_]f64{0.0} ** 64;
+    var e: [64]f64 = [_]f64{0.0} ** 64;
 
     var l0: usize = 1;
     var l1: usize = 1;
@@ -65,33 +63,31 @@ fn run_distribution_iterate(self: *detect.StatDetect, bits: *const io.BitInputSt
 
     // Step 3: 计算 T
     var T: usize = 0;
-    for (1..k+1) |i| {
+    for (1..k + 1) |i| {
         T += v0[i] + v1[i];
     }
 
     // Step 4: 计算 e
-    for (1..k+1) |i| {
+    for (1..k + 1) |i| {
         if (i == k) {
-            e[i] = @as(f64, @floatFromInt(T))
-                 / @as(f64, @floatFromInt(std.math.pow(u64, 2, k)));
+            e[i] = @as(f64, @floatFromInt(T)) / @as(f64, @floatFromInt(std.math.pow(u64, 2, k)));
         } else {
-            e[i] = @as(f64, @floatFromInt(T))
-                 / @as(f64, @floatFromInt(std.math.pow(u64, 2, i + 1)));
+            e[i] = @as(f64, @floatFromInt(T)) / @as(f64, @floatFromInt(std.math.pow(u64, 2, i + 1)));
         }
     }
 
     // Step 5: 计算 V
     var V: f64 = 0.0;
-    for (1..k+1) |i| {
+    for (1..k + 1) |i| {
         const f0: f64 = @as(f64, @floatFromInt(v0[i]));
         const f1: f64 = @as(f64, @floatFromInt(v1[i]));
         const fe = e[i];
 
-        V += ( f0 - fe ) * ( f0 - fe ) / fe + (f1 - fe) * (f1 - fe) / fe;
+        V += (f0 - fe) * (f0 - fe) / fe + (f1 - fe) * (f1 - fe) / fe;
     }
 
     // Step 6: 计算 P 值
-    const P = math.igamc(@as(f64, @floatFromInt(k-1)), V / 2.0);
+    const P = math.igamc(@as(f64, @floatFromInt(k - 1)), V / 2.0);
     const passed = P > 0.01;
 
     return detect.DetectResult{

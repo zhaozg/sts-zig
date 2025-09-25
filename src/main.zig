@@ -46,22 +46,17 @@ pub fn main() !void {
         if (std.mem.startsWith(u8, arg, "-")) {
             if (std.mem.eql(u8, arg, "-h") or std.mem.eql(u8, arg, "--help")) {
                 options.help = true;
-            }
-            else if (std.mem.eql(u8, arg, "-v") or std.mem.eql(u8, arg, "--version")) {
+            } else if (std.mem.eql(u8, arg, "-v") or std.mem.eql(u8, arg, "--version")) {
                 options.version = true;
-            }
-            else if (std.mem.eql(u8, arg, "-a") or std.mem.eql(u8, arg, "--ascii")) {
+            } else if (std.mem.eql(u8, arg, "-a") or std.mem.eql(u8, arg, "--ascii")) {
                 options.ascii = true;
-            }
-            else if (std.mem.eql(u8, arg, "-V") or std.mem.eql(u8, arg, "--verbose")) {
+            } else if (std.mem.eql(u8, arg, "-V") or std.mem.eql(u8, arg, "--verbose")) {
                 options.verbose = true;
-            }
-            else if (std.mem.eql(u8, arg, "-o")) {
+            } else if (std.mem.eql(u8, arg, "-o")) {
                 i += 1;
                 if (i >= args.len) return error.MissingOutputFile;
                 options.output = args[i];
-            }
-            else if (std.mem.eql(u8, arg, "-b")) {
+            } else if (std.mem.eql(u8, arg, "-b")) {
                 i += 1;
                 if (i >= args.len) {
                     printHelp();
@@ -71,8 +66,7 @@ pub fn main() !void {
                     std.debug.print("Invalid block size: {s}\n", .{args[i]});
                     return err;
                 };
-            }
-            else {
+            } else {
                 std.debug.print("UnknownOption: {s}\n", .{arg});
                 return error.UnknownOption;
             }
@@ -113,7 +107,7 @@ pub fn main() !void {
     }
 
     const byteStream = io.createFileStream(allocator, file);
-    const input = if(options.ascii)
+    const input = if (options.ascii)
         io.BitInputStream.fromAsciiInputStreamWithLength(allocator, byteStream, options.blocksize)
     else
         io.BitInputStream.fromByteInputStreamWithLength(allocator, byteStream, options.blocksize);

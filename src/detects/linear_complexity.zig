@@ -24,12 +24,12 @@ fn berlekamp_massey(seq: []const u8) usize {
     var N: usize = 0;
     while (N < M) : (N += 1) {
         var d: u8 = seq[N];
-        for (1..L+1) |i| {
+        for (1..L + 1) |i| {
             d ^= c[i] & seq[N - i];
         }
         if (d == 1) {
             const t = c;
-            for (0..M-N+m) |i| {
+            for (0..M - N + m) |i| {
                 c[N - m + i] ^= b[i];
             }
             if (L <= N / 2) {
@@ -43,7 +43,6 @@ fn berlekamp_massey(seq: []const u8) usize {
 }
 
 fn linear_complexity_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
-
     const M = 500;
     const K = 6;
     const n = self.param.n;
@@ -76,27 +75,22 @@ fn linear_complexity_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     }
 
     // NIST推荐区间
-    const pi = [_]f64{0.010417, 0.03125, 0.125, 0.5, 0.25, 0.083333};
+    const pi = [_]f64{ 0.010417, 0.03125, 0.125, 0.5, 0.25, 0.083333 };
     var v = [_]usize{0} ** K;
 
     const mean = @as(f64, @floatFromInt(M)) / 2.0 + (9.0 + std.math.pow(f64, -1.0, @as(f64, @floatFromInt(M)))) / 36.0;
 
     for (0..N) |blk| {
         const offset = blk * M;
-        const L = berlekamp_massey(bit_arr[offset..offset+M]);
+        const L = berlekamp_massey(bit_arr[offset .. offset + M]);
         const T = @as(f64, @floatFromInt(L)) - mean;
-        if (T <= -2.5) v[0] += 1
-        else if (T <= -1.5) v[1] += 1
-        else if (T <= -0.5) v[2] += 1
-        else if (T <= 0.5) v[3] += 1
-        else if (T <= 1.5) v[4] += 1
-        else v[5] += 1;
+        if (T <= -2.5) v[0] += 1 else if (T <= -1.5) v[1] += 1 else if (T <= -0.5) v[2] += 1 else if (T <= 0.5) v[3] += 1 else if (T <= 1.5) v[4] += 1 else v[5] += 1;
     }
 
     var chi2: f64 = 0.0;
     for (0..K) |i| {
         const exp = pi[i] * @as(f64, @floatFromInt(N));
-        chi2 += ( @as(f64, @floatFromInt(v[i])) - exp ) * ( @as(f64, @floatFromInt(v[i])) - exp ) / exp;
+        chi2 += (@as(f64, @floatFromInt(v[i])) - exp) * (@as(f64, @floatFromInt(v[i])) - exp) / exp;
     }
 
     const p_value = math.igamc(2.5, chi2 / 2.0);

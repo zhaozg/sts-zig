@@ -297,7 +297,6 @@ pub fn main() !void {
 
         try saveDataToFile(allocator, data, "random_data.txt", .ascii);
         print("Generated {} bits of random data in 'random_data.txt'\n", .{size});
-
     } else if (std.mem.eql(u8, command, "help")) {
         print("STS-Zig Test Data Generator\n", .{});
         print("============================\n", .{});

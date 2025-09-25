@@ -4,7 +4,6 @@ const print = std.debug.print;
 
 /// Enhanced CLI Tool for STS-Zig Statistical Testing Suite
 /// STS-Zig 统计测试套件增强版命令行工具
-
 const OutputFormat = enum {
     console,
     json,
@@ -296,8 +295,7 @@ fn outputConsole(results: []TestResult, config: TestConfig) void {
         else
             result.test_name;
 
-        print("│ {s:<16} │ {s:<15} │ {s:<6} │ {d:>9.6} │ {d:>9.3} │ {d:>9.6} │ {d:>8.2} │\n",
-            .{ truncated_file, truncated_test, status, result.p_value, result.v_value, result.q_value, result.execution_time_ms });
+        print("│ {s:<16} │ {s:<15} │ {s:<6} │ {d:>9.6} │ {d:>9.3} │ {d:>9.6} │ {d:>8.2} │\n", .{ truncated_file, truncated_test, status, result.p_value, result.v_value, result.q_value, result.execution_time_ms });
     }
 
     print("└──────────────────┴─────────────────┴────────┴───────────┴───────────┴───────────┴──────────┘\n", .{});
@@ -350,9 +348,7 @@ fn outputCsv(results: []TestResult, config: TestConfig) void {
 
     for (results) |result| {
         const status = if (result.passed) "PASS" else "FAIL";
-        print("{s},{s},{s},{d},{d},{d},{d},{d}\n",
-            .{ result.file_name, result.test_name, status, result.p_value,
-               result.v_value, result.q_value, result.execution_time_ms, result.data_size });
+        print("{s},{s},{s},{d},{d},{d},{d},{d}\n", .{ result.file_name, result.test_name, status, result.p_value, result.v_value, result.q_value, result.execution_time_ms, result.data_size });
     }
 }
 
@@ -493,8 +489,7 @@ pub fn main() !void {
 
                     if (config.verbose) {
                         const status = if (result.passed) "✅" else "❌";
-                        print("  {s} {s}: P={d:.6}, Time={d:.2}ms\n",
-                            .{ status, result.test_name, result.p_value, result.execution_time_ms });
+                        print("  {s} {s}: P={d:.6}, Time={d:.2}ms\n", .{ status, result.test_name, result.p_value, result.execution_time_ms });
                     }
                 }
             } else {
@@ -503,8 +498,7 @@ pub fn main() !void {
 
                 if (config.verbose) {
                     const status = if (result.passed) "✅" else "❌";
-                    print("  {s} {s}: P={d:.6}, Time={d:.2}ms\n",
-                        .{ status, result.test_name, result.p_value, result.execution_time_ms });
+                    print("  {s} {s}: P={d:.6}, Time={d:.2}ms\n", .{ status, result.test_name, result.p_value, result.execution_time_ms });
                 }
             }
         }

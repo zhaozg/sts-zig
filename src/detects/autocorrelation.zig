@@ -44,7 +44,7 @@ fn autocorrelation_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
     var V: usize = 0;
     for (0..n - d) |i| {
         // 逻辑左移 d 位
-        V += arr[i]^arr[i + d];
+        V += arr[i] ^ arr[i + d];
     }
 
     const nf = @as(f64, @floatFromInt(n - d));
