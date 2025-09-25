@@ -2,3 +2,4 @@
 zig-out
 zig-x86_64-linux-*/
 zig.tar.xz
+*.o
