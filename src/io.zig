@@ -372,6 +372,7 @@ const ByteInputStream = struct {
 
     fn close(ctx: *anyopaque) void {
         const self: *ByteInputStream = @ptrCast(@alignCast(ctx));
+        self.stream.close();
         self.allocator.destroy(self);
     }
 

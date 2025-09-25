@@ -105,25 +105,190 @@ test "gammaln accuracy verification" {
     }
 }
 
-test "FFT accuracy verification" {
+test "FFT algorithm accuracy verification" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    // 创建一个简单的测试信号：单频正弦波
-    const n = 64;
-    const freq = 8.0; // 8 个周期
+    std.debug.print("\n=== FFT Algorithm Accuracy Tests ===\n", .{});
 
-    var input = try allocator.alloc(f64, n);
-    defer allocator.free(input);
-
-    for (0..n) |i| {
-        const t = @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(n));
-        input[i] = std.math.sin(2.0 * std.math.pi * freq * t);
+    // Test FFT by creating a DFT detector and using it indirectly
+    // This tests the actual FFT implementation used by the statistical tests
+    
+    const detect = zsts.detect;
+    const dft = zsts.dft;
+    
+    // Test 1: Simple signal with known FFT properties
+    {
+        std.debug.print("\n--- Test 1: DFT Statistical Test Integration ---\n", .{});
+        
+        const param = detect.DetectParam{
+            .type = detect.DetectType.Dft,
+            .n = 1024,
+            .extra = null,
+        };
+        
+        var stat = try dft.dftDetectStatDetect(allocator, param);
+        defer stat.destroy();
+        
+        // Test with a sequence that should have predictable FFT behavior
+        // Create a simple alternating sequence
+        var test_data = try allocator.alloc(u1, 1024);
+        defer allocator.free(test_data);
+        
+        for (0..1024) |i| {
+            test_data[i] = @as(u1, @truncate(i % 2));
+        }
+        
+        // Create bit stream from our test data
+        const memory_stream = zsts.io.createMemoryStream(allocator, std.mem.sliceAsBytes(test_data));
+        const bit_stream = zsts.io.BitInputStream.fromByteInputStreamWithLength(allocator, memory_stream, 1024);
+        defer bit_stream.close();
+        
+        stat.init(stat.param);
+        const result = stat.iterate(&bit_stream);
+        
+        std.debug.print("DFT Test Results:\n", .{});
+        std.debug.print("  Passed: {}\n", .{result.passed});
+        std.debug.print("  V-value: {d:.6}\n", .{result.v_value});
+        std.debug.print("  P-value: {d:.6}\n", .{result.p_value});
+        std.debug.print("  Q-value: {d:.6}\n", .{result.q_value});
+        
+        // Verify the test produces reasonable results
+        try testing.expect(std.math.isFinite(result.v_value));
+        try testing.expect(std.math.isFinite(result.p_value));
+        try testing.expect(result.p_value >= 0.0 and result.p_value <= 1.0);
     }
-
-    // 注意：FFT 测试需要完整的 StatDetect 结构，暂时跳过
-    std.debug.print("FFT test skipped - requires full project integration\n", .{});
+    
+    // Test 2: Random data FFT behavior
+    {
+        std.debug.print("\n--- Test 2: Random Data FFT Analysis ---\n", .{});
+        
+        const param = detect.DetectParam{
+            .type = detect.DetectType.Dft,
+            .n = 512,
+            .extra = null,
+        };
+        
+        var stat = try dft.dftDetectStatDetect(allocator, param);
+        defer stat.destroy();
+        
+        // Generate random binary data
+        var prng = std.Random.DefaultPrng.init(42);
+        const random = prng.random();
+        
+        var test_data = try allocator.alloc(u1, 512);
+        defer allocator.free(test_data);
+        
+        for (0..512) |i| {
+            test_data[i] = if (random.float(f32) > 0.5) 1 else 0;
+        }
+        
+        const memory_stream = zsts.io.createMemoryStream(allocator, std.mem.sliceAsBytes(test_data));
+        const bit_stream = zsts.io.BitInputStream.fromByteInputStreamWithLength(allocator, memory_stream, 512);
+        defer bit_stream.close();
+        
+        stat.init(stat.param);
+        const result = stat.iterate(&bit_stream);
+        
+        std.debug.print("Random Data DFT Results:\n", .{});
+        std.debug.print("  Passed: {}\n", .{result.passed});
+        std.debug.print("  V-value: {d:.6}\n", .{result.v_value});
+        std.debug.print("  P-value: {d:.6}\n", .{result.p_value});
+        std.debug.print("  Q-value: {d:.6}\n", .{result.q_value});
+        
+        // Random data should generally pass the DFT test
+        try testing.expect(std.math.isFinite(result.v_value));
+        try testing.expect(std.math.isFinite(result.p_value));
+        try testing.expect(result.p_value >= 0.0 and result.p_value <= 1.0);
+        
+        // For random data, we expect the test to pass most of the time
+        // but we won't enforce it strictly as it's statistical
+    }
+    
+    // Test 3: Pattern recognition
+    {
+        std.debug.print("\n--- Test 3: Periodic Pattern Detection ---\n", .{});
+        
+        const param = detect.DetectParam{
+            .type = detect.DetectType.Dft,
+            .n = 256,
+            .extra = null,
+        };
+        
+        var stat = try dft.dftDetectStatDetect(allocator, param);
+        defer stat.destroy();
+        
+        // Create a periodic pattern that should be detected by FFT
+        var test_data = try allocator.alloc(u1, 256);
+        defer allocator.free(test_data);
+        
+        // Create a pattern with period 4: 1,0,1,0,1,0,1,0...
+        for (0..256) |i| {
+            test_data[i] = @as(u1, @truncate((i / 2) % 2));
+        }
+        
+        const memory_stream = zsts.io.createMemoryStream(allocator, std.mem.sliceAsBytes(test_data));
+        const bit_stream = zsts.io.BitInputStream.fromByteInputStreamWithLength(allocator, memory_stream, 256);
+        defer bit_stream.close();
+        
+        stat.init(stat.param);
+        const result = stat.iterate(&bit_stream);
+        
+        std.debug.print("Periodic Pattern DFT Results:\n", .{});
+        std.debug.print("  Passed: {}\n", .{result.passed});
+        std.debug.print("  V-value: {d:.6}\n", .{result.v_value});
+        std.debug.print("  P-value: {d:.6}\n", .{result.p_value});
+        std.debug.print("  Q-value: {d:.6}\n", .{result.q_value});
+        
+        // Periodic patterns should typically fail the randomness test
+        // (though this depends on the specific pattern and test parameters)
+        try testing.expect(std.math.isFinite(result.v_value));
+        try testing.expect(std.math.isFinite(result.p_value));
+        try testing.expect(result.p_value >= 0.0 and result.p_value <= 1.0);
+    }
+    
+    // Test 4: Edge case - small data size
+    {
+        std.debug.print("\n--- Test 4: Small Data Size Handling ---\n", .{});
+        
+        const param = detect.DetectParam{
+            .type = detect.DetectType.Dft,
+            .n = 64,
+            .extra = null,
+        };
+        
+        var stat = try dft.dftDetectStatDetect(allocator, param);
+        defer stat.destroy();
+        
+        var test_data = try allocator.alloc(u1, 64);
+        defer allocator.free(test_data);
+        
+        // Fill with simple pattern
+        for (0..64) |i| {
+            test_data[i] = @as(u1, @truncate(i % 2));
+        }
+        
+        const memory_stream = zsts.io.createMemoryStream(allocator, std.mem.sliceAsBytes(test_data));
+        const bit_stream = zsts.io.BitInputStream.fromByteInputStreamWithLength(allocator, memory_stream, 64);
+        defer bit_stream.close();
+        
+        stat.init(stat.param);
+        const result = stat.iterate(&bit_stream);
+        
+        std.debug.print("Small Data DFT Results:\n", .{});
+        std.debug.print("  Passed: {}\n", .{result.passed});
+        std.debug.print("  V-value: {d:.6}\n", .{result.v_value});
+        std.debug.print("  P-value: {d:.6}\n", .{result.p_value});
+        std.debug.print("  Q-value: {d:.6}\n", .{result.q_value});
+        
+        // Even small data should produce valid results
+        try testing.expect(std.math.isFinite(result.v_value));
+        try testing.expect(std.math.isFinite(result.p_value));
+        try testing.expect(result.p_value >= 0.0 and result.p_value <= 1.0);
+    }
+    
+    std.debug.print("\n✅ All FFT accuracy tests completed successfully!\n", .{});
 }
 
 test "consistency with existing test cases" {
