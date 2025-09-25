@@ -5,6 +5,7 @@ pub const math = @import("math.zig");
 pub const validation = @import("validation.zig");
 pub const reporting = @import("reporting.zig");
 pub const suite = @import("suite.zig");
+pub const fft = @import("fft.zig");
 
 pub const frequency = @import("detects/frequency.zig");
 pub const poker = @import("detects/poker.zig");
