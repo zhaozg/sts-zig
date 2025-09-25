@@ -458,6 +458,7 @@ fn runEnhancedMode(allocator: std.mem.Allocator, options: Options) !void {
 /// Legacy mode for single file processing (maintains backward compatibility)
 fn runLegacyMode(allocator: std.mem.Allocator, options: Options) !void {
     var file: std.fs.File = undefined;
+    var should_close_file = false;
 
     if (options.input_files.len == 0) {
         file = compat.getStdIn();
@@ -467,8 +468,10 @@ fn runLegacyMode(allocator: std.mem.Allocator, options: Options) !void {
             std.debug.print("openFile failed: {}\n", .{err});
             return err;
         };
-        defer file.close();
+        should_close_file = true;
     }
+
+    defer if (should_close_file) file.close();
 
     const byteStream = io.createFileStream(allocator, file);
     const input = if (options.ascii)
