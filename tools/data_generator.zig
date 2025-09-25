@@ -78,15 +78,29 @@ fn generateConstantData(data: []u8, value: u8) void {
 fn generatePeriodicData(data: []u8, period: usize) !void {
     if (period == 0) return error.InvalidPeriod;
     
-    var prng = std.rand.DefaultPrng.init(12345);
+    var prng = std.Random.DefaultPrng.init(12345);
     const random = prng.random();
     
     // Generate one period of random data
-    var pattern = std.ArrayList(u8).init(std.heap.page_allocator);
-    defer pattern.deinit();
+    const PatternListType = std.ArrayList(u8);
+    var pattern = if (@hasField(PatternListType, "allocator")) 
+        PatternListType{ .items = &[_]u8{}, .capacity = 0, .allocator = std.heap.page_allocator }
+    else 
+        PatternListType{};
+    defer {
+        if (@hasField(PatternListType, "allocator")) {
+            pattern.deinit();
+        } else {
+            pattern.deinit(std.heap.page_allocator);
+        }
+    }
     
     for (0..period) |_| {
-        try pattern.append(random.int(u8) & 1);
+        if (@hasField(PatternListType, "allocator")) {
+            try pattern.append(random.int(u8) & 1);
+        } else {
+            try pattern.append(std.heap.page_allocator, random.int(u8) & 1);
+        }
     }
     
     // Repeat the pattern
@@ -110,7 +124,7 @@ fn generateLCGData(data: []u8, seed: u64) !void {
 
 /// Generate data using Mersenne Twister
 fn generateMTData(data: []u8, seed: u64) !void {
-    var mt = std.rand.Xoshiro256.init(seed);
+    var mt = std.Random.Xoshiro256.init(seed);
     
     for (data) |*byte| {
         byte.* = @as(u8, @intCast(mt.next() & 1));
@@ -153,14 +167,28 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
     switch (format) {
         .binary => {
             // Pack bits into bytes
-            var packed_data = std.ArrayList(u8).init(allocator);
-            defer packed_data.deinit();
+            const PackedListType = std.ArrayList(u8);
+            var packed_data = if (@hasField(PackedListType, "allocator")) 
+                PackedListType{ .items = &[_]u8{}, .capacity = 0, .allocator = allocator }
+            else 
+                PackedListType{};
+            defer {
+                if (@hasField(PackedListType, "allocator")) {
+                    packed_data.deinit();
+                } else {
+                    packed_data.deinit(allocator);
+                }
+            }
             
             var byte: u8 = 0;
             for (data, 0..) |bit, i| {
                 byte = (byte << 1) | bit;
                 if ((i + 1) % 8 == 0 or i == data.len - 1) {
-                    try packed_data.append(byte);
+                    if (@hasField(PackedListType, "allocator")) {
+                        try packed_data.append(byte);
+                    } else {
+                        try packed_data.append(allocator, byte);
+                    }
                     byte = 0;
                 }
             }
@@ -169,11 +197,12 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
         },
         .ascii => {
             for (data) |bit| {
-                try file.writer().print("{c}", .{'0' + bit});
+                const char = [1]u8{'0' + bit};
+                try file.writeAll(&char);
             }
         },
         .hex => {
-            for (data, 0..) |bit, i| {
+            for (data, 0..) |_, i| {
                 if (i % 4 == 0 and i > 0) {
                     var hex_val: u8 = 0;
                     for (0..4) |j| {
@@ -181,7 +210,10 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
                             hex_val = (hex_val << 1) | data[i - 4 + j];
                         }
                     }
-                    try file.writer().print("{x}", .{hex_val});
+                    // Cross-version compatible hex writing
+                    var hex_buffer: [2]u8 = undefined;
+                    const hex_str = std.fmt.bufPrint(&hex_buffer, "{x}", .{hex_val}) catch unreachable;
+                    try file.writeAll(hex_str);
                 }
             }
         },
@@ -252,7 +284,7 @@ pub fn main() !void {
         try generateTestSuite(allocator, output_dir);
     } else if (std.mem.eql(u8, command, "random")) {
         if (args.len < 4) {
-            print("Usage: random <size> <seed>\n");
+            print("Usage: random <size> <seed>\n", .{});
             return;
         }
         
@@ -267,21 +299,21 @@ pub fn main() !void {
         print("Generated {} bits of random data in 'random_data.txt'\n", .{size});
         
     } else if (std.mem.eql(u8, command, "help")) {
-        print("STS-Zig Test Data Generator\n");
-        print("============================\n");
-        print("Generate various types of test data for statistical analysis.\n\n");
-        print("Available data types:\n");
-        print("- random: Cryptographically strong random data\n");
-        print("- alternating: Alternating bit pattern (010101...)\n");
-        print("- constant: All zeros or all ones\n");
-        print("- periodic: Repeating patterns\n");
-        print("- lcg: Linear Congruential Generator\n");
-        print("- mt: Mersenne Twister\n");
-        print("- lfsr: Linear Feedback Shift Register\n");
-        print("- pattern: Custom bit patterns\n");
+        print("STS-Zig Test Data Generator\n", .{});
+        print("============================\n", .{});
+        print("Generate various types of test data for statistical analysis.\n\n", .{});
+        print("Available data types:\n", .{});
+        print("- random: Cryptographically strong random data\n", .{});
+        print("- alternating: Alternating bit pattern (010101...)\n", .{});
+        print("- constant: All zeros or all ones\n", .{});
+        print("- periodic: Repeating patterns\n", .{});
+        print("- lcg: Linear Congruential Generator\n", .{});
+        print("- mt: Mersenne Twister\n", .{});
+        print("- lfsr: Linear Feedback Shift Register\n", .{});
+        print("- pattern: Custom bit patterns\n", .{});
     } else {
         print("Unknown command: {s}\n", .{command});
-        print("Use 'help' for available commands.\n");
+        print("Use 'help' for available commands.\n", .{});
     }
 }
 

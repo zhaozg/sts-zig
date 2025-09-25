@@ -10,6 +10,18 @@ fn frequency_init(self: *detect.StatDetect, param: *const detect.DetectParam) vo
 }
 
 fn frequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
+    // Early return for invalid/empty data
+    if (self.param.n == 0) {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = null,
+        };
+    }
+    
     var n: isize = 0;
 
     // Step 2: compute S_n
@@ -51,7 +63,8 @@ fn frequency_metrics(self: *detect.StatDetect, result: *const detect.DetectResul
 }
 
 fn frequency_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn frequency_summary(self: *detect.StatDetect, result: *const detect.DetectResult) void {

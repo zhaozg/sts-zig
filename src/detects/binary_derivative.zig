@@ -13,7 +13,12 @@ fn binary_derivative_init(self: *detect.StatDetect, param: *const detect.DetectP
 }
 
 fn binary_derivative_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    if (self.param.extra) |extra| {
+        const param: *BinaryDerivativeParam = @ptrCast(@alignCast(extra));
+        self.allocator.destroy(param);
+    }
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn binary_derivative_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {

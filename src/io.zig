@@ -568,6 +568,9 @@ const AsciiBitStream = struct {
 
     fn close(ctx: *anyopaque) void {
         const self: *AsciiBitStream = @ptrCast(@alignCast(ctx));
+        if (self.array.len > 0) {
+            self.allocator.free(self.array);
+        }
         self.allocator.destroy(self);
     }
 

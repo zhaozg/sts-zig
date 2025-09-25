@@ -11,6 +11,19 @@ fn runs_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
 
 fn runs_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     const n: usize = self.param.n;
+    
+    // Early return for invalid/empty data
+    if (n == 0) {
+        return detect.DetectResult{
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = null,
+        };
+    }
+    
     var Vobs: usize = 0;
     var ones: usize = 0;
     var prev: u1 = 0;
@@ -54,9 +67,12 @@ fn runs_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
 }
 
 fn runs_destroy(self: *detect.StatDetect) void {
-    const Param: *RunsParam = @ptrCast(self.param.extra);
-    _ = Param;
-    // 清理
+    if (self.param.extra) |extra| {
+        const param: *RunsParam = @ptrCast(@alignCast(extra));
+        self.allocator.destroy(param);
+    }
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 const RunsParam = struct {

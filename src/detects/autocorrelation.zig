@@ -13,7 +13,12 @@ fn autocorrelation_init(self: *detect.StatDetect, param: *const detect.DetectPar
 }
 
 fn autocorrelation_destroy(self: *detect.StatDetect) void {
-    _ = self;
+    if (self.param.extra) |extra| {
+        const param: *AutoCorrelationParam = @ptrCast(@alignCast(extra));
+        self.allocator.destroy(param);
+    }
+    self.allocator.destroy(self.param);
+    self.allocator.destroy(self);
 }
 
 fn autocorrelation_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
