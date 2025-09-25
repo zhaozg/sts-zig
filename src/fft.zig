@@ -440,12 +440,25 @@ fn fftDecomposition(allocator: std.mem.Allocator, data: []Complex) !void {
 
 /// Find optimal factorization for huge dataset processing
 fn findOptimalFactors(allocator: std.mem.Allocator, n: usize) ![]usize {
-    var factors = std.ArrayList(usize).init(allocator);
+    // Version compatible ArrayList initialization
+    var factors = if (@hasDecl(std.ArrayList(usize), "init"))
+        std.ArrayList(usize).init(allocator)
+    else
+        std.ArrayList(usize){};
+
+    defer if (@hasDecl(std.ArrayList(usize), "init"))
+        factors.deinit()
+    else
+        factors.deinit(allocator);
+
     var remaining = n;
 
     // Prioritize power-of-2 factors for FFT efficiency
     while (remaining % 2 == 0 and remaining > 1) {
-        try factors.append(2);
+        if (@hasDecl(std.ArrayList(usize), "init"))
+            try factors.append(2)
+        else
+            try factors.append(allocator, 2);
         remaining /= 2;
     }
 
@@ -453,17 +466,26 @@ fn findOptimalFactors(allocator: std.mem.Allocator, n: usize) ![]usize {
     const small_primes = [_]usize{ 3, 5, 7, 11, 13 };
     for (small_primes) |prime| {
         while (remaining % prime == 0 and remaining > 1) {
-            try factors.append(prime);
+            if (@hasDecl(std.ArrayList(usize), "init"))
+                try factors.append(prime)
+            else
+                try factors.append(allocator, prime);
             remaining /= prime;
         }
     }
 
     // Add the remaining factor if it's not 1
     if (remaining > 1) {
-        try factors.append(remaining);
+        if (@hasDecl(std.ArrayList(usize), "init"))
+            try factors.append(remaining)
+        else
+            try factors.append(allocator, remaining);
     }
 
-    return factors.toOwnedSlice();
+    return if (@hasDecl(std.ArrayList(usize), "init"))
+        try factors.toOwnedSlice()
+    else
+        factors.toOwnedSlice(allocator);
 }
 
 /// Apply factored FFT for decomposed processing
