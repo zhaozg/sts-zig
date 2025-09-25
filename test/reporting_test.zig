@@ -40,7 +40,7 @@ test "reporting: summary calculation" {
     try std.testing.expect(summary.total_tests == 3);
     try std.testing.expect(summary.passed_tests == 2);
     try std.testing.expect(summary.failed_tests == 1);
-    try std.testing.expectApproxEqAbs(summary.pass_rate, 2.0/3.0, 0.001);
+    try std.testing.expectApproxEqAbs(summary.pass_rate, 2.0 / 3.0, 0.001);
 
     // Check p-value statistics
     try std.testing.expectApproxEqAbs(summary.min_p_value, 0.005, 0.001);

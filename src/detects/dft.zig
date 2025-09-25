@@ -23,31 +23,31 @@ const TwiddleTable = struct {
     cos_table: []f64,
     sin_table: []f64,
     size: usize,
-    
+
     fn init(allocator: std.mem.Allocator, n: usize) !TwiddleTable {
         const table_size = n / 2;
         const cos_table = try allocator.alloc(f64, table_size);
         const sin_table = try allocator.alloc(f64, table_size);
-        
+
         // 预计算所有可能用到的三角函数值
         for (0..table_size) |i| {
             const angle = -2.0 * std.math.pi * @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(n));
             cos_table[i] = std.math.cos(angle);
             sin_table[i] = std.math.sin(angle);
         }
-        
+
         return TwiddleTable{
             .cos_table = cos_table,
             .sin_table = sin_table,
             .size = table_size,
         };
     }
-    
+
     fn deinit(self: *TwiddleTable, allocator: std.mem.Allocator) void {
         allocator.free(self.cos_table);
         allocator.free(self.sin_table);
     }
-    
+
     fn get(self: *const TwiddleTable, k: usize, n: usize) Complex {
         const index = (k * self.size) / (n / 2);
         return Complex{
@@ -120,7 +120,7 @@ fn allocateAlignedComplexBuffer(allocator: std.mem.Allocator, n: usize) ![]Compl
     const alignment = 32;
     const size = n * @sizeOf(Complex);
     const aligned_size = (size + alignment - 1) / alignment * alignment;
-    
+
     const raw_ptr = try allocator.alignedAlloc(u8, alignment, aligned_size);
     return @as([*]Complex, @ptrCast(@alignCast(raw_ptr.ptr)))[0..n];
 }
@@ -135,11 +135,11 @@ fn convertToOutputSIMD(input: []const Complex, fft_out: []f64, fft_m: []f64) voi
         // 加载4个复数
         const re_vec = VectorF64{ input[i].re, input[i + 1].re, input[i + 2].re, input[i + 3].re };
         const im_vec = VectorF64{ input[i].im, input[i + 1].im, input[i + 2].im, input[i + 3].im };
-        
+
         // 计算幅值 |z|² = re² + im²
         const mag_squared = re_vec * re_vec + im_vec * im_vec;
         const magnitude = @sqrt(mag_squared);
-        
+
         // 存储结果
         fft_out[2 * i] = re_vec[0];
         fft_out[2 * i + 1] = im_vec[0];
@@ -149,7 +149,7 @@ fn convertToOutputSIMD(input: []const Complex, fft_out: []f64, fft_m: []f64) voi
         fft_out[2 * (i + 2) + 1] = im_vec[2];
         fft_out[2 * (i + 3)] = re_vec[3];
         fft_out[2 * (i + 3) + 1] = im_vec[3];
-        
+
         fft_m[i] = magnitude[0];
         fft_m[i + 1] = magnitude[1];
         fft_m[i + 2] = magnitude[2];
@@ -173,21 +173,21 @@ fn fastMagnitude(c: Complex) f64 {
 fn compute_small_fft(x: []const f64, fft_out: []f64, fft_m: []f64) !void {
     const n = x.len;
     const out_len = n / 2 + 1;
-    
+
     // 对于小尺寸，直接计算DFT可能更快
     for (0..out_len) |k| {
         var real: f64 = 0.0;
         var imag: f64 = 0.0;
-        
+
         for (0..n) |j| {
             const angle = -2.0 * std.math.pi * @as(f64, @floatFromInt(k)) * @as(f64, @floatFromInt(j)) / @as(f64, @floatFromInt(n));
             const cos_val = std.math.cos(angle);
             const sin_val = std.math.sin(angle);
-            
+
             real += x[j] * cos_val;
             imag += x[j] * sin_val;
         }
-        
+
         fft_out[2 * k] = real;
         fft_out[2 * k + 1] = imag;
         fft_m[k] = @sqrt(real * real + imag * imag);
@@ -213,7 +213,7 @@ fn fft_simd_radix2(data: []Complex) !void {
     while (stage_size <= n) : (stage_size *= 2) {
         const half_stage = stage_size / 2;
         const theta = -2.0 * std.math.pi / @as(f64, @floatFromInt(stage_size));
-        
+
         var group_start: usize = 0;
         while (group_start < n) : (group_start += stage_size) {
             // SIMD向量化蝶形运算 - 一次处理4组
@@ -224,43 +224,25 @@ fn fft_simd_radix2(data: []Complex) !void {
                 const k1 = @as(f64, @floatFromInt(k + 1));
                 const k2 = @as(f64, @floatFromInt(k + 2));
                 const k3 = @as(f64, @floatFromInt(k + 3));
-                
+
                 const angles = VectorF64{ k0, k1, k2, k3 } * @as(VectorF64, @splat(theta));
                 const cos_vals = @cos(angles);
                 const sin_vals = @sin(angles);
 
                 // 计算索引
-                const even_indices = [4]usize{ 
-                    group_start + k, group_start + k + 1, 
-                    group_start + k + 2, group_start + k + 3 
-                };
-                const odd_indices = [4]usize{ 
-                    group_start + k + half_stage, group_start + k + 1 + half_stage,
-                    group_start + k + 2 + half_stage, group_start + k + 3 + half_stage 
-                };
+                const even_indices = [4]usize{ group_start + k, group_start + k + 1, group_start + k + 2, group_start + k + 3 };
+                const odd_indices = [4]usize{ group_start + k + half_stage, group_start + k + 1 + half_stage, group_start + k + 2 + half_stage, group_start + k + 3 + half_stage };
 
                 // 加载数据到向量
-                const even_re = VectorF64{ 
-                    data[even_indices[0]].re, data[even_indices[1]].re,
-                    data[even_indices[2]].re, data[even_indices[3]].re 
-                };
-                const even_im = VectorF64{ 
-                    data[even_indices[0]].im, data[even_indices[1]].im,
-                    data[even_indices[2]].im, data[even_indices[3]].im 
-                };
-                const odd_re = VectorF64{ 
-                    data[odd_indices[0]].re, data[odd_indices[1]].re,
-                    data[odd_indices[2]].re, data[odd_indices[3]].re 
-                };
-                const odd_im = VectorF64{ 
-                    data[odd_indices[0]].im, data[odd_indices[1]].im,
-                    data[odd_indices[2]].im, data[odd_indices[3]].im 
-                };
+                const even_re = VectorF64{ data[even_indices[0]].re, data[even_indices[1]].re, data[even_indices[2]].re, data[even_indices[3]].re };
+                const even_im = VectorF64{ data[even_indices[0]].im, data[even_indices[1]].im, data[even_indices[2]].im, data[even_indices[3]].im };
+                const odd_re = VectorF64{ data[odd_indices[0]].re, data[odd_indices[1]].re, data[odd_indices[2]].re, data[odd_indices[3]].re };
+                const odd_im = VectorF64{ data[odd_indices[0]].im, data[odd_indices[1]].im, data[odd_indices[2]].im, data[odd_indices[3]].im };
 
                 // SIMD蝶形运算
                 const temp_re = cos_vals * odd_re - sin_vals * odd_im;
                 const temp_im = cos_vals * odd_im + sin_vals * odd_re;
-                
+
                 const new_odd_re = even_re - temp_re;
                 const new_odd_im = even_im - temp_im;
                 const new_even_re = even_re + temp_re;
@@ -287,7 +269,7 @@ fn fft_simd_radix2(data: []Complex) !void {
 
                 const temp_re = w.re * data[odd_idx].re - w.im * data[odd_idx].im;
                 const temp_im = w.re * data[odd_idx].im + w.im * data[odd_idx].re;
-                
+
                 data[odd_idx].re = data[even_idx].re - temp_re;
                 data[odd_idx].im = data[even_idx].im - temp_im;
                 data[even_idx].re = data[even_idx].re + temp_re;
@@ -335,21 +317,21 @@ fn fft_parallel_simd(allocator: std.mem.Allocator, data: []Complex) !void {
 
     // 分治：将大问题分解为小问题并行处理
     const half_n = n / 2;
-    
+
     // 分离奇偶元素
     const temp_buffer = try allocator.alloc(Complex, n);
     defer allocator.free(temp_buffer);
-    
+
     // 偶数索引元素
     for (0..half_n) |i| {
         temp_buffer[i] = data[2 * i];
     }
-    
-    // 奇数索引元素  
+
+    // 奇数索引元素
     for (0..half_n) |i| {
         temp_buffer[half_n + i] = data[2 * i + 1];
     }
-    
+
     @memcpy(data, temp_buffer);
 
     // 递归处理子问题 (可以并行化)
@@ -399,7 +381,7 @@ fn fft_optimized_radix2(data: []Complex) !void {
     while (stage_size <= n) : (stage_size *= 2) {
         const half_stage = stage_size / 2;
         const theta = -2.0 * std.math.pi / @as(f64, @floatFromInt(stage_size));
-        
+
         // 预计算此阶段的所有旋转因子
         var group_start: usize = 0;
         while (group_start < n) : (group_start += stage_size) {
@@ -417,7 +399,7 @@ fn fft_optimized_radix2(data: []Complex) !void {
                 // 优化的蝶形运算：减少临时变量
                 const temp_re = w.re * data[odd_idx].re - w.im * data[odd_idx].im;
                 const temp_im = w.re * data[odd_idx].im + w.im * data[odd_idx].re;
-                
+
                 data[odd_idx].re = data[even_idx].re - temp_re;
                 data[odd_idx].im = data[even_idx].im - temp_im;
                 data[even_idx].re = data[even_idx].re + temp_re;
@@ -450,37 +432,17 @@ fn bit_reverse_permute_optimized(data: []Complex) void {
     }
 }
 
-/// 优化的bit-reversal排列，使用更高效的算法 (保持向后兼容)
-fn bit_reverse_permute_optimized(data: []Complex) void {
-    const n = data.len;
-    if (n <= 1) return;
-
-    var j: usize = 0;
-    for (1..n) |i| {
-        var bit = n >> 1;
-        while (j & bit != 0) {
-            j ^= bit;
-            bit >>= 1;
-        }
-        j ^= bit;
-
-        if (i < j) {
-            // 交换元素
-            const temp = data[i];
-            data[i] = data[j];
-            data[j] = temp;
-        }
-    }
-}
-
 /// 基4 FFT实现，在某些情况下比基2更快
 fn fft_radix4(data: []Complex) !void {
+    // TODO: Implement radix-4 FFT for better performance
+    try fft_mixed_radix(data);
+}
 
 /// 混合基FFT，用于处理一般大小的输入
 fn fft_mixed_radix(data: []Complex) !void {
     const n = data.len;
     if (n <= 1) return;
-    
+
     // 对于非2的幂次大小，使用DFT
     // 在生产环境中可以实现更复杂的混合基算法
     try dft_inplace(data);
@@ -491,7 +453,7 @@ fn dft_inplace(data: []Complex) !void {
     const n = data.len;
     const temp = std.heap.page_allocator.alloc(Complex, n) catch return error.OutOfMemory;
     defer std.heap.page_allocator.free(temp);
-    
+
     for (0..n) |k| {
         temp[k] = Complex{ .re = 0.0, .im = 0.0 };
 
@@ -505,32 +467,9 @@ fn dft_inplace(data: []Complex) !void {
             temp[k] = temp[k].add(data[j].mul(w));
         }
     }
-    
+
     // 复制结果回原数组
     @memcpy(data, temp);
-}
-
-/// 优化的bit-reversal排列，使用更高效的算法
-fn bit_reverse_permute_optimized(data: []Complex) void {
-    const n = data.len;
-    if (n <= 1) return;
-
-    var j: usize = 0;
-    for (1..n) |i| {
-        var bit = n >> 1;
-        while (j & bit != 0) {
-            j ^= bit;
-            bit >>= 1;
-        }
-        j ^= bit;
-
-        if (i < j) {
-            // 交换元素
-            const temp = data[i];
-            data[i] = data[j];
-            data[j] = temp;
-        }
-    }
 }
 
 /// 原始迭代实现的 Cooley-Tukey FFT 算法 (保持向后兼容)

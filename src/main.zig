@@ -268,7 +268,7 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     var options = Options{};
-    
+
     // Use ArrayList for collecting input files
     var input_files = compat.ArrayList([]const u8).init(allocator);
     defer input_files.deinit();
@@ -400,9 +400,9 @@ fn runEnhancedMode(allocator: std.mem.Allocator, options: Options) !void {
     defer all_results.deinit();
 
     // Process each file
-    const files_to_process = if (options.input_files.len == 0) 
+    const files_to_process = if (options.input_files.len == 0)
         &[_][]const u8{"<stdin>"}
-    else 
+    else
         options.input_files;
 
     for (files_to_process) |file_path| {
@@ -413,7 +413,7 @@ fn runEnhancedMode(allocator: std.mem.Allocator, options: Options) !void {
         // Read file content or stdin
         var content: []u8 = undefined;
         const should_free = true;
-        
+
         if (std.mem.eql(u8, file_path, "<stdin>")) {
             const stdin = compat.getStdIn();
             // Read from stdin - for now, use a reasonable buffer
@@ -512,7 +512,7 @@ fn runTestsOnFile(allocator: std.mem.Allocator, results: *compat.ArrayList(TestR
 
     const param = detect.DetectParam{
         .type = detect.DetectType.General,
-        .n = @min(content.len * 8, options.blocksize),  // Use smaller of content size or blocksize
+        .n = @min(content.len * 8, options.blocksize), // Use smaller of content size or blocksize
         .extra = null,
     };
 
@@ -522,7 +522,7 @@ fn runTestsOnFile(allocator: std.mem.Allocator, results: *compat.ArrayList(TestR
 
     // Run tests and collect results
     const level = if (options.verbose) detect.PrintLevel.detail else detect.PrintLevel.summary;
-    
+
     // For now, create a simple result - in a full implementation, we'd need to modify
     // the suite to return structured results
     const start_time = std.time.milliTimestamp();
