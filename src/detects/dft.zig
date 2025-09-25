@@ -3,6 +3,7 @@ const io = @import("../io.zig");
 const std = @import("std");
 const math = @import("../math.zig");
 const builtin = @import("builtin");
+const fft = @import("../fft.zig");
 
 // 使用 Zig 标准库的复数类型
 const Complex = std.math.Complex(f64);
@@ -115,7 +116,7 @@ const TwiddleTable = struct {
     }
 };
 
-/// 高性能实数到复数 FFT 实现 (SIMD + 并行优化版)
+/// 高性能实数到复数 FFT 实现 (使用新的 FFT 模块)
 /// 使用 SIMD 向量化、多线程并行处理和内存优化
 pub fn compute_r2c_fft(
     self: *detect.StatDetect,
@@ -123,58 +124,8 @@ pub fn compute_r2c_fft(
     fft_out: []f64, // 输出复数数组 (交替存储 re, im)
     fft_m: []f64, // 输出幅值谱
 ) !void {
-    const n = x.len;
-    const out_len = n / 2 + 1; // 复数输出的长度
-
-    // 1. 检查输出缓冲区大小
-    if (fft_out.len < 2 * out_len) return error.BufferTooSmall;
-    if (fft_m.len < out_len) return error.BufferTooSmall;
-
-    // 2. 优化：对于小尺寸使用直接实现，避免内存分配开销
-    if (n <= 256) {
-        try compute_small_fft(x, fft_out, fft_m);
-        return;
-    }
-
-    // 2.5. 对于非常大的非2幂次数据，使用Bluestein算法
-    if (n > 65536 and (n & (n - 1)) != 0) {
-        // 使用Bluestein's chirp-z变换处理任意大小，保持完全精度
-        try compute_bluestein_fft(self, x, fft_out, fft_m);
-        return;
-    }
-
-    // 3. 创建对齐的复数工作数组用于SIMD优化
-    const complex_buffer = try allocateAlignedComplexBuffer(self.allocator, n);
-    defer self.allocator.free(complex_buffer);
-
-    // 初始化输入数据
-    for (0..n) |i| {
-        complex_buffer[i] = Complex{ .re = x[i], .im = 0.0 };
-    }
-
-    // 4. 根据数据大小选择最优FFT算法
-    if (n >= PARALLEL_THRESHOLD and n & (n - 1) == 0) {
-        // 大数据集且是2的幂次：使用并行SIMD FFT
-        try fft_parallel_simd(self.allocator, complex_buffer);
-    } else if (n >= RADIX4_THRESHOLD and isPowerOf4(n)) {
-        // 中等数据集，4的幂次：使用优化的基4 FFT
-        try fft_radix4_simd(complex_buffer);
-    } else if (n >= SIMD_THRESHOLD and n & (n - 1) == 0) {
-        // 中等大小：使用SIMD优化的基2 FFT
-        try fft_simd_radix2(complex_buffer);
-    } else if (n & (n - 1) == 0) {
-        // 2的幂次：使用优化的基2 FFT
-        try fft_optimized_radix2(complex_buffer);
-    } else if (n % 4 == 0 and isPowerOfTwo(n / 4)) {
-        // 4的倍数：使用基4 FFT获得更好的性能
-        try fft_radix4(complex_buffer);
-    } else {
-        // 一般情况：使用混合基FFT
-        try fft_mixed_radix(complex_buffer);
-    }
-
-    // 5. 使用SIMD向量化转换为交替存储格式并计算幅值谱
-    convertToOutputSIMD(complex_buffer[0..out_len], fft_out, fft_m);
+    // 使用新的优化 FFT 实现
+    try fft.fftR2C(self.allocator, x, fft_out, fft_m);
 }
 
 /// 采样FFT计算，用于处理超大非2幂次数据
