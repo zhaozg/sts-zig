@@ -103,6 +103,159 @@ test "gammaln accuracy verification" {
     }
 }
 
+test "erf function accuracy" {
+    const test_cases = [_]struct {
+        x: f64,
+        expected: f64,
+    }{
+        .{ .x = 0.0, .expected = 0.0 },
+        .{ .x = 1.0, .expected = 0.8427007929497149 },
+        .{ .x = -1.0, .expected = -0.8427007929497149 },
+        .{ .x = 0.5, .expected = 0.5204998778130465 },
+        .{ .x = 2.0, .expected = 0.9953222650189527 },
+    };
+
+    for (test_cases) |case| {
+        const result = math.erf(case.x);
+        const relative_error = @abs(result - case.expected) / (@abs(case.expected) + 1e-15);
+
+        std.debug.print("erf({d:.1}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.x, result, case.expected, relative_error });
+
+        try testing.expect(relative_error < tolerance);
+    }
+}
+
+test "erfc function accuracy" {
+    const test_cases = [_]struct {
+        x: f64,
+        expected: f64,
+    }{
+        .{ .x = 0.0, .expected = 1.0 },
+        .{ .x = 1.0, .expected = 0.1572992070502851 },
+        .{ .x = -1.0, .expected = 1.8427007929497149 },
+        .{ .x = 0.5, .expected = 0.4795001221869535 },
+        .{ .x = 2.0, .expected = 0.004677734981047266 },
+    };
+
+    for (test_cases) |case| {
+        const result = math.erfc(case.x);
+        const relative_error = @abs(result - case.expected) / (@abs(case.expected) + 1e-15);
+
+        std.debug.print("erfc({d:.1}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.x, result, case.expected, relative_error });
+
+        try testing.expect(relative_error < tolerance);
+    }
+}
+
+test "normal function accuracy" {
+    const test_cases = [_]struct {
+        x: f64,
+        expected: f64,
+    }{
+        .{ .x = 0.0, .expected = 0.5 },
+        .{ .x = 1.0, .expected = 0.8413447460685429 },
+        .{ .x = -1.0, .expected = 0.15865525393145705 },
+        .{ .x = 2.0, .expected = 0.9772498680518208 },
+        .{ .x = -2.0, .expected = 0.022750131948179195 },
+    };
+
+    for (test_cases) |case| {
+        const result = math.normal(case.x);
+        const relative_error = @abs(result - case.expected) / (@abs(case.expected) + 1e-15);
+
+        std.debug.print("normal({d:.1}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.x, result, case.expected, relative_error });
+
+        try testing.expect(relative_error < tolerance);
+    }
+}
+
+test "chi2_cdf function accuracy" {
+    const test_cases = [_]struct {
+        x: f64,
+        k: usize,
+        expected: f64,
+    }{
+        .{ .x = 1.0, .k = 1, .expected = 0.6826894921370859 },
+        .{ .x = 2.0, .k = 2, .expected = 0.6321205588285577 },
+        .{ .x = 5.0, .k = 3, .expected = 0.8282382022202468 },
+        .{ .x = 10.0, .k = 5, .expected = 0.9246365628306684 },
+    };
+
+    for (test_cases) |case| {
+        const result = math.chi2_cdf(case.x, case.k);
+        const relative_error = @abs(result - case.expected) / (@abs(case.expected) + 1e-15);
+
+        std.debug.print("chi2_cdf({d:.1}, {d}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.x, case.k, result, case.expected, relative_error });
+
+        try testing.expect(relative_error < tolerance);
+    }
+}
+
+test "factorial function accuracy" {
+    const test_cases = [_]struct {
+        n: usize,
+        expected: u64,
+    }{
+        .{ .n = 0, .expected = 1 },
+        .{ .n = 1, .expected = 1 },
+        .{ .n = 5, .expected = 120 },
+        .{ .n = 10, .expected = 3628800 },
+        .{ .n = 12, .expected = 479001600 },
+    };
+
+    for (test_cases) |case| {
+        const result = math.factorial(case.n);
+
+        std.debug.print("factorial({d}) = {d} (expected: {d})\n", .{ case.n, result, case.expected });
+
+        try testing.expect(result == case.expected);
+    }
+}
+
+test "poisson function accuracy" {
+    const test_cases = [_]struct {
+        lambda: f64,
+        k: usize,
+        expected: f64,
+    }{
+        .{ .lambda = 1.0, .k = 0, .expected = 0.36787944117144233 },
+        .{ .lambda = 1.0, .k = 1, .expected = 0.36787944117144233 },
+        .{ .lambda = 2.0, .k = 2, .expected = 0.2706705664732254 },
+        .{ .lambda = 3.0, .k = 1, .expected = 0.14936120510359185 },
+    };
+
+    for (test_cases) |case| {
+        const result = math.poisson(case.lambda, case.k);
+        const relative_error = @abs(result - case.expected) / (@abs(case.expected) + 1e-15);
+
+        std.debug.print("poisson({d:.1}, {d}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.lambda, case.k, result, case.expected, relative_error });
+
+        try testing.expect(relative_error < tolerance);
+    }
+}
+
+test "clamp function accuracy" {
+    const test_cases = [_]struct {
+        val: i32,
+        min: i32,
+        max: i32,
+        expected: i32,
+    }{
+        .{ .val = 5, .min = 0, .max = 10, .expected = 5 },
+        .{ .val = -5, .min = 0, .max = 10, .expected = 0 },
+        .{ .val = 15, .min = 0, .max = 10, .expected = 10 },
+        .{ .val = 0, .min = -5, .max = 5, .expected = 0 },
+    };
+
+    for (test_cases) |case| {
+        const result = math.clamp(case.val, case.min, case.max);
+
+        std.debug.print("clamp({d}, {d}, {d}) = {d} (expected: {d})\n", .{ case.val, case.min, case.max, result, case.expected });
+
+        try testing.expect(result == case.expected);
+    }
+}
+
 test "FFT algorithm accuracy verification" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();

@@ -221,10 +221,16 @@ fn gamma_regularized(s: f64, x: f64) f64 {
     return gamma_lower(s, x) / std.math.exp(std.math.lgamma(f64, s));
 }
 
+/// 优化的卡方分布累积分布函数
 pub fn chi2_cdf(x: f64, k: usize) f64 {
+    if (x <= 0.0) return 0.0;
+    if (k == 0) return 1.0;
+
     const k2 = @as(f64, @floatFromInt(k)) / 2.0;
     const x2 = x / 2.0;
-    return gamma_regularized(k2, x2);
+
+    // 使用igamc来计算，因为CDF(x; k) = P(k/2, x/2) = γ(k/2, x/2)/Γ(k/2) = 1 - Γ(k/2, x/2)/Γ(k/2)
+    return 1.0 - igamc(k2, x2);
 }
 
 // --- cephes_lgam 相关常量和辅助函数 ---
@@ -305,24 +311,49 @@ pub fn lgam(x: f64) f64 {
     return q;
 }
 
+/// 优化的正态分布累积分布函数，提高数值稳定性
 pub fn normal(x: f64) f64 {
-    const arg = if (x > 0) x / SQRT2 else -x / SQRT2;
-    const erf_val = erf(arg);
-    return if (x > 0)
-        0.5 * (1.0 + erf_val)
-    else
-        0.5 * (1.0 - erf_val);
+    // 使用更稳定的实现
+    if (x == 0.0) return 0.5;
+
+    const abs_x = @abs(x);
+    if (abs_x > 6.0) {
+        // 对于极值，直接返回边界值避免数值问题
+        return if (x > 0) 1.0 else 0.0;
+    }
+
+    const t = abs_x / SQRT2;
+    const result = 0.5 * (1.0 + erf(t));
+
+    return if (x >= 0.0) result else 1.0 - result;
 }
 
+/// 高性能阶乘计算，使用查找表优化小数值
 pub fn factorial(n: usize) u64 {
-    var result: u64 = 1;
-    for (1..n + 1) |i| {
+    // 预计算的阶乘查找表 (0! 到 20!)
+    const factorial_table = [_]u64{ 1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600, 6227020800, 87178291200, 1307674368000, 20922789888000, 355687428096000, 6402373705728000, 121645100408832000, 2432902008176640000 };
+
+    if (n < factorial_table.len) {
+        return factorial_table[n];
+    }
+
+    // 对于大数值，从表中最大值开始计算
+    var result = factorial_table[factorial_table.len - 1];
+    for (factorial_table.len..n + 1) |i| {
         result *= i;
     }
     return result;
 }
 
-// 泊松分布概率
+/// 优化的泊松分布概率计算，避免大阶乘的计算
 pub fn poisson(lambda: f64, k: usize) f64 {
-    return std.math.exp(-lambda) * std.math.pow(f64, lambda, @as(f64, @floatFromInt(k))) / @as(f64, @floatFromInt(factorial(k)));
+    if (lambda <= 0.0) return 0.0;
+    if (k == 0) return std.math.exp(-lambda);
+
+    // 使用对数计算避免溢出：log(P(X=k)) = -λ + k*log(λ) - log(k!)
+    const log_lambda = std.math.log(f64, std.math.e, lambda);
+    const log_factorial_k = gammaln(@as(f64, @floatFromInt(k + 1))); // ln(k!) = ln(Γ(k+1))
+    const log_prob = -lambda + @as(f64, @floatFromInt(k)) * log_lambda - log_factorial_k;
+
+    return std.math.exp(log_prob);
 }
