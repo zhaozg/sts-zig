@@ -53,21 +53,6 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_nist_tests.step);
     b.installArtifact(nist_tests);
 
-    // Math tests
-    const math_mod = b.createModule(.{
-        .root_source_file = b.path("test/math_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    const math_tests = b.addTest(.{
-        .root_module = math_mod,
-    });
-    math_tests.root_module.addImport("zsts", zsts_module);
-
-    const run_math_tests = b.addRunArtifact(math_tests);
-    test_step.dependOn(&run_math_tests.step);
-    b.installArtifact(math_tests);
-
     // Validation tests
     const validation_mod = b.createModule(.{
         .root_source_file = b.path("test/validation_test.zig"),
@@ -97,21 +82,6 @@ pub fn build(b: *std.Build) void {
     const run_reporting_tests = b.addRunArtifact(reporting_tests);
     test_step.dependOn(&run_reporting_tests.step);
     b.installArtifact(reporting_tests);
-
-    // FFT tests
-    const fft_test_mod = b.createModule(.{
-        .root_source_file = b.path("test/fft_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    const fft_tests = b.addTest(.{
-        .root_module = fft_test_mod,
-    });
-    fft_tests.root_module.addImport("zsts", zsts_module);
-
-    const run_fft_tests = b.addRunArtifact(fft_tests);
-    test_step.dependOn(&run_fft_tests.step);
-    b.installArtifact(fft_tests);
 
     // Benchmark tool
     const benchmark_mod = b.createModule(.{

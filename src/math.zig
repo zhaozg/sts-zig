@@ -1,5 +1,83 @@
 const std = @import("std");
 const math = std.math;
+const expect = std.testing.expect;
+const expectApproxEqAbs = std.testing.expectApproxEqAbs;
+
+const rel_error = 1e-12;
+
+const two_sqrtpi = 1.128379167095512574;
+const one_sqrtpi = 0.564189583547756287;
+
+pub const MACHEP = 1.11022302462515654042363e-16; // 2**-53
+pub const MAXLOG = 7.0978271289338399673222e2;    // ln(2**1024*(1-MACHEP))
+pub const MAXNUM = 1.79769313486231570814527e308; // 2**1024*(1-MACHEP)
+
+pub const PI = math.pi;
+pub const SQRT2 = math.sqrt2;
+
+const big = 4.503599627370496e15;
+const biginv = 2.22044604925031308085e-16;
+
+pub fn erf(x: f64) f64 {
+    if (x==0.0) return 0.0;
+    if (math.isInf(x)) {
+        return if (x > 0) 1.0 else -1.0;
+    }
+
+    if (@abs(x) > 2.2) {
+        return 1.0 - erfc(x);
+    }
+    var sum = x;
+    var term = x;
+    const xsqr = x * x;
+    var j: f64 = 1.0;
+
+    while (true) {
+        term *= xsqr / j;
+        sum -= term / (2.0 * j + 1.0);
+        j += 1.0;
+        term *= xsqr / j;
+        sum += term / (2.0 * j + 1.0);
+        j += 1.0;
+        if (@abs(term) / @abs(sum) <= rel_error) break;
+    }
+    return two_sqrtpi * sum;
+}
+
+pub fn erfc(x: f64) f64 {
+    if (math.isInf(x)) {
+        return if (x > 0) 0.0 else 2.0;
+    }
+
+    if (@abs(x) < 2.2) {
+        return 1.0 - erf(x);
+    }
+    if (x < 0.0) {
+        return 2.0 - erfc(-x);
+    }
+    var a: f64 = 1.0;
+    var b: f64 = x;
+    var c: f64 = x;
+    var d: f64 = x * x + 0.5;
+    var q1: f64 = 0.0;
+    var q2: f64 = b / d;
+    var n: f64 = 1.0;
+    var t: f64 = 0.0;
+
+    while (true) {
+        t = a * n + b * x;
+        a = b;
+        b = t;
+        t = c * n + d * x;
+        c = d;
+        d = t;
+        n += 0.5;
+        q1 = q2;
+        q2 = b / d;
+        if (@abs(q1 - q2) / @abs(q2) <= rel_error) break;
+    }
+    return one_sqrtpi * std.math.exp(-x * x) * q2;
+}
 
 /// 计算上不完全伽马函数的正则化形式 Q(a,x) = Γ(a,x)/Γ(a)
 /// 这是 GSL gsl_sf_gamma_inc_Q 的纯 Zig 实现
@@ -53,7 +131,8 @@ fn igamc_cf(a: f64, x: f64) f64 {
         }
     }
 
-    return std.math.exp(-x + a * std.math.log(f64, std.math.e, x) - gammaln(a)) * h;
+    // 替换 gammaln 为 std.math.lgamma
+    return std.math.exp(-x + a * std.math.log(f64, std.math.e, x) - std.math.lgamma(f64, a)) * h;
 }
 
 /// 使用级数展开计算下不完全伽马函数的正则化形式 P(a,x)
@@ -79,157 +158,14 @@ fn igam_series(a: f64, x: f64) f64 {
         }
     }
 
-    return sum * std.math.exp(-x + a * std.math.log(f64, std.math.e, x) - gammaln(a));
-}
-
-/// 计算 ln(Γ(x)) 的高精度实现
-/// 基于 Lanczos 近似算法
-pub fn gammaln(x: f64) f64 {
-    // Lanczos 系数 (g=7, n=9)
-    const lanczos_g = 7.0;
-    const lanczos_coeff = [_]f64{
-        0.99999999999980993227684700473478,
-        676.520368121885098567009190444019,
-        -1259.13921672240287047156078755283,
-        771.323428777653477146296386350052,
-        -176.615029162140599065845597129337,
-        12.5073432786869048144827324987843,
-        -0.138571095265720116895197677512527,
-        9.98436957801957085956266828503e-6,
-        1.50563273514931155834849228193e-7,
-    };
-
-    if (x < 0.5) {
-        // 使用反射公式：Γ(z)Γ(1-z) = π/sin(πz)
-        return std.math.log(f64, std.math.e, std.math.pi) - std.math.log(f64, std.math.e, std.math.sin(std.math.pi * x)) - gammaln(1.0 - x);
-    }
-
-    const z = x - 1.0;
-    var sum = lanczos_coeff[0];
-
-    for (1..lanczos_coeff.len) |i| {
-        sum += lanczos_coeff[i] / (z + @as(f64, @floatFromInt(i)));
-    }
-
-    const t = z + lanczos_g + 0.5;
-    return 0.5 * std.math.log(f64, std.math.e, 2.0 * std.math.pi) + (z + 0.5) * std.math.log(f64, std.math.e, t) - t + std.math.log(f64, std.math.e, sum);
-}
-
-// 声明外部 C 函数（erf, erfc）
-const rel_error = 1e-12;
-const two_sqrtpi = 1.128379167095512574;
-const one_sqrtpi = 0.564189583547756287;
-
-pub const MACHEP = 1.11022302462515654042363e-16; // 2**-53
-pub const MAXLOG = 7.0978271289338399673222e2; // ln(2**1024*(1-MACHEP))
-pub const MAXNUM = 1.79769313486231570814527e308; // 2**1024*(1-MACHEP)
-
-pub const PI = math.pi;
-pub const SQRT2 = math.sqrt2;
-
-const big = 4.503599627370496e15;
-const biginv = 2.22044604925031308085e-16;
-
-pub fn erf(x: f64) f64 {
-    // Handle special cases
-    if (std.math.isNan(x)) return std.math.nan(f64);
-    if (std.math.isInf(x)) return if (x > 0) 1.0 else -1.0;
-    if (x == 0.0) return 0.0;
-
-    const abs_x = @abs(x);
-    const sign: f64 = if (x >= 0.0) 1.0 else -1.0;
-
-    // For large values, return the limit value
-    if (abs_x >= 6.0) {
-        return sign;
-    }
-
-    // Use improved series approximation for higher precision
-    // This uses a rational approximation with better coefficients
-    if (abs_x < 3.0) {
-        // For small to medium values, use Taylor series with enough precision
-        const two_over_sqrt_pi = 1.1283791670955125738961589031215;
-        var sum = abs_x;
-        var term = abs_x;
-        const x_squared = abs_x * abs_x;
-
-        // Use enough terms for high precision
-        for (1..30) |n| {
-            const n_f64 = @as(f64, @floatFromInt(n));
-            term *= -x_squared / n_f64;
-            const new_term = term / (2.0 * n_f64 + 1.0);
-            sum += new_term;
-
-            // Stop when we reach machine precision
-            if (@abs(new_term / sum) < 1e-16) break;
-        }
-
-        return sign * two_over_sqrt_pi * sum;
-    } else {
-        // For larger values, use continued fraction via erfc
-        return sign * (1.0 - erfc_simple(abs_x));
-    }
-}
-
-pub fn erfc(x: f64) f64 {
-    // Handle special cases
-    if (std.math.isNan(x)) return std.math.nan(f64);
-    if (std.math.isInf(x)) {
-        return if (x > 0) 0.0 else 2.0;
-    }
-    if (x == 0.0) return 1.0;
-
-    // For negative values, use the identity: erfc(-x) = 2 - erfc(x)
-    if (x < 0.0) {
-        return 2.0 - erfc(-x);
-    }
-
-    // For large positive values, erfc approaches 0
-    if (x >= 6.0) {
-        return 0.0;
-    }
-
-    return erfc_simple(x);
-}
-
-fn erfc_simple(x: f64) f64 {
-    if (x < 3.0) {
-        // For small values, use the identity erfc(x) = 1 - erf(x)
-        return 1.0 - erf(x);
-    } else {
-        // For large values, use asymptotic expansion
-        const x2 = x * x;
-        const sqrt_pi = std.math.sqrt(std.math.pi);
-        const exp_term = std.math.exp(-x2);
-
-        // First few terms of asymptotic series: erfc(x) ~ exp(-x^2)/(x*sqrt(pi)) * (1 - 1/(2x^2) + 3/(4x^4) - ...)
-        const inv_x2 = 1.0 / x2;
-        const series = 1.0 - 0.5 * inv_x2 + 0.75 * inv_x2 * inv_x2;
-
-        return (exp_term / (x * sqrt_pi)) * series;
-    }
+    // 替换 gammaln 为 std.math.lgamma
+    return sum * std.math.exp(-x + a * std.math.log(f64, std.math.e, x) - std.math.lgamma(f64, a));
 }
 
 pub fn clamp(val: i32, min: i32, max: i32) i32 {
     if (val < min) return min;
     if (val > max) return max;
     return val;
-}
-
-fn gamma_lower(s: f64, x: f64) f64 {
-    var sum = 1.0 / s;
-    var value = sum;
-    var n: usize = 1;
-    while (n < 100) : (n += 1) {
-        value *= x / (s + @as(f64, @floatFromInt(n)));
-        sum += value;
-        if (value < 1e-15) break;
-    }
-    return std.math.exp(-x + s * std.math.log(f64, std.math.e, x)) * sum;
-}
-
-fn gamma_regularized(s: f64, x: f64) f64 {
-    return gamma_lower(s, x) / std.math.exp(std.math.lgamma(f64, s));
 }
 
 /// 优化的卡方分布累积分布函数
@@ -363,8 +299,360 @@ pub fn poisson(lambda: f64, k: usize) f64 {
 
     // 使用对数计算避免溢出：log(P(X=k)) = -λ + k*log(λ) - log(k!)
     const log_lambda = std.math.log(f64, std.math.e, lambda);
-    const log_factorial_k = gammaln(@as(f64, @floatFromInt(k + 1))); // ln(k!) = ln(Γ(k+1))
+    // 替换 gammaln 为 std.math.lgamma
+    const log_factorial_k = std.math.lgamma(f64, @as(f64, @floatFromInt(k + 1))); // ln(k!) = ln(Γ(k+1))
     const log_prob = -lambda + @as(f64, @floatFromInt(k)) * log_lambda - log_factorial_k;
 
     return std.math.exp(log_prob);
 }
+
+// 测试容差 - 相对误差在这个范围内认为正确
+test "erf function accuracy" {
+    const test_cases = [_]struct {
+        x: f64,
+        expected: f64,
+    }{
+        .{ .x = 0.0, .expected = 0.0 },
+        .{ .x = 0.1, .expected = 0.1124629160182849 },
+        .{ .x = 0.5, .expected = 0.5204998778130465 },
+        .{ .x = 1.0, .expected = 0.8427007929497149 },
+        .{ .x = 1.5, .expected = 0.9661051464753107 },
+        .{ .x = 2.0, .expected = 0.9953222650189527 },
+        .{ .x = 2.5, .expected = 0.9995930479825550 },
+        .{ .x = 3.0, .expected = 0.9999779095030014 },
+        .{ .x = -0.1, .expected = -0.1124629160182849 },
+        .{ .x = -0.5, .expected = -0.5204998778130465 },
+        .{ .x = -1.0, .expected = -0.8427007929497149 },
+        .{ .x = -1.5, .expected = -0.9661051464753107 },
+        .{ .x = -2.0, .expected = -0.9953222650189527 },
+    };
+
+    for (test_cases) |case| {
+        const result = erf(case.x);
+        const relative_error = @abs(result - case.expected) / (@abs(case.expected) + 1e-15);
+
+        std.debug.print("erf({d:.1}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.x, result, case.expected, relative_error });
+
+        try expect(relative_error < rel_error);
+    }
+}
+
+test "erfc function accuracy" {
+    const test_cases = [_]struct {
+        x: f64,
+        expected: f64,
+    }{
+        .{ .x = 0.0, .expected = 1.0 },
+        .{ .x = 0.1, .expected = 0.8875370839817151 },
+        .{ .x = 0.5, .expected = 0.4795001221869535 },
+        .{ .x = 1.0, .expected = 0.1572992070502851 },
+        .{ .x = 1.5, .expected = 0.0338948535246893 },
+        .{ .x = 2.0, .expected = 0.004677734981047266 },
+        .{ .x = 2.5, .expected = 0.0004069520174450 },
+        .{ .x = 3.0, .expected = 0.00002209049699858544 },
+        .{ .x = -0.1, .expected = 1.1124629160182849 },
+        .{ .x = -0.5, .expected = 1.5204998778130465 },
+        .{ .x = -1.0, .expected = 1.8427007929497149 },
+        .{ .x = -1.5, .expected = 1.9661051464753107 },
+        .{ .x = -2.0, .expected = 1.9953222650189527 },
+    };
+
+    for (test_cases) |case| {
+        const result = erfc(case.x);
+        const relative_error = @abs(result - case.expected) / (@abs(case.expected) + 1e-15);
+
+        std.debug.print("erfc({d:.1}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.x, result, case.expected, relative_error });
+
+        try expect(relative_error < rel_error);
+    }
+}
+
+test "erf and erfc performance test" {
+    // Performance test to ensure erf and erfc functions execute efficiently
+    // This test verifies that the functions don't hang or take excessive time
+
+    const test_values = [_]f64{ 0.0, 0.5, 1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 4.0, -4.0 };
+
+    std.debug.print("\n=== erf and erfc Performance Test ===\n", .{});
+
+    for (test_values) |x| {
+        // Test erf performance
+        const start_time_erf = std.time.nanoTimestamp();
+        const erf_result = erf(x);
+        const erf_time = std.time.nanoTimestamp() - start_time_erf;
+
+        // Test erfc performance
+        const start_time_erfc = std.time.nanoTimestamp();
+        const erfc_result = erfc(x);
+        const erfc_time = std.time.nanoTimestamp() - start_time_erfc;
+
+        std.debug.print("x = {d:.1}: erf({d:.1}) = {d:.10} (time: {}ns), erfc({d:.1}) = {d:.10} (time: {}ns)\n", .{ x, x, erf_result, erf_time, x, erfc_result, erfc_time });
+
+        // Verify mathematical identity: erf(x) + erfc(x) = 1
+        const identity_error = @abs(erf_result + erfc_result - 1.0);
+        std.debug.print("  Identity check: erf + erfc = {d:.15} (error: {e:.2})\n", .{ erf_result + erfc_result, identity_error });
+
+        // Performance requirements: functions should complete within reasonable time
+        const max_time_ns = 1_000_000; // 1 millisecond threshold
+        try expect(erf_time < max_time_ns);
+        try expect(erfc_time < max_time_ns);
+
+        // Mathematical identity should hold with high precision
+        try expect(identity_error < 1e-14);
+    }
+
+    std.debug.print("✅ All performance tests passed\n", .{});
+}
+
+test "erf and erfc functions" {
+    const epsilon = 1e-12;
+
+    // 测试一些已知值
+    try expectApproxEqAbs(erf(0.0), 0.0, epsilon);
+    try expectApproxEqAbs(erfc(0.0), 1.0, epsilon);
+
+    try expectApproxEqAbs(erf(1.0), 0.8427007929497149, epsilon);
+    try expectApproxEqAbs(erfc(1.0), 0.1572992070502851, epsilon);
+
+    try expectApproxEqAbs(erf(2.0), 0.9953222650189527, epsilon);
+    try expectApproxEqAbs(erfc(2.0), 0.004677734981047265, epsilon);
+
+    // 测试对称性
+    try expectApproxEqAbs(erf(-1.0), -erf(1.0), epsilon);
+    try expectApproxEqAbs(erfc(-1.0), 2.0 - erfc(1.0), epsilon);
+
+    // 测试边界条件
+    try expect(erf(math.inf(f64)) == 1.0);
+    try expect(erf(-math.inf(f64)) == -1.0);
+    try expect(erfc(math.inf(f64)) == 0.0);
+    try expect(erfc(-math.inf(f64)) == 2.0);
+}
+
+test "erf erfc consistency" {
+    // 测试 erf 和 erfc 的一致性
+    const test_values = [_]f64{ -3.0, -2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 3.0 };
+
+    for (test_values) |x| {
+        const epsilon = 1e-12;
+        try expectApproxEqAbs(erf(x) + erfc(x), 1.0, epsilon);
+    }
+}
+test "igamc accuracy verification" {
+    // 测试用例来自于已知的数学参考值
+    // 这些值可以通过 Mathematica, WolframAlpha 或其他数学软件验证
+
+    const test_cases = [_]struct {
+        a: f64,
+        x: f64,
+        expected: f64,
+    }{
+        // Q(1, 0.5) = e^(-0.5) ≈ 0.606530659712633
+        .{ .a = 1.0, .x = 0.5, .expected = 0.606530659712633 },
+
+        // Q(2, 1) = e^(-1) * (1 + 1) = 2 * e^(-1) ≈ 0.735758882342885
+        .{ .a = 2.0, .x = 1.0, .expected = 0.735758882342885 },
+
+        // Q(0.5, 1) - 半整数参数的特殊情况
+        .{ .a = 0.5, .x = 1.0, .expected = 0.157299207050281 },
+
+        // Q(3, 2)
+        .{ .a = 3.0, .x = 2.0, .expected = 0.676676416183063 },
+
+        // Q(2.5, 1.5) - 非整数参数
+        .{ .a = 2.5, .x = 1.5, .expected = 0.699985835878628 },
+
+        // 边界情况测试
+        .{ .a = 1.0, .x = 0.0, .expected = 1.0 }, // Q(a, 0) = 1
+        .{ .a = 10.0, .x = 0.1, .expected = 1.0 }, // x << a
+    };
+
+    for (test_cases) |case| {
+        const result = igamc(case.a, case.x);
+        const relative_error = @abs(result - case.expected) / @abs(case.expected);
+
+        std.debug.print("igamc({d:.1}, {d:.1}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.a, case.x, result, case.expected, relative_error });
+
+        try expect(relative_error < rel_error);
+    }
+}
+
+test "igamc edge cases" {
+    // 测试边界情况和错误条件
+
+    // 负参数应该返回 NaN
+    try expect(std.math.isNan(igamc(-1.0, 1.0)));
+    try expect(std.math.isNan(igamc(1.0, -1.0)));
+    try expect(std.math.isNan(igamc(0.0, 1.0)));
+
+    // x = 0 时应该返回 1
+    try expectApproxEqAbs(igamc(1.0, 0.0), 1.0, 1e-15);
+    try expectApproxEqAbs(igamc(5.0, 0.0), 1.0, 1e-15);
+}
+
+test "gammaln accuracy verification" {
+    // 测试 gammaln 函数的准确性
+    const test_cases = [_]struct {
+        x: f64,
+        expected: f64,
+    }{
+        // ln(Γ(1)) = ln(0!) = ln(1) = 0
+        .{ .x = 1.0, .expected = 0.0 },
+        // ln(Γ(2)) = ln(1!) = ln(1) = 0
+        .{ .x = 2.0, .expected = 0.0 },
+        // ln(Γ(3)) = ln(2!) = ln(2) ≈ 0.693147180559945
+        .{ .x = 3.0, .expected = 0.693147180559945 },
+        // ln(Γ(4)) = ln(3!) = ln(6) ≈ 1.791759469228055
+        .{ .x = 4.0, .expected = 1.791759469228055 },
+        // ln(Γ(0.5)) = ln(√π) ≈ 0.572364942924700
+        .{ .x = 0.5, .expected = 0.572364942924700 },
+        // ln(Γ(1.5)) = ln(0.5 * √π) ≈ 0.572364942924700 - ln(2) ≈ -0.120782237635245
+        .{ .x = 1.5, .expected = -0.120782237635245 },
+        // 较大的值
+        .{ .x = 10.0, .expected = 12.801827480081469 },
+    };
+
+    for (test_cases) |case| {
+        // 使用标准库 lgamma 替代自定义 gammaln
+        const result = std.math.lgamma(f64, case.x);
+        var relative_error: f64 = 0.0;
+
+        if (case.expected == 0.0) {
+            // Special case: when expected is 0, use absolute error
+            relative_error = @abs(result - case.expected);
+        } else {
+            relative_error = @abs(result - case.expected) / @abs(case.expected);
+        }
+
+        std.debug.print("lgamma({d:.1}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.x, result, case.expected, relative_error });
+
+        try expect(relative_error < rel_error);
+    }
+}
+
+test "factorial function accuracy" {
+    const test_cases = [_]struct {
+        n: usize,
+        expected: u64,
+    }{
+        .{ .n = 0, .expected = 1 },
+        .{ .n = 1, .expected = 1 },
+        .{ .n = 5, .expected = 120 },
+        .{ .n = 10, .expected = 3628800 },
+        .{ .n = 12, .expected = 479001600 },
+    };
+
+    for (test_cases) |case| {
+        const result = factorial(case.n);
+
+        std.debug.print("factorial({d}) = {d} (expected: {d})\n", .{ case.n, result, case.expected });
+
+        try expect(result == case.expected);
+    }
+}
+
+test "poisson function accuracy" {
+    const test_cases = [_]struct {
+        lambda: f64,
+        k: usize,
+        expected: f64,
+    }{
+        .{ .lambda = 1.0, .k = 0, .expected = 0.36787944117144233 },
+        .{ .lambda = 1.0, .k = 1, .expected = 0.36787944117144233 },
+        .{ .lambda = 2.0, .k = 2, .expected = 0.2706705664732254 },
+        .{ .lambda = 3.0, .k = 1, .expected = 0.14936120510359185 },
+    };
+
+    for (test_cases) |case| {
+        const result = poisson(case.lambda, case.k);
+        const relative_error = @abs(result - case.expected) / (@abs(case.expected) + 1e-15);
+
+        std.debug.print("poisson({d:.1}, {d}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.lambda, case.k, result, case.expected, relative_error });
+
+        try expect(relative_error < rel_error);
+    }
+}
+
+test "clamp function accuracy" {
+    const test_cases = [_]struct {
+        val: i32,
+        min: i32,
+        max: i32,
+        expected: i32,
+    }{
+        .{ .val = 5, .min = 0, .max = 10, .expected = 5 },
+        .{ .val = -5, .min = 0, .max = 10, .expected = 0 },
+        .{ .val = 15, .min = 0, .max = 10, .expected = 10 },
+        .{ .val = 0, .min = -5, .max = 5, .expected = 0 },
+    };
+
+    for (test_cases) |case| {
+        const result = math.clamp(case.val, case.min, case.max);
+
+        std.debug.print("clamp({d}, {d}, {d}) = {d} (expected: {d})\n", .{ case.val, case.min, case.max, result, case.expected });
+
+        try expect(result == case.expected);
+    }
+}
+
+test "consistency with existing test cases" {
+    // 确保新实现与现有测试用例兼容
+    // 这些值来自于项目中现有的测试期望值
+
+    // 来自 rank.zig 测试的例子：chi2 = 2.358278, 期望 p_value = 0.307543
+    const chi2 = 2.358278;
+    const df = 2.0; // 自由度
+    const p_value = igamc(df / 2.0, chi2 / 2.0);
+    const expected_p = 0.307543;
+
+    const relative_error = @abs(p_value - expected_p) / expected_p;
+    std.debug.print("Rank test compatibility: p_value = {d:.6} (expected: {d:.6}, rel_err: {e:.2})\n", .{ p_value, expected_p, relative_error });
+
+    // 允许较大的容差，因为测试数据可能来自不同的实现
+    try expect(relative_error < 1e-3);
+}
+
+test "normal function accuracy" {
+    const test_cases = [_]struct {
+        x: f64,
+        expected: f64,
+    }{
+        .{ .x = 0.0, .expected = 0.5 },
+        .{ .x = 1.0, .expected = 0.8413447460685429 },
+        .{ .x = -1.0, .expected = 0.15865525393145705 },
+        .{ .x = 2.0, .expected = 0.9772498680518208 },
+        .{ .x = -2.0, .expected = 0.022750131948179195 },
+    };
+
+    for (test_cases) |case| {
+        const result = normal(case.x);
+        const relative_error = @abs(result - case.expected) / (@abs(case.expected) + 1e-15);
+
+        std.debug.print("normal({d:.1}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.x, result, case.expected, relative_error });
+
+        try expect(relative_error < rel_error);
+    }
+}
+
+
+test "chi2_cdf function accuracy" {
+    const test_cases = [_]struct {
+        x: f64,
+        k: usize,
+        expected: f64,
+    }{
+        .{ .x = 1.0, .k = 1, .expected = 0.6826894921370859 },
+        .{ .x = 2.0, .k = 2, .expected = 0.6321205588285577 },
+        .{ .x = 5.0, .k = 3, .expected = 0.828202855703267 },
+        .{ .x = 10.0, .k = 5, .expected = 0.924764753853488 },
+    };
+
+    for (test_cases) |case| {
+        const result = chi2_cdf(case.x, case.k);
+        const relative_error = @abs(result - case.expected) / (@abs(case.expected) + 1e-15);
+
+        std.debug.print("chi2_cdf({d:.1}, {d}) = {d:.15} (expected: {d:.15}, rel_err: {e:.2})\n", .{ case.x, case.k, result, case.expected, relative_error });
+
+        try expect(relative_error < rel_error);
+    }
+}
+

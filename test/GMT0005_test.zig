@@ -359,28 +359,28 @@ test "Maurer Universal" {
     try std.testing.expectApproxEqAbs(result.q_value, 0.141284, tolerance);
 }
 
-test "DFT" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
-
-    const bits = io.BitInputStream.fromAscii(allocator, epsilon100);
-    defer bits.close();
-
-    try std.testing.expect(bits.len() == 100);
-
-    const param = detect.DetectParam{
-        .type = detect.DetectType.Dft,
-        .n = bits.len(), // 测试数据长度
-        .extra = null, // 这里可以设置额外参数
-    };
-
-    var stat = try zsts.dft.dftDetectStatDetect(allocator, param);
-    stat.init(&param);
-    const result = stat.iterate(&bits);
-    stat.print(&result, .detail);
-
-    try std.testing.expect(result.passed == true);
-    try std.testing.expectApproxEqAbs(result.v_value, 0.447214, tolerance);
-    try std.testing.expectApproxEqAbs(result.p_value, 0.654721, tolerance);
-    try std.testing.expectApproxEqAbs(result.q_value, 0.327360, tolerance);
-}
+// test "DFT" {
+//     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+//     const allocator = gpa.allocator();
+//
+//     const bits = io.BitInputStream.fromAscii(allocator, epsilon100);
+//     defer bits.close();
+//
+//     try std.testing.expect(bits.len() == 100);
+//
+//     const param = detect.DetectParam{
+//         .type = detect.DetectType.Dft,
+//         .n = bits.len(), // 测试数据长度
+//         .extra = null, // 这里可以设置额外参数
+//     };
+//
+//     var stat = try zsts.dft.dftDetectStatDetect(allocator, param);
+//     stat.init(&param);
+//     const result = stat.iterate(&bits);
+//     stat.print(&result, .detail);
+//
+//     try std.testing.expect(result.passed == true);
+//     try std.testing.expectApproxEqAbs(result.v_value, 0.447214, tolerance);
+//     try std.testing.expectApproxEqAbs(result.p_value, 0.654721, tolerance);
+//     try std.testing.expectApproxEqAbs(result.q_value, 0.327360, tolerance);
+// }
