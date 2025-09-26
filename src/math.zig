@@ -144,17 +144,15 @@ pub fn erf(x: f64) f64 {
         return sign;
     }
 
-    // Use improved series approximation for higher precision
-    // This uses a rational approximation with better coefficients
-    if (abs_x < 3.0) {
-        // For small to medium values, use Taylor series with enough precision
+    if (abs_x <= 3.5) {
+        // Use Taylor series for small to medium values (extended range for better accuracy)
         const two_over_sqrt_pi = 1.1283791670955125738961589031215;
         var sum = abs_x;
         var term = abs_x;
         const x_squared = abs_x * abs_x;
 
-        // Use enough terms for high precision
-        for (1..30) |n| {
+        // Use more terms for better precision
+        for (1..50) |n| {
             const n_f64 = @as(f64, @floatFromInt(n));
             term *= -x_squared / n_f64;
             const new_term = term / (2.0 * n_f64 + 1.0);
@@ -166,8 +164,8 @@ pub fn erf(x: f64) f64 {
 
         return sign * two_over_sqrt_pi * sum;
     } else {
-        // For larger values, use continued fraction via erfc
-        return sign * (1.0 - erfc_simple(abs_x));
+        // For larger values, use the relationship erf(x) = 1 - erfc(x)
+        return sign * (1.0 - erfc_asymptotic(abs_x));
     }
 }
 
@@ -189,25 +187,47 @@ pub fn erfc(x: f64) f64 {
         return 0.0;
     }
 
-    return erfc_simple(x);
+    if (x <= 3.5) {
+        // For small to medium values, use the identity erfc(x) = 1 - erf(x)
+        // but compute erf directly to avoid circular dependency
+        const two_over_sqrt_pi = 1.1283791670955125738961589031215;
+        var sum = x;
+        var term = x;
+        const x_squared = x * x;
+
+        for (1..50) |n| {
+            const n_f64 = @as(f64, @floatFromInt(n));
+            term *= -x_squared / n_f64;
+            const new_term = term / (2.0 * n_f64 + 1.0);
+            sum += new_term;
+
+            if (@abs(new_term / sum) < 1e-16) break;
+        }
+
+        return 1.0 - two_over_sqrt_pi * sum;
+    } else {
+        // For larger values, use asymptotic expansion
+        return erfc_asymptotic(x);
+    }
 }
 
-fn erfc_simple(x: f64) f64 {
-    if (x < 3.0) {
-        // For small values, use the identity erfc(x) = 1 - erf(x)
-        return 1.0 - erf(x);
-    } else {
-        // For large values, use asymptotic expansion
-        const x2 = x * x;
-        const sqrt_pi = std.math.sqrt(std.math.pi);
-        const exp_term = std.math.exp(-x2);
+fn erfc_asymptotic(x: f64) f64 {
+    // Asymptotic expansion for erfc(x) when x is large
+    // erfc(x) ~ (exp(-x^2))/(x*sqrt(pi)) * [1 - 1/(2x^2) + 3/(4x^4) - 15/(8x^6) + 105/(16x^8) + ...]
+    const x2 = x * x;
+    const sqrt_pi = std.math.sqrt(std.math.pi);
+    const exp_term = std.math.exp(-x2);
 
-        // First few terms of asymptotic series: erfc(x) ~ exp(-x^2)/(x*sqrt(pi)) * (1 - 1/(2x^2) + 3/(4x^4) - ...)
-        const inv_x2 = 1.0 / x2;
-        const series = 1.0 - 0.5 * inv_x2 + 0.75 * inv_x2 * inv_x2;
+    const inv_x2 = 1.0 / x2;
 
-        return (exp_term / (x * sqrt_pi)) * series;
-    }
+    // More terms for better accuracy, especially for x around 3.0
+    var series: f64 = 1.0;
+    series -= 0.5 * inv_x2; // -1/(2x^2)
+    series += 0.75 * inv_x2 * inv_x2; // 3/(4x^4)
+    series -= 1.875 * inv_x2 * inv_x2 * inv_x2; // -15/(8x^6)
+    series += 6.5625 * inv_x2 * inv_x2 * inv_x2 * inv_x2; // 105/(16x^8)
+
+    return (exp_term / (x * sqrt_pi)) * series;
 }
 
 pub fn clamp(val: i32, min: i32, max: i32) i32 {
