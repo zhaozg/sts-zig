@@ -32,7 +32,7 @@ The error function is implemented using different algorithms based on the input 
    ```
    erf(x) = (2/√π) * x * Σ(n=0 to ∞) [(-1)^n * x^(2n)] / [n! * (2n+1)]
    ```
-   
+
    Implementation details:
    - Maximum 30 iterations with early convergence detection
    - Convergence threshold: `1e-16` (machine precision)
@@ -100,7 +100,7 @@ The complementary error function implementation:
 
 #### Recommended Input Ranges
 - **Optimal**: `-3.0 ≤ x ≤ 3.0` (direct Taylor series)
-- **Acceptable**: `-6.0 ≤ x ≤ 6.0` (combined algorithms)  
+- **Acceptable**: `-6.0 ≤ x ≤ 6.0` (combined algorithms)
 - **Extreme**: `|x| > 6.0` (limit values returned)
 
 #### Accuracy Expectations

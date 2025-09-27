@@ -50,37 +50,37 @@ zig test test/SP800_22r1_test.zig
 
 ### NIST SP 800-22 Tests
 
-| Test | Implementation | Status |
-|------|----------------|--------|
-| Frequency (Monobit) | ✅ | Complete |
-| Block Frequency | ✅ | Complete |
-| Runs | ✅ | Complete |
-| Longest Run of Ones | ✅ | Complete |
-| Binary Matrix Rank | ✅ | Complete |
-| Discrete Fourier Transform | ✅ | Complete |
-| Non-overlapping Template | ✅ | Complete |
-| Overlapping Template | ✅ | Complete |
-| Maurer's Universal | ✅ | Complete |
-| Linear Complexity | ✅ | Complete |
-| Serial Test | ✅ | Complete |
-| Approximate Entropy | ✅ | Complete |
-| Cumulative Sums | ✅ | Complete |
-| Random Excursions | ✅ | Complete |
-| Random Excursions Variant | ✅ | Complete |
+| Test                       | Implementation   | Status   |
+| ------                     | ---------------- | -------- |
+| Frequency (Monobit)        | ✅               | Complete |
+| Block Frequency            | ✅               | Complete |
+| Runs                       | ✅               | Complete |
+| Longest Run of Ones        | ✅               | Complete |
+| Binary Matrix Rank         | ✅               | Complete |
+| Discrete Fourier Transform | ✅               | Complete |
+| Non-overlapping Template   | ✅               | Complete |
+| Overlapping Template       | ✅               | Complete |
+| Maurer's Universal         | ✅               | Complete |
+| Linear Complexity          | ✅               | Complete |
+| Serial Test                | ✅               | Complete |
+| Approximate Entropy        | ✅               | Complete |
+| Cumulative Sums            | ✅               | Complete |
+| Random Excursions          | ✅               | Complete |
+| Random Excursions Variant  | ✅               | Complete |
 
 ### GMT 0005-2021 Tests
 
-| Test | Implementation | Status |
-|------|----------------|--------|
-| Frequency Test | ✅ | Complete |
-| Block Frequency Test | ✅ | Complete |
-| Poker Test | ✅ | Complete |
-| Overlapping Subsequence | ✅ | Complete |
-| Runs Test | ✅ | Complete |
-| Run Distribution | ✅ | Complete |
-| Longest Run Test | ✅ | Complete |
-| Binary Derivative | ✅ | Complete |
-| Autocorrelation | ✅ | Complete |
+| Test                    | Implementation   | Status   |
+| ------                  | ---------------- | -------- |
+| Frequency Test          | ✅               | Complete |
+| Block Frequency Test    | ✅               | Complete |
+| Poker Test              | ✅               | Complete |
+| Overlapping Subsequence | ✅               | Complete |
+| Runs Test               | ✅               | Complete |
+| Run Distribution        | ✅               | Complete |
+| Longest Run Test        | ✅               | Complete |
+| Binary Derivative       | ✅               | Complete |
+| Autocorrelation         | ✅               | Complete |
 
 ## Architecture
 
@@ -88,7 +88,7 @@ zig test test/SP800_22r1_test.zig
 
 ```
 src/
-├── main.zig              # Entry point and CLI
+├── main.zig               # Entry point and CLI
 ├── detect.zig             # Core detection framework
 ├── math.zig               # Pure Zig mathematical functions
 ├── io.zig                 # Input/output handling
@@ -104,8 +104,6 @@ src/
 test/
 ├── GMT0005_test.zig       # GMT standard compliance tests
 ├── SP800_22r1_test.zig    # NIST standard compliance tests
-├── math_accuracy_test.zig # Mathematical function accuracy tests
-└── extended_coverage_test.zig # Comprehensive edge case tests
 ```
 
 ### Core Components
@@ -123,17 +121,6 @@ All mathematical functions are implemented in pure Zig with no external dependen
 - **Gamma Logarithm** (`gammaln`): High-precision implementation with reflection formula
 - **Fast Fourier Transform**: Iterative Cooley-Tukey algorithm with bit-reversal optimization
 - **Error Function** (`erfc`): Numerical implementation for statistical calculations
-
-## Performance
-
-### Benchmarks
-
-```
-FFT Performance (Iterative Implementation):
-- Size 1024:   0.222ms, Energy preservation error: 1.10e-15
-- Size 4096:   1.074ms, Energy preservation error: 1.10e-15  
-- Size 16384:  5.079ms, Energy preservation error: 5.72e-15
-```
 
 ### Key Benefits
 
@@ -171,9 +158,6 @@ zig build -Doptimize=ReleaseFast
 
 # Run tests
 zig build test
-
-# Generate documentation
-zig build docs
 ```
 
 ### Contributing

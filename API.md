@@ -14,27 +14,27 @@ Enumeration of all supported statistical tests.
 
 ```zig
 pub const DetectType = enum {
-    Frequency,              // 频率检测
-    BlockFrequency,         // 块内频数检测  
-    Poker,                  // 扑克检测
-    Runs,                   // 游程检测
-    LongestRun,            // 最长游程检测
-    Rank,                  // 矩阵秩检测
-    Dft,                   // 离散傅里叶变换检测
-    OverlappingTemplate,   // 重叠模板匹配检测
-    NonOverlappingTemplate,// 非重叠模板匹配检测
-    MaurerUniversal,       // 通用统计检测
-    LinearComplexity,      // 线性复杂度检测
-    Serial,                // 序列检测
-    ApproxEntropy,         // 近似熵检测
-    CumulativeSums,        // 累积和检测
-    RandomExcursions,      // 随机偏移检测
-    RandomExcursionsVariant, // 随机偏移变体检测
+    Frequency,                // 频率检测
+    BlockFrequency,           // 块内频数检测
+    Poker,                    // 扑克检测
+    Runs,                     // 游程检测
+    LongestRun,               // 最长游程检测
+    Rank,                     // 矩阵秩检测
+    Dft,                      // 离散傅里叶变换检测
+    OverlappingTemplate,      // 重叠模板匹配检测
+    NonOverlappingTemplate,   // 非重叠模板匹配检测
+    MaurerUniversal,          // 通用统计检测
+    LinearComplexity,         // 线性复杂度检测
+    Serial,                   // 序列检测
+    ApproxEntropy,            // 近似熵检测
+    CumulativeSums,           // 累积和检测
+    RandomExcursions,         // 随机偏移检测
+    RandomExcursionsVariant,  // 随机偏移变体检测
     // GMT specific tests
-    OverlappingSequency,   // 重叠子序列检测
-    RunDistribution,       // 游程分布检测
-    BinaryDerivative,      // 二元推导检测
-    Autocorrelation,       // 自相关检测
+    OverlappingSequency,      // 重叠子序列检测
+    RunDistribution,          // 游程分布检测
+    BinaryDerivative,         // 二元推导检测
+    Autocorrelation,          // 自相关检测
 };
 ```
 
@@ -46,8 +46,8 @@ Parameters for configuring statistical tests.
 
 ```zig
 pub const DetectParam = struct {
-    type: DetectType,       // 检测类型
-    n: usize,              // 数据长度
+    type: DetectType,         // 检测类型
+    n: usize,                 // 数据长度
     extra: ?*const anyopaque, // 额外参数指针
 };
 ```
@@ -60,12 +60,12 @@ Result structure returned by all statistical tests.
 
 ```zig
 pub const DetectResult = struct {
-    passed: bool,          // 是否通过测试
-    v_value: f64,         // 检验统计量值
-    p_value: f64,         // P值（显著性水平）
-    q_value: f64,         // Q值（通常等于P值或为补充值）
+    passed: bool,             // 是否通过测试
+    v_value: f64,             // 检验统计量值
+    p_value: f64,             // P值（显著性水平）
+    q_value: f64,             // Q值（通常等于P值或为补充值）
     extra: ?*const anyopaque, // 额外结果数据
-    errno: ?anyerror,     // 错误信息（如果有）
+    errno: ?anyerror,         // 错误信息（如果有）
 };
 ```
 
@@ -81,14 +81,14 @@ pub const StatDetect = struct {
     param: *const DetectParam, // 参数指针
     allocator: std.mem.Allocator, // 内存分配器
     state: ?*anyopaque,   // 内部状态
-    
+
     // Function pointers / 函数指针
     _init: *const fn(*StatDetect, *const DetectParam) void,
     _iterate: *const fn(*StatDetect, *const BitInputStream) DetectResult,
     _destroy: *const fn(*StatDetect) void,
     _reset: *const fn(*StatDetect) void,
     _print: ?*const fn(*StatDetect, *const DetectResult, PrintLevel) void,
-    
+
     // Methods / 方法
     pub fn init(self: *StatDetect, param: *const DetectParam) void
     pub fn iterate(self: *StatDetect, bits: *const BitInputStream) DetectResult
@@ -111,10 +111,10 @@ pub const BitInputStream = struct {
     // Static constructors / 静态构造函数
     pub fn fromFile(allocator: std.mem.Allocator, file: std.fs.File) BitInputStream
     pub fn fromBytes(allocator: std.mem.Allocator, data: []const u8) BitInputStream
-    pub fn fromAsciiInputStreamWithLength(allocator: std.mem.Allocator, 
-                                         input: InputStream, 
+    pub fn fromAsciiInputStreamWithLength(allocator: std.mem.Allocator,
+                                         input: InputStream,
                                          length: usize) BitInputStream
-    
+
     // Methods / 方法
     pub fn fetchBit(self: *BitInputStream) ?u1           // 获取下一个比特
     pub fn len(self: *const BitInputStream) usize        // 获取总长度
@@ -135,7 +135,7 @@ High-precision mathematical functions used by statistical tests.
 // Incomplete Gamma Function (upper) / 上不完全伽马函数
 pub fn igamc(a: f64, x: f64) f64
 
-// Gamma Logarithm / 伽马函数对数  
+// Gamma Logarithm / 伽马函数对数
 pub fn gammaln(x: f64) f64
 
 // Complementary Error Function / 互补误差函数
@@ -171,7 +171,7 @@ Tests the proportion of ones and zeros in the sequence.
 
 ```zig
 pub fn frequencyDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -192,7 +192,7 @@ pub const BlockFrequencyParam = struct {
 };
 
 pub fn blockFrequencyDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -205,7 +205,7 @@ Tests the number of runs (consecutive identical bits).
 
 ```zig
 pub fn runsDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -218,7 +218,7 @@ Tests the longest run of ones in the sequence.
 
 ```zig
 pub fn longestRunDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -231,7 +231,7 @@ Tests the rank of binary matrices formed from the sequence.
 
 ```zig
 pub fn rankDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -244,7 +244,7 @@ Tests the spectral properties using FFT.
 
 ```zig
 pub fn dftDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -261,7 +261,7 @@ pub const PokerParam = struct {
 };
 
 pub fn pokerDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -272,7 +272,7 @@ pub fn pokerDetectStatDetect(
 
 ```zig
 pub fn nonOverlappingTemplateDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -281,7 +281,7 @@ pub fn nonOverlappingTemplateDetectStatDetect(
 
 ```zig
 pub fn overlappingTemplateDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -294,7 +294,7 @@ Maurer 通用统计检测。
 
 ```zig
 pub fn maurerUniversalDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -307,7 +307,7 @@ Tests the linear complexity of the sequence.
 
 ```zig
 pub fn linearComplexityDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -320,7 +320,7 @@ Tests the frequency of overlapping m-bit patterns.
 
 ```zig
 pub fn serialDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -337,7 +337,7 @@ pub const ApproxEntropyParam = struct {
 };
 
 pub fn approximateEntropyDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -350,7 +350,7 @@ Tests the cumulative sum of the sequence.
 
 ```zig
 pub fn cumulativeSumsDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -363,7 +363,7 @@ Tests the excursions from zero in cumulative sums.
 
 ```zig
 pub fn randomExcursionsDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -376,7 +376,7 @@ Variant of the random excursions test.
 
 ```zig
 pub fn randomExcursionsVariantDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -395,7 +395,7 @@ pub const BinaryDerivativeParam = struct {
 };
 
 pub fn binaryDerivativeDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -408,8 +408,8 @@ Tests autocorrelation at lag d.
 
 ```zig
 pub fn autocorrelationDetectStatDetect(
-    allocator: std.mem.Allocator, 
-    param: DetectParam, 
+    allocator: std.mem.Allocator,
+    param: DetectParam,
     d: usize  // Lag parameter / 滞后参数
 ) !*StatDetect
 ```
@@ -422,7 +422,7 @@ Tests the distribution of run lengths.
 
 ```zig
 pub fn runDistributionDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -435,7 +435,7 @@ Tests overlapping subsequences.
 
 ```zig
 pub fn overlappingSequencyDetectStatDetect(
-    allocator: std.mem.Allocator, 
+    allocator: std.mem.Allocator,
     param: DetectParam
 ) !*StatDetect
 ```
@@ -506,7 +506,7 @@ pub fn runFrequencyTest() !void {
     // Create and run test / 创建并运行测试
     const stat = try zsts.frequency.frequencyDetectStatDetect(allocator, param);
     defer stat.destroy();
-    
+
     stat.init(&param);
     const result = stat.iterate(&bits);
     stat.print(&result, .detail);
@@ -544,7 +544,7 @@ pub fn runAllTests(data: []const u8, allocator: std.mem.Allocator) !void {
 
         const stat = try test_func(allocator, param);
         defer stat.destroy();
-        
+
         stat.init(&param);
         const result = stat.iterate(&bits);
         stat.print(&result, .summary);
@@ -557,13 +557,11 @@ pub fn runAllTests(data: []const u8, allocator: std.mem.Allocator) !void {
 ### Memory Usage / 内存使用
 
 - Most tests use O(n) memory where n is the input length
-- FFT-based tests may use additional O(n) for complex arrays
 - Matrix rank test allocates temporary matrices
 
 ### Computational Complexity / 计算复杂度
 
 - **Frequency tests**: O(n)
-- **FFT-based tests**: O(n log n)
 - **Template matching**: O(n×m) where m is template length
 - **Matrix operations**: O(min(M,Q)³) for M×Q matrices
 
@@ -577,10 +575,7 @@ pub fn runAllTests(data: []const u8, allocator: std.mem.Allocator) !void {
 ---
 
 ## Version History / 版本历史
-
-- **v1.0.0**: Initial release with NIST SP 800-22 tests
-- **v1.1.0**: Added GMT 0005-2021 specific tests  
-- **v1.2.0**: Pure Zig implementation, removed GSL dependency
-- **v1.3.0**: Optimized FFT implementation, improved error handling
+- v0.1.1: Documentation and tools
+- **v0.0.1**: Initial release with tests
 
 For more examples and advanced usage, see the `test/` directory in the repository.
