@@ -2,28 +2,57 @@ const detect = @import("../detect.zig");
 const io = @import("../io.zig");
 const std = @import("std");
 const math = @import("../math.zig");
-const fft = @import("../fft.zig");
 
-// 使用 Zig 标准库的复数类型  
-const Complex = std.math.Complex(f64);
-
-/// 高性能实数到复数 FFT 实现 (使用新的 FFT 模块)
-/// 简化实现，主要依赖优化的 fft.zig 模块
+/// 执行实数到复数 FFT 并计算幅值谱
 pub fn compute_r2c_fft(
     self: *detect.StatDetect,
     x: []const f64, // 输入实数数据
     fft_out: []f64, // 输出复数数组 (交替存储 re, im)
     fft_m: []f64, // 输出幅值谱
 ) !void {
+    const c = @cImport({
+        @cInclude("gsl/gsl_fft_real.h");
+        @cInclude("gsl/gsl_fft_halfcomplex.h");
+    });
+
     const n = x.len;
-    const out_len = n / 2 + 1; // 复数输出的长度
+    const out_len = n / 2 + 1; // 复数输出的长度 (半复数格式)
 
     // 1. 检查输出缓冲区大小
     if (fft_out.len < 2 * out_len) return error.BufferTooSmall;
     if (fft_m.len < out_len) return error.BufferTooSmall;
 
-    // 2. 使用新的优化 FFT 实现 - 支持所有尺寸和类型
-    try fft.fftR2C(self.allocator, x, fft_out, fft_m);
+    // 2. 复制输入数据到临时数组 (GSL 会原地修改数据)
+    const tmp = try self.allocator.alloc(f64, n);
+    defer self.allocator.free(tmp);
+    @memcpy(tmp, x);
+
+    // 3. 初始化 GSL FFT
+    const workspace = c.gsl_fft_real_workspace_alloc(n);
+    defer c.gsl_fft_real_workspace_free(workspace);
+    const wavetable = c.gsl_fft_real_wavetable_alloc(n);
+    defer c.gsl_fft_real_wavetable_free(wavetable);
+
+    // 4. 执行实数 FFT (结果以半复数格式存储在 tmp 中)
+    _ = c.gsl_fft_real_transform(tmp.ptr, 1, n, wavetable, workspace);
+
+    // 5. 转换为 FFTW 兼容的复数格式 (交替存储 re, im)
+    fft_out[0] = tmp[0]; // 直流分量 (纯实数)
+    fft_out[1] = 0.0; // 对应的虚部为 0
+
+    for (1..out_len) |k| {
+        const re = tmp[2 * k - 1];
+        const im = if (k < n / 2) tmp[2 * k] else 0.0; // 处理 Nyquist 频率
+        fft_out[2 * k] = re;
+        fft_out[2 * k + 1] = im;
+    }
+
+    // 6. 计算幅值谱
+    for (0..out_len) |i| {
+        const re = fft_out[2 * i];
+        const im = fft_out[2 * i + 1];
+        fft_m[i] = std.math.sqrt(re * re + im * im);
+    }
 }
 
 fn dft_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {

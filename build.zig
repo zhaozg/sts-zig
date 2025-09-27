@@ -4,6 +4,20 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // 使用 pkg-config 检查 GSL
+    const check_gsl = b.addSystemCommand(&.{
+        "pkg-config", "--exists", "gsl"
+    });
+    check_gsl.expectStdOutEqual("0");
+
+    const has_gsl = b.allocator.create(std.Build.Step) catch unreachable;
+    has_gsl.* = std.Build.Step.init(.{
+        .id = .custom,
+        .name = "check-gsl",
+        .owner = b,
+    });
+    has_gsl.dependOn(&check_gsl.step);
+
     const main_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
@@ -13,7 +27,7 @@ pub fn build(b: *std.Build) void {
         .name = "zsts",
         .root_module = main_mod,
     });
-
+    exe.linkSystemLibrary("gsl");
     b.installArtifact(exe);
 
     // 创建模块
@@ -93,6 +107,7 @@ pub fn build(b: *std.Build) void {
         .name = "benchmark",
         .root_module = benchmark_mod,
     });
+    benchmark_exe.linkSystemLibrary("gsl");
     benchmark_exe.root_module.addImport("zsts", zsts_module);
 
     const benchmark_step = b.step("benchmark", "Run performance benchmarks");
@@ -120,19 +135,19 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(datagen_exe);
 
     // FFT Performance test (consolidated)
-    const fft_perf_mod = b.createModule(.{
-        .root_source_file = b.path("tools/fft_benchmark.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    const fft_perf_exe = b.addExecutable(.{
-        .name = "fft_perf",
-        .root_module = fft_perf_mod,
-    });
-    fft_perf_exe.root_module.addImport("zsts", zsts_module);
-
-    const fft_perf_step = b.step("fft-perf", "Run FFT performance tests");
-    const run_fft_perf = b.addRunArtifact(fft_perf_exe);
-    fft_perf_step.dependOn(&run_fft_perf.step);
-    b.installArtifact(fft_perf_exe);
+    // const fft_perf_mod = b.createModule(.{
+    //     .root_source_file = b.path("tools/fft_benchmark.zig"),
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
+    // const fft_perf_exe = b.addExecutable(.{
+    //     .name = "fft_perf",
+    //     .root_module = fft_perf_mod,
+    // });
+    // fft_perf_exe.root_module.addImport("zsts", zsts_module);
+    //
+    // const fft_perf_step = b.step("fft-perf", "Run FFT performance tests");
+    // const run_fft_perf = b.addRunArtifact(fft_perf_exe);
+    // fft_perf_step.dependOn(&run_fft_perf.step);
+    // b.installArtifact(fft_perf_exe);
 }

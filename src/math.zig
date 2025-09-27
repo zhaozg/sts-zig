@@ -9,7 +9,7 @@ const two_sqrtpi = 1.128379167095512574;
 const one_sqrtpi = 0.564189583547756287;
 
 pub const MACHEP = 1.11022302462515654042363e-16; // 2**-53
-pub const MAXLOG = 7.0978271289338399673222e2;    // ln(2**1024*(1-MACHEP))
+pub const MAXLOG = 7.0978271289338399673222e2; // ln(2**1024*(1-MACHEP))
 pub const MAXNUM = 1.79769313486231570814527e308; // 2**1024*(1-MACHEP)
 
 pub const PI = math.pi;
@@ -19,7 +19,7 @@ const big = 4.503599627370496e15;
 const biginv = 2.22044604925031308085e-16;
 
 pub fn erf(x: f64) f64 {
-    if (x==0.0) return 0.0;
+    if (x == 0.0) return 0.0;
     if (math.isInf(x)) {
         return if (x > 0) 1.0 else -1.0;
     }
@@ -633,7 +633,6 @@ test "normal function accuracy" {
     }
 }
 
-
 test "chi2_cdf function accuracy" {
     const test_cases = [_]struct {
         x: f64,
@@ -655,4 +654,3 @@ test "chi2_cdf function accuracy" {
         try expect(relative_error < rel_error);
     }
 }
-
