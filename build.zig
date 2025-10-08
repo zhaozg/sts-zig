@@ -4,36 +4,35 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // 使用 pkg-config 检查 GSL
-    const check_gsl = b.addSystemCommand(&.{
-        "pkg-config", "--exists", "gsl"
+    // 获取 fft-zig 依赖
+    const fft_dep = b.dependency("fft", .{
+        .target = target,
+        .optimize = optimize,
     });
-    check_gsl.expectStdOutEqual("0");
 
-    const has_gsl = b.allocator.create(std.Build.Step) catch unreachable;
-    has_gsl.* = std.Build.Step.init(.{
-        .id = .custom,
-        .name = "check-gsl",
-        .owner = b,
+    // 创建 fft 模块
+    const fft_module = b.createModule(.{
+        .root_source_file = fft_dep.path("src/fft.zig"),
     });
-    has_gsl.dependOn(&check_gsl.step);
 
     const main_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
+    main_mod.addImport("fft", fft_module);
+
     const exe = b.addExecutable(.{
         .name = "zsts",
         .root_module = main_mod,
     });
-    exe.linkSystemLibrary("gsl");
     b.installArtifact(exe);
 
     // 创建模块
     const zsts_module = b.addModule("zsts", .{
         .root_source_file = b.path("src/zsts.zig"),
     });
+    zsts_module.addImport("fft", fft_module);
     const test_step = b.step("test", "Run unit tests");
 
     // GMT tests
@@ -107,7 +106,6 @@ pub fn build(b: *std.Build) void {
         .name = "benchmark",
         .root_module = benchmark_mod,
     });
-    benchmark_exe.linkSystemLibrary("gsl");
     benchmark_exe.root_module.addImport("zsts", zsts_module);
 
     const benchmark_step = b.step("benchmark", "Run performance benchmarks");
