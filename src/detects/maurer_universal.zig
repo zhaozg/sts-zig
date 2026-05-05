@@ -45,6 +45,7 @@ fn maurer_universal_iterate(self: *detect.StatDetect, bits: *const io.BitInputSt
 
     if (total_blocks <= Q + 1) {
         return detect.DetectResult{
+            .type = .MaurerUniversal,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -58,6 +59,7 @@ fn maurer_universal_iterate(self: *detect.StatDetect, bits: *const io.BitInputSt
     var allocator = self.allocator;
     var T: []usize = allocator.alloc(usize, @as(usize, 1) << @as(u3, @intCast(L))) catch |err| {
         return detect.DetectResult{
+            .type = .MaurerUniversal,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -121,6 +123,7 @@ fn maurer_universal_iterate(self: *detect.StatDetect, bits: *const io.BitInputSt
     const passed = Pv > 0.01;
 
     return detect.DetectResult{
+        .type = .MaurerUniversal,
         .passed = passed,
         .v_value = V,
         .p_value = Pv,

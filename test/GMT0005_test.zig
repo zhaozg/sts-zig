@@ -2,7 +2,7 @@ const std = @import("std");
 const zsts = @import("zsts");
 
 const detect = zsts.detect;
-const io = zsts.io;
+const IO = zsts.io;
 
 const frequency = zsts.frequency;
 const block_frequency = zsts.block_frequency;
@@ -17,10 +17,9 @@ const epsilon100 = "11001001000011111101101010100010001000010110100011" ++
 const tolerance = 0.000001;
 
 test "frequency" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
-    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
+    const bits = IO.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -30,8 +29,10 @@ test "frequency" {
     };
 
     const freq = try frequency.frequencyDetectStatDetect(allocator, param);
+    defer freq.destroy();
     freq.init(&param);
     const result = freq.iterate(&bits);
+    defer result.deinit(allocator);
     freq.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -41,10 +42,9 @@ test "frequency" {
 }
 
 test "block frequency" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
-    const bits = io.BitInputStream.fromAscii(allocator, epsilon100);
+    const bits = IO.BitInputStream.fromAscii(allocator, epsilon100);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -55,8 +55,10 @@ test "block frequency" {
 
     const m: u8 = 10; // 块大小
     const freq = try block_frequency.blockFrequencyDetectStatDetect(allocator, param, m);
+    defer freq.destroy();
     freq.init(&param);
     const result = freq.iterate(&bits);
+    defer result.deinit(allocator);
     freq.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -66,10 +68,9 @@ test "block frequency" {
 }
 
 test "poker" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
-    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
+    const bits = IO.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     try std.testing.expect(bits.len() == 128); // 确保长度是 4 的倍数
@@ -81,8 +82,10 @@ test "poker" {
 
     const m: u8 = 4; // 块大小
     const stat = try poker.pokerDetectStatDetect(allocator, param, m);
+    defer stat.destroy();
     stat.init(&param);
     const result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -92,10 +95,9 @@ test "poker" {
 }
 
 test "Overlapping Subsequence" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
-    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
+    const bits = IO.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -106,8 +108,10 @@ test "Overlapping Subsequence" {
 
     const m: u8 = 2; // 块大小
     const stat = try zsts.overlappingseq.overlappingSequencyDetectStatDetect(allocator, param, m);
+    defer stat.destroy();
     stat.init(&param);
     const result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -117,10 +121,9 @@ test "Overlapping Subsequence" {
 }
 
 test "Runs" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
-    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
+    const bits = IO.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -130,8 +133,10 @@ test "Runs" {
     };
 
     const stat = try zsts.runs.runsDetectStatDetect(allocator, param);
+    defer stat.destroy();
     stat.init(&param);
     const result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -141,10 +146,9 @@ test "Runs" {
 }
 
 test "Run Distribution" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
-    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
+    const bits = IO.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -154,8 +158,10 @@ test "Run Distribution" {
     };
 
     const stat = try zsts.runDist.runDistributionDetectStatDetect(allocator, param);
+    defer stat.destroy();
     stat.init(&param);
     const result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -165,10 +171,9 @@ test "Run Distribution" {
 }
 
 test "Longest Run" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
-    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
+    const bits = IO.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -178,8 +183,10 @@ test "Longest Run" {
     };
 
     var stat = try zsts.longestRun.longestRunDetectStatDetect(allocator, param);
+    defer stat.destroy();
     stat.init(&param);
     var result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -201,10 +208,9 @@ test "Longest Run" {
 }
 
 test "Binary Derivative" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
-    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
+    const bits = IO.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -214,8 +220,10 @@ test "Binary Derivative" {
     };
 
     const stat = try zsts.binaryDerivative.binaryDerivativeDetectStatDetect(allocator, param, 3);
+    defer stat.destroy();
     stat.init(&param);
     const result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -225,10 +233,9 @@ test "Binary Derivative" {
 }
 
 test "autocorrelation" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
-    const bits = io.BitInputStream.fromAscii(allocator, epsilon);
+    const bits = IO.BitInputStream.fromAscii(allocator, epsilon);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -238,8 +245,10 @@ test "autocorrelation" {
     };
 
     const stat = try zsts.autocorrelation.autocorrelationDetectStatDetect(allocator, param, 1);
+    defer stat.destroy();
     stat.init(&param);
     const result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -249,14 +258,15 @@ test "autocorrelation" {
 }
 
 test "Rank" {
-    const allocator = std.heap.page_allocator;
+    const io = std.testing.io;
+    const allocator = std.testing.allocator;
 
-    const file = try std.fs.cwd().openFile("data/data.e", .{});
-    defer file.close();
+    const file = try std.Io.Dir.cwd().openFile(io, "data/data.e", .{});
+    defer file.close(io);
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(allocator, file);
-    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
+    const inputStream = IO.InputStream.fromFile(std.testing.io, allocator, file);
+    const bits = IO.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -266,8 +276,10 @@ test "Rank" {
     };
 
     const stat = try zsts.rank.rankDetectStatDetect(allocator, param);
+    defer stat.destroy();
     stat.init(&param);
     const result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -277,10 +289,9 @@ test "Rank" {
 }
 
 test "cumulative_sums" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
-    const bits = io.BitInputStream.fromAscii(allocator, epsilon100);
+    const bits = IO.BitInputStream.fromAscii(allocator, epsilon100);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -290,8 +301,10 @@ test "cumulative_sums" {
     };
 
     var stat = try zsts.cumulativeSums.cumulativeSumsDetectStatDetect(allocator, param);
+    defer stat.destroy();
     stat.init(&param);
     var result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     const statResult: *zsts.cumulativeSums.CumulativeSumsResult = @ptrCast(@alignCast(result.extra.?));
@@ -308,10 +321,9 @@ test "cumulative_sums" {
 }
 
 test "ApproxEntropy" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
-    const bits = io.BitInputStream.fromAscii(allocator, epsilon100);
+    const bits = IO.BitInputStream.fromAscii(allocator, epsilon100);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -321,8 +333,10 @@ test "ApproxEntropy" {
     };
 
     var stat = try zsts.approximateEntropy.approxEntropyDetectStatDetect(allocator, param, 2);
+    defer stat.destroy();
     stat.init(&param);
     const result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -332,14 +346,15 @@ test "ApproxEntropy" {
 }
 
 test "Maurer Universal" {
-    const allocator = std.heap.page_allocator;
+    const io = std.testing.io;
+    const allocator = std.testing.allocator;
 
-    const file = try std.fs.cwd().openFile("data/data.e", .{});
-    defer file.close();
+    const file = try std.Io.Dir.cwd().openFile(io, "data/data.e", .{});
+    defer file.close(io);
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(allocator, file);
-    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
+    const inputStream = IO.InputStream.fromFile(io, allocator, file);
+    const bits = IO.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -349,8 +364,10 @@ test "Maurer Universal" {
     };
 
     const stat = try zsts.maurerUniversal.maurerUniversalDetectStatDetect(allocator, param, 7, 1280);
+    defer stat.destroy();
     stat.init(&param);
     const result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -359,28 +376,29 @@ test "Maurer Universal" {
     try std.testing.expectApproxEqAbs(result.q_value, 0.141284, tolerance);
 }
 
-// test "DFT" {
-//     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-//     const allocator = gpa.allocator();
-//
-//     const bits = io.BitInputStream.fromAscii(allocator, epsilon100);
-//     defer bits.close();
-//
-//     try std.testing.expect(bits.len() == 100);
-//
-//     const param = detect.DetectParam{
-//         .type = detect.DetectType.Dft,
-//         .n = bits.len(), // 测试数据长度
-//         .extra = null, // 这里可以设置额外参数
-//     };
-//
-//     var stat = try zsts.dft.dftDetectStatDetect(allocator, param);
-//     stat.init(&param);
-//     const result = stat.iterate(&bits);
-//     stat.print(&result, .detail);
-//
-//     try std.testing.expect(result.passed == true);
-//     try std.testing.expectApproxEqAbs(result.v_value, 0.447214, tolerance);
-//     try std.testing.expectApproxEqAbs(result.p_value, 0.654721, tolerance);
-//     try std.testing.expectApproxEqAbs(result.q_value, 0.327360, tolerance);
-// }
+test "DFT" {
+    const allocator = std.testing.allocator;
+
+    const bits = IO.BitInputStream.fromAscii(allocator, epsilon100);
+    defer bits.close();
+
+    try std.testing.expect(bits.len() == 100);
+
+    const param = detect.DetectParam{
+        .type = detect.DetectType.Dft,
+        .n = bits.len(), // 测试数据长度
+        .extra = null, // 这里可以设置额外参数
+    };
+
+    var stat = try zsts.dft.dftDetectStatDetect(allocator, param);
+    defer stat.destroy();
+    stat.init(&param);
+    const result = stat.iterate(&bits);
+    defer result.deinit(allocator);
+    stat.print(&result, .detail);
+
+    try std.testing.expect(result.passed == true);
+    try std.testing.expectApproxEqAbs(result.v_value, 0.447214, tolerance);
+    try std.testing.expectApproxEqAbs(result.p_value, 0.654721, tolerance);
+    try std.testing.expectApproxEqAbs(result.q_value, 0.327360, tolerance);
+}

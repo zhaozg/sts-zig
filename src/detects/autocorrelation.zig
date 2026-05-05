@@ -32,6 +32,7 @@ fn autocorrelation_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
     const arr = bits.bits();
     if (arr.len != n) {
         return detect.DetectResult{
+            .type = .AutoCorrelation,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -54,6 +55,7 @@ fn autocorrelation_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
     const passed = P > 0.01;
 
     return detect.DetectResult{
+        .type = .AutoCorrelation,
         .passed = passed,
         .v_value = S,
         .p_value = P,

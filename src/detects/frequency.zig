@@ -13,6 +13,7 @@ fn frequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) d
     // Early return for invalid/empty data
     if (self.param.n == 0) {
         return detect.DetectResult{
+            .type = .Frequency,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -45,6 +46,7 @@ fn frequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) d
     const passed = P > 0.01;
 
     const result = detect.DetectResult{
+        .type = .Frequency,
         .passed = passed,
         .v_value = V,
         .p_value = P,

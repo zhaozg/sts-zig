@@ -10,8 +10,6 @@ pub const InputStream = struct {
     const VTable = struct {
         reset: *const fn (context: *anyopaque) void,
         read: *const fn (context: *anyopaque, buffer: []u8) usize,
-        readAt: *const fn (context: *anyopaque, idx: usize, buffer: []u8) usize,
-        hasNext: *const fn (context: *anyopaque) bool,
         close: *const fn (context: *anyopaque) void,
 
         len: *const fn (context: *anyopaque) usize,
@@ -21,18 +19,6 @@ pub const InputStream = struct {
     /// Read up to buffer.len bytes of data
     pub fn read(self: Self, buffer: []u8) usize {
         return self.vtable.read(self.context, buffer);
-    }
-
-    /// Read up to buffer.len bytes of data from a specific index
-    /// note: This is not supported by all streams
-    /// note: Note update the stream position
-    pub fn readAt(self: Self, idx: usize, buffer: []u8) usize {
-        return self.vtable.readAt(self.context, idx, buffer);
-    }
-
-    /// Check if more data is available
-    pub fn hasNext(self: Self) bool {
-        return self.vtable.hasNext(self.context);
     }
 
     /// Reset the stream to its initial position
@@ -55,7 +41,7 @@ pub const InputStream = struct {
         var buffer = try allocator.alloc(u8, self.avail());
         var total_read: usize = 0;
 
-        while (self.hasNext()) {
+        while (true) {
             const n = self.read(buffer[total_read..]);
             if (n == 0) break;
             total_read += n;
@@ -70,8 +56,8 @@ pub const InputStream = struct {
     }
 
     /// Create an InputStream from a file
-    pub fn fromFile(allocator: std.mem.Allocator, file: std.fs.File) InputStream {
-        return createFileStream(allocator, file);
+    pub fn fromFile(io: std.Io, allocator: std.mem.Allocator, file: std.Io.File) InputStream {
+        return createFileStream(io, allocator, file);
     }
 
     /// Create an InputStream from memory
@@ -95,67 +81,40 @@ pub const InputStream = struct {
 
 const FileStream = struct {
     allocator: std.mem.Allocator,
-    file: std.fs.File,
-    pos: usize = 0,
-    end_pos: ?usize = null,
+    io: std.Io,
+    file: std.Io.File,
+    reader: std.Io.File.Reader,
+    buf: [4096]u8 = undefined,
+    size: usize = 0,
 
     fn read(context: *anyopaque, buffer: []u8) usize {
         const self: *FileStream = @ptrCast(@alignCast(context));
-        const n = self.file.read(buffer) catch return 0;
-        self.pos += n;
-        return n;
-    }
-
-    fn readAt(context: *anyopaque, idx: usize, buffer: []u8) usize {
-        const self: *FileStream = @ptrCast(@alignCast(context));
-        self.file.seekTo(idx) catch return 0;
-        const n = self.file.read(buffer) catch return 0;
-        self.file.seekTo(self.pos) catch {};
-        return n;
-    }
-
-    fn hasNext(context: *anyopaque) bool {
-        const self: *FileStream = @ptrCast(@alignCast(context));
-        if (self.end_pos == null) {
-            self.end_pos = self.file.getEndPos() catch return false;
-        }
-        return self.pos < self.end_pos.?;
+        return self.reader.interface.readSliceShort(buffer) catch return 0;
     }
 
     fn len(context: *anyopaque) usize {
         const self: *FileStream = @ptrCast(@alignCast(context));
-        if (self.end_pos == null) {
-            self.end_pos = self.file.getEndPos() catch return 0;
-        }
-        return self.end_pos.?;
+        return self.size;
     }
 
     fn avail(context: *anyopaque) usize {
         const self: *FileStream = @ptrCast(@alignCast(context));
-        if (self.end_pos == null) {
-            self.end_pos = self.file.getEndPos() catch return 0;
-        }
-        return (self.end_pos.? - self.pos);
+        return @as(usize, @intCast(self.size - self.reader.pos));
     }
 
     fn reset(context: *anyopaque) void {
         const self: *FileStream = @ptrCast(@alignCast(context));
-        _ = self.file.seekTo(0) catch {};
-        self.pos = 0;
+        self.reader.seekTo(0) catch {};
     }
 
     fn close(context: *anyopaque) void {
         const self: *FileStream = @ptrCast(@alignCast(context));
-        self.end_pos = 0;
-        self.pos = 0;
         self.allocator.destroy(self);
     }
 
     const vtable = InputStream.VTable{
         .read = read,
-        .readAt = readAt,
 
-        .hasNext = hasNext,
         .len = len,
         .avail = avail,
 
@@ -165,9 +124,18 @@ const FileStream = struct {
 };
 
 /// Create a file-based InputStream
-pub fn createFileStream(allocator: std.mem.Allocator, file: std.fs.File) InputStream {
+pub fn createFileStream(io: std.Io, allocator: std.mem.Allocator, file: std.Io.File) InputStream {
     const stream = allocator.create(FileStream) catch unreachable;
-    stream.* = .{ .allocator = allocator, .file = file };
+    const stat = file.stat(io) catch unreachable;
+    const size = stat.size;
+    const reader = file.reader(io, &stream.buf);
+    stream.* = .{
+        .allocator = allocator,
+        .file = file,
+        .io = io,
+        .reader = reader,
+        .size = size,
+    };
     return InputStream{
         .vtable = &FileStream.vtable,
         .context = stream,
@@ -186,21 +154,6 @@ const MemoryStream = struct {
         @memcpy(buffer[0..to_copy], remaining[0..to_copy]);
         self.index += to_copy;
         return to_copy;
-    }
-
-    fn readAt(context: *anyopaque, idx: usize, buffer: []u8) usize {
-        const self: *MemoryStream = @ptrCast(@alignCast(context));
-        if (idx >= self.data.len) return 0;
-
-        const remaining = self.data[idx..];
-        const to_copy = @min(buffer.len, remaining.len);
-        @memcpy(buffer[0..to_copy], remaining[0..to_copy]);
-        return to_copy;
-    }
-
-    fn hasNext(context: *anyopaque) bool {
-        const self: *MemoryStream = @ptrCast(@alignCast(context));
-        return self.index < self.data.len;
     }
 
     fn reset(context: *anyopaque) void {
@@ -226,9 +179,7 @@ const MemoryStream = struct {
 
     const vtable = InputStream.VTable{
         .read = read,
-        .readAt = readAt,
 
-        .hasNext = hasNext,
         .len = len,
         .avail = avail,
 
@@ -600,8 +551,7 @@ const AsciiBitStream = struct {
 };
 
 test "MemoryStream basic operations" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
     const data = "Hello, Zig!";
     var stream = createMemoryStream(allocator, data);
@@ -615,28 +565,24 @@ test "MemoryStream basic operations" {
     stream.reset();
     const n2 = stream.read(&buffer);
     try std.testing.expectEqualStrings(data, buffer[0..n2]);
-
-    // 测试 hasNext
-    try std.testing.expect(stream.hasNext() == false);
 }
 
 test "FileStream basic operations" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
     const file_path = "testfile.txt";
     const content = "FileStream test data";
-    try std.fs.cwd().writeFile(.{
+    try std.Io.Dir.cwd().writeFile(std.testing.io, .{
         .sub_path = file_path,
         .flags = .{ .truncate = true },
         .data = content,
     });
-    defer std.fs.cwd().deleteFile(file_path) catch {};
+    defer std.Io.Dir.cwd().deleteFile(std.testing.io, file_path) catch {};
 
     // 打开文件流
-    const file = try std.fs.cwd().openFile(file_path, .{});
-    defer file.close();
-    var stream = createFileStream(allocator, file);
+    const file = try std.Io.Dir.cwd().openFile(std.testing.io, file_path, .{});
+    defer file.close(std.testing.io);
+    var stream = createFileStream(std.testing.io, allocator, file);
 
     // 测试读取
     var buffer: [1024]u8 = undefined;
@@ -647,14 +593,10 @@ test "FileStream basic operations" {
     stream.reset();
     const n2 = stream.read(&buffer);
     try std.testing.expectEqualStrings(content, buffer[0..n2]);
-
-    // 测试 hasNext
-    try std.testing.expect(stream.hasNext() == false);
 }
 
 test "AsciiBitStream basic operations" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
     const ascii_data = "101001001111";
     var bit_stream = AsciiBitStream.create(allocator, ascii_data);
@@ -680,8 +622,7 @@ test "AsciiBitStream basic operations" {
 }
 
 test "ByteInputStream from memory stream" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
     const data = [4]u8{ 0b10100000, 0b11110000, 0b00001111, 0b00000000 };
     const input_stream = createMemoryStream(allocator, &data);
@@ -720,8 +661,7 @@ test "ByteInputStream from memory stream" {
 }
 
 test "BitInputStream bits" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
     const data = [2]u8{ 0b10101010, 0b11110000 };
     const input_stream = createMemoryStream(allocator, &data);
@@ -741,17 +681,11 @@ test "BitInputStream bits" {
     bit_stream.close();
 }
 
-test "InputStream readAt, avail, len, readAll, fromArray, fromCString" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+test "InputStream avail, len, readAll, fromArray, fromCString" {
+    const allocator = std.testing.allocator;
 
     const data = "abcdef";
     var stream = createMemoryStream(allocator, data);
-
-    // readAt
-    var buf: [3]u8 = undefined;
-    const n = stream.readAt(2, &buf);
-    try std.testing.expectEqualStrings("cde", buf[0..n]);
 
     // avail/len
     try std.testing.expectEqual(@as(usize, 6), stream.len());
@@ -780,14 +714,12 @@ test "InputStream readAt, avail, len, readAll, fromArray, fromCString" {
 }
 
 test "InputStream edge cases: empty, partial, reset/close" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
     // Empty stream
     var stream = createMemoryStream(allocator, "");
     var buf: [10]u8 = undefined;
     try std.testing.expectEqual(@as(usize, 0), stream.read(&buf));
-    try std.testing.expect(stream.hasNext() == false);
 
     // Partial read
     const data = "12345";
@@ -795,7 +727,6 @@ test "InputStream edge cases: empty, partial, reset/close" {
     var buf2: [2]u8 = undefined;
     const n = stream2.read(&buf2);
     try std.testing.expectEqualStrings("12", buf2[0..n]);
-    try std.testing.expect(stream2.hasNext());
 
     // Multiple reset/close
     stream2.reset();
@@ -804,8 +735,7 @@ test "InputStream edge cases: empty, partial, reset/close" {
 }
 
 test "BitInputStream API: fromByteInputStream, fromByteInputStreamWithLength, fromAsciiInputStream, fromAsciiInputStreamWithLength, fromAscii, bits, len, reset, close" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
     const data = [2]u8{ 0b11001100, 0b10101010 };
     const byte_stream = createMemoryStream(allocator, &data);
@@ -845,8 +775,7 @@ test "BitInputStream API: fromByteInputStream, fromByteInputStreamWithLength, fr
 }
 
 test "BitInputStream edge cases: fetchBit null, bits partial, reset/close multiple" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.testing.allocator;
 
     // Empty ascii
     var ascii_bis = BitInputStream.fromAscii(allocator, "");

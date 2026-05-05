@@ -23,6 +23,7 @@ fn rank_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
 
     if (N == 0) {
         return detect.DetectResult{
+            .type = .Rank,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -34,6 +35,7 @@ fn rank_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
 
     var mat = matrix.createMatrix(M, Q) catch |err| {
         return detect.DetectResult{
+            .type = .Rank,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -82,6 +84,7 @@ fn rank_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
     const passed = P > 0.01;
 
     return detect.DetectResult{
+        .type = .Rank,
         .passed = passed,
         .v_value = chi2,
         .p_value = P,

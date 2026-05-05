@@ -63,6 +63,7 @@ fn cumulative_sums_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
     const arr = bits.bits();
     if (arr.len != n) {
         return detect.DetectResult{
+            .type = .CumulativeSums,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -74,6 +75,7 @@ fn cumulative_sums_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
 
     var result: *CumulativeSumsResult = self.allocator.create(CumulativeSumsResult) catch |err| {
         return detect.DetectResult{
+            .type = .CumulativeSums,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -143,6 +145,7 @@ fn cumulative_sums_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
     }
 
     return detect.DetectResult{
+        .type = .CumulativeSums,
         .passed = P_min > 0.01,
         .v_value = 0.0,
         .p_value = P_min,

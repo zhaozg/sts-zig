@@ -38,6 +38,7 @@ pub const DetectParam = struct {
 };
 
 pub const DetectResult = struct {
+    type: DetectType, // 检测类型
     passed: bool,
 
     v_value: f64,
@@ -49,25 +50,25 @@ pub const DetectResult = struct {
     extra: ?*anyopaque, // 支持扩展字段
 
     /// Clean up any memory allocated for the extra field
-    pub fn deinit(self: *const DetectResult, allocator: std.mem.Allocator, test_name: []const u8) void {
+    pub fn deinit(self: *const DetectResult, allocator: std.mem.Allocator) void {
         if (self.extra) |extra_ptr| {
-            if (std.mem.eql(u8, test_name, "LongestRun")) {
+            if (self.type == .LongestRun) {
                 const result: *@import("detects/longest_run.zig").LongestRunResult = @ptrCast(@alignCast(extra_ptr));
                 allocator.destroy(result);
-            } else if (std.mem.eql(u8, test_name, "CumulativeSums")) {
+            } else if (self.type == .CumulativeSums) {
                 const result: *@import("detects/cumulative_sums.zig").CumulativeSumsResult = @ptrCast(@alignCast(extra_ptr));
                 allocator.destroy(result);
-            } else if (std.mem.eql(u8, test_name, "NonOverlappingTemplate")) {
+            } else if (self.type == .NonOverlappingTemplate) {
                 const result: *@import("detects/non_overlapping_template.zig").NonOverlappingTemplateResult = @ptrCast(@alignCast(extra_ptr));
                 allocator.free(result.template_patterns);
                 allocator.free(result.passed);
                 allocator.free(result.p_value);
                 allocator.free(result.v_value);
                 allocator.destroy(result);
-            } else if (std.mem.eql(u8, test_name, "RandomExcursions")) {
+            } else if (self.type == .RandomExcursions) {
                 const result: *@import("detects/random_excursions.zig").RandomExcursionsResult = @ptrCast(@alignCast(extra_ptr));
                 allocator.destroy(result);
-            } else if (std.mem.eql(u8, test_name, "RandomExcursionsVariant")) {
+            } else if (self.type == .RandomExcursionsVariant) {
                 const result: *@import("detects/random_excursions_variant.zig").RandomExcursionsVariantResult = @ptrCast(@alignCast(extra_ptr));
                 allocator.destroy(result);
             }

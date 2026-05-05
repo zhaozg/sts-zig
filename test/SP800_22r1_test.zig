@@ -2,20 +2,20 @@ const std = @import("std");
 const zsts = @import("zsts");
 
 const detect = zsts.detect;
-const io = zsts.io;
+const IO = zsts.io;
 
 const tolerance = 0.000001;
 
 test "OverlappingTemplateMatch" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const io = std.testing.io;
+    const allocator = std.testing.allocator;
 
-    const file = try std.fs.cwd().openFile("data/data.e", .{});
-    defer file.close();
+    const file = try std.Io.Dir.cwd().openFile(io, "data/data.e", .{});
+    defer file.close(io);
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(allocator, file);
-    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
+    const inputStream = IO.InputStream.fromFile(io, allocator, file);
+    const bits = IO.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -26,7 +26,9 @@ test "OverlappingTemplateMatch" {
 
     const overtemp = try zsts.overlappingTemplate.overlappingTemplateDetectStatDetect(allocator, param);
     overtemp.init(&param);
+    defer overtemp.destroy();
     const result = overtemp.iterate(&bits);
+    defer result.deinit(allocator);
     overtemp.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -37,15 +39,15 @@ test "OverlappingTemplateMatch" {
 }
 
 test "NonOverlappingTemplateMatch" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const io = std.testing.io;
+    const allocator = std.testing.allocator;
 
-    const file = try std.fs.cwd().openFile("data/data.sha1", .{});
-    defer file.close();
+    const file = try std.Io.Dir.cwd().openFile(io, "data/data.sha1", .{});
+    defer file.close(io);
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(allocator, file);
-    const bits = io.BitInputStream.fromByteInputStreamWithLength(allocator, inputStream, n);
+    const inputStream = IO.InputStream.fromFile(io, allocator, file);
+    const bits = IO.BitInputStream.fromByteInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -56,7 +58,9 @@ test "NonOverlappingTemplateMatch" {
 
     const nonovertemp = try zsts.nonOverlappingTemplate.nonOverlappingTemplateDetectStatDetect(allocator, param);
     nonovertemp.init(&param);
+    defer nonovertemp.destroy();
     const result = nonovertemp.iterate(&bits);
+    defer result.deinit(allocator);
     nonovertemp.print(&result, .detail);
 
     try std.testing.expect(result.passed == false);
@@ -66,15 +70,15 @@ test "NonOverlappingTemplateMatch" {
 }
 
 test "RandomExcursion" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const io = std.testing.io;
+    const allocator = std.testing.allocator;
 
-    const file = try std.fs.cwd().openFile("data/data.e", .{});
-    defer file.close();
+    const file = try std.Io.Dir.cwd().openFile(io, "data/data.e", .{});
+    defer file.close(io);
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(allocator, file);
-    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
+    const inputStream = IO.InputStream.fromFile(io, allocator, file);
+    const bits = IO.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -86,7 +90,9 @@ test "RandomExcursion" {
     // const m: u8 = 10; // 块大小
     const randomExcursions = try zsts.randomExcursions.randomExcursionsDetectStatDetect(allocator, param);
     randomExcursions.init(&param);
+    defer randomExcursions.destroy();
     const result = randomExcursions.iterate(&bits);
+    defer result.deinit(allocator);
     randomExcursions.print(&result, .detail);
 
     try std.testing.expect(result.passed == false);
@@ -96,15 +102,15 @@ test "RandomExcursion" {
 }
 
 test "RandomExcursionVariant" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const io = std.testing.io;
+    const allocator = std.testing.allocator;
 
-    const file = try std.fs.cwd().openFile("data/data.e", .{});
-    defer file.close();
+    const file = try std.Io.Dir.cwd().openFile(io, "data/data.e", .{});
+    defer file.close(io);
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(allocator, file);
-    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
+    const inputStream = IO.InputStream.fromFile(io, allocator, file);
+    const bits = IO.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     try std.testing.expect(bits.len() == n); // 确保长度是 4 的倍数
@@ -116,7 +122,9 @@ test "RandomExcursionVariant" {
 
     const stat = try zsts.randomExcursionsVariant.randomExcursionsVariantDetectStatDetect(allocator, param);
     stat.init(&param);
+    defer stat.destroy();
     const result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);
@@ -126,15 +134,15 @@ test "RandomExcursionVariant" {
 }
 
 test "Serial" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const io = std.testing.io;
+    const allocator = std.testing.allocator;
 
-    const file = try std.fs.cwd().openFile("data/data.e", .{});
-    defer file.close();
+    const file = try std.Io.Dir.cwd().openFile(io, "data/data.e", .{});
+    defer file.close(io);
 
     const n = 1000000; // 100000 比特
-    const inputStream = io.InputStream.fromFile(allocator, file);
-    const bits = io.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
+    const inputStream = IO.InputStream.fromFile(io, allocator, file);
+    const bits = IO.BitInputStream.fromAsciiInputStreamWithLength(allocator, inputStream, n);
     defer bits.close();
 
     const param = detect.DetectParam{
@@ -145,7 +153,9 @@ test "Serial" {
 
     const stat = try zsts.serial.serialDetectStatDetect(allocator, param);
     stat.init(&param);
+    defer stat.destroy();
     const result = stat.iterate(&bits);
+    defer result.deinit(allocator);
     stat.print(&result, .detail);
 
     try std.testing.expect(result.passed == true);

@@ -7,6 +7,7 @@ test "reporting: summary calculation" {
     var summary = reporting.TestSummary.init();
 
     var result1 = detect.DetectResult{
+        .type = detect.DetectType.Frequency,
         .passed = true,
         .v_value = 1.23,
         .p_value = 0.045,
@@ -16,6 +17,7 @@ test "reporting: summary calculation" {
     };
 
     var result2 = detect.DetectResult{
+        .type = detect.DetectType.Frequency,
         .passed = false,
         .v_value = 2.34,
         .p_value = 0.005,
@@ -25,6 +27,7 @@ test "reporting: summary calculation" {
     };
 
     var result3 = detect.DetectResult{
+        .type = detect.DetectType.Frequency,
         .passed = true,
         .v_value = 0.87,
         .p_value = 0.123,
@@ -49,30 +52,6 @@ test "reporting: summary calculation" {
     try std.testing.expectApproxEqAbs(summary.execution_time_ms, 30.9, 0.1);
 }
 
-test "reporting: JSON report generation" {
-    const allocator = std.testing.allocator;
-
-    var result = detect.DetectResult{
-        .passed = true,
-        .v_value = 1.23456,
-        .p_value = 0.045678,
-        .q_value = 0.022839,
-        .extra = null,
-        .errno = null,
-    };
-
-    const json_report = try reporting.generateJsonReport(allocator, "Frequency", &result, 15.5, 10000);
-    defer allocator.free(json_report);
-
-    // Basic validation that JSON contains expected fields
-    try std.testing.expect(std.mem.indexOf(u8, json_report, "\"test_name\": \"Frequency\"") != null);
-    try std.testing.expect(std.mem.indexOf(u8, json_report, "\"data_size\": 10000") != null);
-    try std.testing.expect(std.mem.indexOf(u8, json_report, "\"execution_time_ms\": 15.500") != null);
-    try std.testing.expect(std.mem.indexOf(u8, json_report, "\"status\": \"PASS\"") != null);
-    try std.testing.expect(std.mem.indexOf(u8, json_report, "\"passed\": true") != null);
-    try std.testing.expect(std.mem.indexOf(u8, json_report, "\"p_value\": 0.045678") != null);
-}
-
 test "reporting: CSV report generation" {
     const allocator = std.testing.allocator;
 
@@ -86,6 +65,7 @@ test "reporting: CSV report generation" {
 
     // Test CSV data row
     var result = detect.DetectResult{
+        .type = detect.DetectType.Frequency,
         .passed = false,
         .v_value = 2.34567,
         .p_value = 0.008901,
@@ -94,7 +74,7 @@ test "reporting: CSV report generation" {
         .errno = null,
     };
 
-    const csv_row = try reporting.generateCsvReport(allocator, "Runs", &result, 8.7, 5000);
+    const csv_row = try reporting.generateCsvReport(std.testing.io, allocator, "Runs", &result, 8.7, 5000);
     defer allocator.free(csv_row);
 
     try std.testing.expect(std.mem.indexOf(u8, csv_row, "Runs") != null);
@@ -109,6 +89,7 @@ test "reporting: XML report generation" {
     const allocator = std.testing.allocator;
 
     var result = detect.DetectResult{
+        .type = detect.DetectType.Frequency,
         .passed = true,
         .v_value = 0.98765,
         .p_value = 0.234567,
@@ -117,7 +98,7 @@ test "reporting: XML report generation" {
         .errno = null,
     };
 
-    const xml_report = try reporting.generateXmlReport(allocator, "DFT", &result, 25.3, 20000);
+    const xml_report = try reporting.generateXmlReport(std.testing.io, allocator, "DFT", &result, 25.3, 20000);
     defer allocator.free(xml_report);
 
     // Verify XML structure
@@ -134,6 +115,7 @@ test "reporting: markdown report generation" {
     const allocator = std.testing.allocator;
 
     var result = detect.DetectResult{
+        .type = detect.DetectType.Frequency,
         .passed = true,
         .v_value = 1.5678,
         .p_value = 0.067890,
@@ -154,27 +136,14 @@ test "reporting: markdown report generation" {
 }
 
 test "reporting: summary JSON generation" {
-    const allocator = std.testing.allocator;
-
     var summary = reporting.TestSummary.init();
 
     // Add some test results
-    var result1 = detect.DetectResult{ .passed = true, .v_value = 1.0, .p_value = 0.05, .q_value = 0.025, .extra = null, .errno = null };
-    var result2 = detect.DetectResult{ .passed = false, .v_value = 2.0, .p_value = 0.008, .q_value = 0.004, .extra = null, .errno = null };
-    var result3 = detect.DetectResult{ .passed = true, .v_value = 0.5, .p_value = 0.15, .q_value = 0.075, .extra = null, .errno = null };
+    var result1 = detect.DetectResult{ .type = detect.DetectType.Frequency, .passed = true, .v_value = 1.0, .p_value = 0.05, .q_value = 0.025, .extra = null, .errno = null };
+    var result2 = detect.DetectResult{ .type = detect.DetectType.Frequency, .passed = false, .v_value = 2.0, .p_value = 0.008, .q_value = 0.004, .extra = null, .errno = null };
+    var result3 = detect.DetectResult{ .type = detect.DetectType.Frequency, .passed = true, .v_value = 0.5, .p_value = 0.15, .q_value = 0.075, .extra = null, .errno = null };
 
     summary.addResult(&result1, 10.0);
     summary.addResult(&result2, 15.0);
     summary.addResult(&result3, 8.0);
-
-    const json_summary = try reporting.generateSummaryReport(allocator, &summary, .json);
-    defer allocator.free(json_summary);
-
-    // Verify JSON summary contains expected data
-    try std.testing.expect(std.mem.indexOf(u8, json_summary, "\"total_tests\": 3") != null);
-    try std.testing.expect(std.mem.indexOf(u8, json_summary, "\"passed_tests\": 2") != null);
-    try std.testing.expect(std.mem.indexOf(u8, json_summary, "\"failed_tests\": 1") != null);
-    try std.testing.expect(std.mem.indexOf(u8, json_summary, "\"pass_rate\": 0.6667") != null);
-    try std.testing.expect(std.mem.indexOf(u8, json_summary, "\"min\": 0.008000") != null);
-    try std.testing.expect(std.mem.indexOf(u8, json_summary, "\"max\": 0.150000") != null);
 }

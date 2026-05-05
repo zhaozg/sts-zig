@@ -15,6 +15,7 @@ fn runs_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
     // Early return for invalid/empty data
     if (n == 0) {
         return detect.DetectResult{
+            .type = .Runs,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -55,6 +56,7 @@ fn runs_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect
     const passed = P > 0.01;
 
     const result = detect.DetectResult{
+        .type = .Runs,
         .passed = passed,
         .v_value = V,
         .p_value = P,

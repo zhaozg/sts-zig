@@ -115,6 +115,7 @@ fn longest_run_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream)
 
     if (M != 8 and M != 128 and M != 10000) {
         return detect.DetectResult{
+            .type = .LongestRun,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -186,6 +187,7 @@ fn longest_run_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream)
 
     const result: *LongestRunResult = self.allocator.create(LongestRunResult) catch |err| {
         return detect.DetectResult{
+            .type = .LongestRun,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -205,6 +207,7 @@ fn longest_run_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream)
     const passed = P > 0.01;
 
     return detect.DetectResult{
+        .type = .LongestRun,
         .passed = passed,
         .v_value = V,
         .p_value = P,

@@ -35,6 +35,7 @@ fn approx_entropy_iterate(self: *detect.StatDetect, bits: *const io.BitInputStre
 
     var V: []usize = self.allocator.alloc(usize, @as(usize, 1) << @as(u3, @intCast((m + 1)))) catch |err| {
         return detect.DetectResult{
+            .type = .ApproxEntropy,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -98,6 +99,7 @@ fn approx_entropy_iterate(self: *detect.StatDetect, bits: *const io.BitInputStre
     const passed = P > 0.01;
 
     return detect.DetectResult{
+        .type = .ApproxEntropy,
         .passed = passed,
         .v_value = chi2,
         .p_value = P,

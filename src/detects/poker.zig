@@ -10,14 +10,14 @@ fn poker_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
 
 fn poker_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.DetectResult {
     if (self.param.extra == null) {
-        return detect.DetectResult{ .passed = false, .v_value = 0.0, .p_value = 0.0, .q_value = 0.0, .errno = error.InvalidArgument, .extra = null };
+        return detect.DetectResult{ .type = .Poker, .passed = false, .v_value = 0.0, .p_value = 0.0, .q_value = 0.0, .errno = error.InvalidArgument, .extra = null };
     }
 
     const param: *PokerParam = @ptrCast(self.param.extra);
     const m = @as(u4, @intCast(param.m));
 
     if (!(m == 2 or m == 4 or m == 8)) {
-        return detect.DetectResult{ .passed = false, .v_value = 0.0, .p_value = 0.0, .q_value = 0.0, .errno = error.InvalidArgument, .extra = null };
+        return detect.DetectResult{ .type = .Poker, .passed = false, .v_value = 0.0, .p_value = 0.0, .q_value = 0.0, .errno = error.InvalidArgument, .extra = null };
     }
     const M = @as(u16, 1) << m;
 
@@ -25,6 +25,7 @@ fn poker_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detec
         //std.debug.print("Poker Test: allocation failed: {}\n", .{err});
         _ = err catch {};
         return detect.DetectResult{
+            .type = .Poker,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -101,6 +102,7 @@ fn poker_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detec
     const passed = P > 0.01;
 
     return detect.DetectResult{
+        .type = .Poker,
         .passed = passed,
         .v_value = V,
         .p_value = P,

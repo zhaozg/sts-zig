@@ -5,7 +5,6 @@ const print = std.debug.print;
 /// Report formatting options
 pub const ReportFormat = enum {
     console,
-    json,
     csv,
     xml,
     markdown,
@@ -91,53 +90,27 @@ pub fn generateConsoleReport(allocator: std.mem.Allocator, test_name: []const u8
     print("═══════════════════════════════════════════════\n\n", .{});
 }
 
-/// Generate JSON report
-pub fn generateJsonReport(allocator: std.mem.Allocator, test_name: []const u8, result: *const detect.DetectResult, execution_time: f64, data_size: usize) ![]u8 {
-    var json_obj = std.json.ObjectMap.init(allocator);
-    defer json_obj.deinit();
-
-    // This is a simplified JSON generation - in practice, you'd use std.json.stringify
-    const format_str =
-        \\{{
-        \\  "test_name": "{s}",
-        \\  "data_size": {},
-        \\  "execution_time_ms": {d:.3},
-        \\  "status": "{s}",
-        \\  "passed": {},
-        \\  "test_statistic": {d:.6},
-        \\  "p_value": {d:.6},
-        \\  "q_value": {d:.6},
-        \\  "interpretation": "{s}",
-        \\  "timestamp": "{d}"
-        \\}}
-    ;
-
-    const status = if (result.passed) "PASS" else "FAIL";
-    const interpretation = if (result.p_value >= 0.01) "Random" else "Non-random";
-    const timestamp = std.time.timestamp();
-
-    return std.fmt.allocPrint(allocator, format_str, .{ test_name, data_size, execution_time, status, result.passed, result.v_value, result.p_value, result.q_value, interpretation, timestamp });
-}
-
 /// Generate CSV report header
 pub fn generateCsvHeader(allocator: std.mem.Allocator) ![]u8 {
     return std.fmt.allocPrint(allocator, "Test Name,Data Size,Execution Time (ms),Status,Passed,Test Statistic,P-Value,Q-Value,Interpretation,Timestamp\n", .{});
 }
 
 /// Generate CSV report line
-pub fn generateCsvReport(allocator: std.mem.Allocator, test_name: []const u8, result: *const detect.DetectResult, execution_time: f64, data_size: usize) ![]u8 {
+pub fn generateCsvReport(io: std.Io, allocator: std.mem.Allocator, test_name: []const u8, result: *const detect.DetectResult, execution_time: f64, data_size: usize) ![]u8 {
     const status = if (result.passed) "PASS" else "FAIL";
     const interpretation = if (result.p_value >= 0.01) "Random" else "Non-random";
-    const timestamp = std.time.timestamp();
+    const clock = std.Io.Clock.awake;
+    const timestamp = std.Io.Clock.now(clock, io);
 
     return std.fmt.allocPrint(allocator, "{s},{},{d:.3},{s},{},{d:.6},{d:.6},{d:.6},{s},{d}\n", .{ test_name, data_size, execution_time, status, result.passed, result.v_value, result.p_value, result.q_value, interpretation, timestamp });
 }
 
 /// Generate XML report
-pub fn generateXmlReport(allocator: std.mem.Allocator, test_name: []const u8, result: *const detect.DetectResult, execution_time: f64, data_size: usize) ![]u8 {
+pub fn generateXmlReport(io: std.Io, allocator: std.mem.Allocator, test_name: []const u8, result: *const detect.DetectResult, execution_time: f64, data_size: usize) ![]u8 {
     const status = if (result.passed) "PASS" else "FAIL";
     const interpretation = if (result.p_value >= 0.01) "Random" else "Non-random";
-    const timestamp = std.time.timestamp();
+    const clock = std.Io.Clock.awake;
+    const timestamp = std.Io.Clock.now(clock, io);
 
     const xml_template =
         \\<test_result>

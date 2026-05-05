@@ -92,6 +92,7 @@ fn run_distribution_iterate(self: *detect.StatDetect, bits: *const io.BitInputSt
     const passed = P > 0.01;
 
     return detect.DetectResult{
+        .type = .RunDistribution,
         .passed = passed,
         .v_value = V,
         .p_value = P,

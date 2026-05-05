@@ -86,7 +86,7 @@ fn generatePeriodicData(data: []u8, period: usize) !void {
     var pattern = if (@hasField(PatternListType, "allocator"))
         PatternListType{ .items = &[_]u8{}, .capacity = 0, .allocator = std.heap.page_allocator }
     else
-        PatternListType{};
+        PatternListType.empty;
     defer {
         if (@hasField(PatternListType, "allocator")) {
             pattern.deinit();
@@ -160,9 +160,15 @@ fn generateCustomPatternData(data: []u8, pattern: []const u8) !void {
 }
 
 /// Save data to file in specified format
-pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: []const u8, format: enum { binary, ascii, hex }) !void {
-    const file = try std.fs.cwd().createFile(filename, .{});
-    defer file.close();
+pub fn saveDataToFile(io: std.Io, allocator: std.mem.Allocator, data: []const u8, filename: []const u8, format: enum { binary, ascii, hex }) !void {
+    const file = try std.Io.Dir.cwd().createFile(io, filename, .{});
+    defer file.close(io);
+    const buffer = allocator.alloc(u8, 4096) catch |err| {
+        return err;
+    };
+    defer allocator.free(buffer);
+    var filewriter = file.writer(io, buffer);
+    const writer: *std.Io.Writer = &filewriter.interface;
 
     switch (format) {
         .binary => {
@@ -171,7 +177,7 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
             var packed_data = if (@hasField(PackedListType, "allocator"))
                 PackedListType{ .items = &[_]u8{}, .capacity = 0, .allocator = allocator }
             else
-                PackedListType{};
+                PackedListType.empty;
             defer {
                 if (@hasField(PackedListType, "allocator")) {
                     packed_data.deinit();
@@ -185,7 +191,7 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
                 byte = (byte << 1) | bit;
                 if ((i + 1) % 8 == 0 or i == data.len - 1) {
                     if (@hasField(PackedListType, "allocator")) {
-                        try packed_data.append(byte);
+                        try packed_data.append(allocator, byte);
                     } else {
                         try packed_data.append(allocator, byte);
                     }
@@ -193,12 +199,12 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
                 }
             }
 
-            try file.writeAll(packed_data.items);
+            try writer.writeAll(packed_data.items);
         },
         .ascii => {
             for (data) |bit| {
                 const char = [1]u8{'0' + bit};
-                try file.writeAll(&char);
+                try writer.writeAll(&char);
             }
         },
         .hex => {
@@ -213,7 +219,7 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
                     // Cross-version compatible hex writing
                     var hex_buffer: [2]u8 = undefined;
                     const hex_str = std.fmt.bufPrint(&hex_buffer, "{x}", .{hex_val}) catch unreachable;
-                    try file.writeAll(hex_str);
+                    try writer.writeAll(hex_str);
                 }
             }
         },
@@ -221,7 +227,7 @@ pub fn saveDataToFile(allocator: std.mem.Allocator, data: []const u8, filename: 
 }
 
 /// Generate comprehensive test data suite
-pub fn generateTestSuite(allocator: std.mem.Allocator, output_dir: []const u8) !void {
+pub fn generateTestSuite(io: std.Io, allocator: std.mem.Allocator, output_dir: []const u8) !void {
     const test_configs = [_]struct {
         name: []const u8,
         config: GeneratorConfig,
@@ -239,7 +245,7 @@ pub fn generateTestSuite(allocator: std.mem.Allocator, output_dir: []const u8) !
     };
 
     // Create output directory
-    std.fs.cwd().makeDir(output_dir) catch |err| switch (err) {
+    std.Io.Dir.cwd().createDir(io, output_dir, .default_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
@@ -252,20 +258,18 @@ pub fn generateTestSuite(allocator: std.mem.Allocator, output_dir: []const u8) !
         var filename_buffer: [256]u8 = undefined;
         const filename = try std.fmt.bufPrint(&filename_buffer, "{s}/{s}.txt", .{ output_dir, test_config.name });
 
-        try saveDataToFile(allocator, data, filename, .ascii);
+        try saveDataToFile(io, allocator, data, filename, .ascii);
         print("Generated: {s} ({} bits)\n", .{ filename, data.len });
     }
 
     print("Test data suite generated successfully in '{s}' directory\n", .{output_dir});
 }
 
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+pub fn main(init: std.process.Init) !void {
+    var allocator = init.gpa;
 
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
+    const args = try init.minimal.args.toSlice(allocator);
+    defer allocator.free(args);
 
     if (args.len < 2) {
         print("Usage: {s} <command> [options]\n", .{args[0]});
@@ -281,7 +285,7 @@ pub fn main() !void {
 
     if (std.mem.eql(u8, command, "suite")) {
         const output_dir = if (args.len > 2) args[2] else "test_data";
-        try generateTestSuite(allocator, output_dir);
+        try generateTestSuite(init.io, allocator, output_dir);
     } else if (std.mem.eql(u8, command, "random")) {
         if (args.len < 4) {
             print("Usage: random <size> <seed>\n", .{});
@@ -295,7 +299,7 @@ pub fn main() !void {
         const data = try generateData(allocator, config);
         defer allocator.free(data);
 
-        try saveDataToFile(allocator, data, "random_data.txt", .ascii);
+        try saveDataToFile(init.io, allocator, data, "random_data.txt", .ascii);
         print("Generated {} bits of random data in 'random_data.txt'\n", .{size});
     } else if (std.mem.eql(u8, command, "help")) {
         print("STS-Zig Test Data Generator\n", .{});

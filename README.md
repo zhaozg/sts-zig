@@ -1,7 +1,7 @@
 # zig-sts
 
 [![CI](https://github.com/zhaozg/sts-zig/workflows/CI/badge.svg)](https://github.com/zhaozg/sts-zig/actions)
-[![Zig Version](https://img.shields.io/badge/zig-0.14.1+-blue.svg)](https://ziglang.org/download/)
+[![Zig Version](https://img.shields.io/badge/zig-0.16.0+-blue.svg)](https://ziglang.org/download/)
 [![Repository Size](https://img.shields.io/github/repo-size/zhaozg/sts-zig)](https://github.com/zhaozg/sts-zig)
 [![Last Commit](https://img.shields.io/github/last-commit/zhaozg/sts-zig)](https://github.com/zhaozg/sts-zig/commits/main)
 [![Issues](https://img.shields.io/github/issues/zhaozg/sts-zig)](https://github.com/zhaozg/sts-zig/issues)
@@ -16,7 +16,7 @@
 
 `git clone https://github.com/zhaozg/sts-zig.git`
 
-### 下载 Zig 0.14.1
+### 下载 Zig 0.16.0
 
 从[ziglang.org](https://ziglang.org/download)选择对应系统的预编译安装包。
 

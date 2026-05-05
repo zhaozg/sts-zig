@@ -33,6 +33,7 @@ fn overlapping_sequency_iterate(self: *detect.StatDetect, bits: *const io.BitInp
 
     var arr: []u1 = allocator.alloc(u1, n + m - 1) catch |err| {
         return detect.DetectResult{
+            .type = .OverlappingSequency,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -118,6 +119,7 @@ fn overlapping_sequency_iterate(self: *detect.StatDetect, bits: *const io.BitInp
     const passed = P1 > 0.01 and P2 > 0.01;
 
     return detect.DetectResult{
+        .type = .OverlappingSequency,
         .passed = passed,
         .v_value = nabla1,
         .p_value = P1,

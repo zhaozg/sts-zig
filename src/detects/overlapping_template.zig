@@ -23,6 +23,7 @@ fn overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.BitInp
     const N = n / M;
     if (N == 0) {
         return detect.DetectResult{
+            .type = .OverlappingTemplate,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -58,6 +59,7 @@ fn overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.BitInp
     const arr = bits.bits();
     if (arr.len != n) {
         return detect.DetectResult{
+            .type = .OverlappingTemplate,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -99,6 +101,7 @@ fn overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.BitInp
     const passed = p_value > 0.01;
 
     return detect.DetectResult{
+        .type = .OverlappingTemplate,
         .passed = passed,
         .v_value = chi2,
         .p_value = p_value,

@@ -2,7 +2,6 @@ const detect = @import("../detect.zig");
 const io = @import("../io.zig");
 const math = @import("../math.zig");
 const std = @import("std");
-const compat = @import("../compat.zig");
 
 pub const NonOverlappingTemplateResult = struct {
     n: usize,
@@ -68,7 +67,7 @@ fn non_veerlapping_template_print(self: *detect.StatDetect, result: *const detec
 const BLOCKS_NON_OVERLAPPING = 8; // 可根据实际情况调整
 
 fn generateNonPeriodicTemplatePatterns(m: u4, allocator: std.mem.Allocator) ![]u32 {
-    var patterns = compat.ArrayList(u32).init(allocator);
+    var patterns = std.ArrayList(u32).empty;
     const max_num: usize = @as(usize, 1) << m;
     for (1..max_num) |val| {
         var arr = try allocator.alloc(u1, m);
@@ -78,10 +77,10 @@ fn generateNonPeriodicTemplatePatterns(m: u4, allocator: std.mem.Allocator) ![]u
             arr[i] = if (((val >> @as(u6, @intCast(m - 1 - i))) & 1) == 1) 1 else 0;
         }
         if (!isPeriodic(arr)) {
-            try patterns.append(@as(u32, @intCast(val)));
+            try patterns.append(allocator, @as(u32, @intCast(val)));
         }
     }
-    return patterns.toOwnedSlice();
+    return patterns.toOwnedSlice(allocator);
 }
 
 fn patternToBits(pattern: u32, m: u4, bits: []u1) void {
@@ -120,6 +119,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
 
     if (M < m) {
         return detect.DetectResult{
+            .type = .NonOverlappingTemplate,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -137,6 +137,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
     const arr = bits.bits();
     if (arr.len != n) {
         return detect.DetectResult{
+            .type = .NonOverlappingTemplate,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -149,6 +150,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
     // 生成模板
     const template_patterns = generateNonPeriodicTemplatePatterns(m, self.allocator) catch |err| {
         return detect.DetectResult{
+            .type = .NonOverlappingTemplate,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -161,6 +163,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
 
     var results: *NonOverlappingTemplateResult = self.allocator.create(NonOverlappingTemplateResult) catch |err| {
         return detect.DetectResult{
+            .type = .NonOverlappingTemplate,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -175,6 +178,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
     results.template_patterns = self.allocator.alloc(u32, template_patterns.len) catch |err| {
         self.allocator.destroy(results);
         return detect.DetectResult{
+            .type = .NonOverlappingTemplate,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -189,6 +193,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
         self.allocator.free(results.template_patterns);
         self.allocator.destroy(results);
         return detect.DetectResult{
+            .type = .NonOverlappingTemplate,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -202,6 +207,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
         self.allocator.free(results.passed);
         self.allocator.destroy(results);
         return detect.DetectResult{
+            .type = .NonOverlappingTemplate,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -216,6 +222,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
         self.allocator.free(results.p_value);
         self.allocator.destroy(results);
         return detect.DetectResult{
+            .type = .NonOverlappingTemplate,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -232,6 +239,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
         // Temporarily reconstruct the template for processing
         const template = self.allocator.alloc(u1, m) catch |err| {
             return detect.DetectResult{
+                .type = .NonOverlappingTemplate,
                 .passed = false,
                 .v_value = 0.0,
                 .p_value = 0.0,
@@ -289,6 +297,7 @@ fn non_overlapping_template_iterate(self: *detect.StatDetect, bits: *const io.Bi
         }
     }
     return detect.DetectResult{
+        .type = .NonOverlappingTemplate,
         .passed = p_min > 0.01,
         .v_value = v_min,
         .p_value = p_min,

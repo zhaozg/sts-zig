@@ -32,6 +32,7 @@ fn binary_derivative_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
 
     var arr = self.allocator.alloc(u1, n) catch |err| {
         return detect.DetectResult{
+            .type = .BinaryDerivative,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -45,6 +46,7 @@ fn binary_derivative_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     const origin = bits.bits();
     if (origin.len != n) {
         return detect.DetectResult{
+            .type = .BinaryDerivative,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -73,6 +75,7 @@ fn binary_derivative_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     const passed = P > 0.01;
 
     return detect.DetectResult{
+        .type = .BinaryDerivative,
         .passed = passed,
         .v_value = V,
         .p_value = P,

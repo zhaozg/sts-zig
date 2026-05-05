@@ -3,8 +3,6 @@ const io = @import("../io.zig");
 const math = @import("../math.zig");
 const std = @import("std");
 
-const compat = @import("../compat.zig");
-
 const MAX_EXCURSION_RND_EXCURSION = 4;
 // Number of states for TEST_RND_EXCURSION
 const NUMBER_OF_STATES_RND_EXCURSION = 2 * MAX_EXCURSION_RND_EXCURSION;
@@ -94,6 +92,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     // 检查最小样本量要求
     if (n < 100) {
         return detect.DetectResult{
+            .type = .RandomExcursions,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -108,6 +107,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     const arr = bits.bits();
     if (arr.len != n) {
         return detect.DetectResult{
+            .type = .RandomExcursions,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -119,6 +119,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
 
     var S = allocator.alloc(i32, n) catch |err| {
         return detect.DetectResult{
+            .type = .RandomExcursions,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -129,8 +130,8 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     };
     defer allocator.free(S);
 
-    var cycle_idx = compat.ArrayList(usize).init(allocator);
-    defer cycle_idx.deinit();
+    var cycle_idx = std.ArrayList(usize).empty;
+    defer cycle_idx.deinit(self.allocator);
 
     // 计算累积、收集零交叉点
     S[0] = @as(i32, if (arr[0] == 1) 1 else -1); // 初始化第一个元素 ;
@@ -138,15 +139,25 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
         S[i] = S[i - 1] + @as(i32, if (arr[i] == 1) 1 else -1);
         // 收集零交叉点
         if (S[i] == 0) {
-            cycle_idx.append(i) catch {};
+            cycle_idx.append(self.allocator, i) catch {};
         }
     }
 
     if (S[n - 1] != 0) {
-        cycle_idx.append(n) catch {};
+        cycle_idx.append(self.allocator, n) catch {};
     }
 
-    const items = cycle_idx.toOwnedSlice();
+    const items = cycle_idx.toOwnedSlice(self.allocator) catch |err| {
+        return detect.DetectResult{
+            .type = .RandomExcursions,
+            .passed = false,
+            .v_value = 0.0,
+            .p_value = 0.0,
+            .q_value = 0.0,
+            .extra = null,
+            .errno = err,
+        };
+    };
     const J: usize = items.len;
 
     const min_cycles = @max(500, @as(usize, @intFromFloat(0.005 * @sqrt(@as(f64, @floatFromInt(n))))));
@@ -156,6 +167,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
         // Free allocated memory before returning
         self.allocator.free(items);
         return detect.DetectResult{
+            .type = .RandomExcursions,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -200,6 +212,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     // 准备结果存储
     const result = allocator.create(RandomExcursionsResult) catch |err| {
         return detect.DetectResult{
+            .type = .RandomExcursions,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -253,6 +266,7 @@ fn random_excursions_iterate(self: *detect.StatDetect, bits: *const io.BitInputS
     self.allocator.free(items);
 
     return detect.DetectResult{
+        .type = .RandomExcursions,
         .passed = all_passed,
         .v_value = min_chi2,
         .p_value = min_p_value,

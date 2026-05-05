@@ -30,7 +30,8 @@ const BenchmarkResult = struct {
     throughput_mbps: f64, // Megabits per second
 };
 
-fn generateTestData(allocator: std.mem.Allocator, size: usize, seed: u64) ![]u8 {
+fn generateTestData(io: std.Io, allocator: std.mem.Allocator, size: usize, seed: u64) ![]u8 {
+    _ = io;
     var rnd = std.Random.DefaultPrng.init(seed);
     var random = rnd.random();
 
@@ -41,10 +42,11 @@ fn generateTestData(allocator: std.mem.Allocator, size: usize, seed: u64) ![]u8 
     return data;
 }
 
-fn benchmarkFrequencyTest(allocator: std.mem.Allocator, data: []const u8, iterations: u32) !BenchmarkResult {
+fn benchmarkFrequencyTest(io: std.Io, allocator: std.mem.Allocator, data: []const u8, iterations: u32) !BenchmarkResult {
     var min_time: u64 = std.math.maxInt(u64);
     var max_time: u64 = 0;
     var total_time: u64 = 0;
+    const clock = std.Io.Clock.awake;
 
     for (0..iterations) |_| {
         const bits = zsts.io.BitInputStream.fromAscii(allocator, data);
@@ -59,10 +61,10 @@ fn benchmarkFrequencyTest(allocator: std.mem.Allocator, data: []const u8, iterat
         const stat = try zsts.frequency.frequencyDetectStatDetect(allocator, param);
         defer stat.destroy();
 
-        const start = time.nanoTimestamp();
+        const start = std.Io.Clock.now(clock, io).toNanoseconds();
         stat.init(&param);
         _ = stat.iterate(&bits);
-        const end = time.nanoTimestamp();
+        const end = std.Io.Clock.now(clock, io).toNanoseconds();
 
         const duration = @as(u64, @intCast(end - start));
         total_time += duration;
@@ -71,7 +73,7 @@ fn benchmarkFrequencyTest(allocator: std.mem.Allocator, data: []const u8, iterat
     }
 
     const avg_time = total_time / iterations;
-    const throughput = (@as(f64, @floatFromInt(data.len)) / 1_000_000.0) / (@as(f64, @floatFromInt(avg_time)) / 1_000_000_000.0);
+    const throughput = (@as(f64, @floatFromInt(data.len)) / 1_000_000.0) / (@as(f64, @floatFromInt(avg_time)) / std.time.ns_per_s);
 
     return BenchmarkResult{
         .test_name = "Frequency",
@@ -83,10 +85,11 @@ fn benchmarkFrequencyTest(allocator: std.mem.Allocator, data: []const u8, iterat
     };
 }
 
-fn benchmarkRunsTest(allocator: std.mem.Allocator, data: []const u8, iterations: u32) !BenchmarkResult {
+fn benchmarkRunsTest(io: std.Io, allocator: std.mem.Allocator, data: []const u8, iterations: u32) !BenchmarkResult {
     var min_time: u64 = std.math.maxInt(u64);
     var max_time: u64 = 0;
     var total_time: u64 = 0;
+    const clock = std.Io.Clock.awake;
 
     for (0..iterations) |_| {
         const bits = zsts.io.BitInputStream.fromAscii(allocator, data);
@@ -101,10 +104,10 @@ fn benchmarkRunsTest(allocator: std.mem.Allocator, data: []const u8, iterations:
         const stat = try zsts.runs.runsDetectStatDetect(allocator, param);
         defer stat.destroy();
 
-        const start = time.nanoTimestamp();
+        const start = std.Io.Clock.now(clock, io).toNanoseconds();
         stat.init(&param);
         _ = stat.iterate(&bits);
-        const end = time.nanoTimestamp();
+        const end = std.Io.Clock.now(clock, io).toNanoseconds();
 
         const duration = @as(u64, @intCast(end - start));
         total_time += duration;
@@ -125,10 +128,11 @@ fn benchmarkRunsTest(allocator: std.mem.Allocator, data: []const u8, iterations:
     };
 }
 
-fn benchmarkDftTest(allocator: std.mem.Allocator, data: []const u8, iterations: u32) !BenchmarkResult {
+fn benchmarkDftTest(io: std.Io, allocator: std.mem.Allocator, data: []const u8, iterations: u32) !BenchmarkResult {
     var min_time: u64 = std.math.maxInt(u64);
     var max_time: u64 = 0;
     var total_time: u64 = 0;
+    const clock = std.Io.Clock.awake;
 
     for (0..iterations) |_| {
         const bits = zsts.io.BitInputStream.fromAscii(allocator, data);
@@ -143,10 +147,10 @@ fn benchmarkDftTest(allocator: std.mem.Allocator, data: []const u8, iterations: 
         const stat = try zsts.dft.dftDetectStatDetect(allocator, param);
         defer stat.destroy();
 
-        const start = time.nanoTimestamp();
+        const start = std.Io.Clock.now(clock, io).toNanoseconds();
         stat.init(&param);
         _ = stat.iterate(&bits);
-        const end = time.nanoTimestamp();
+        const end = std.Io.Clock.now(clock, io).toNanoseconds();
 
         const duration = @as(u64, @intCast(end - start));
         total_time += duration;
@@ -167,7 +171,7 @@ fn benchmarkDftTest(allocator: std.mem.Allocator, data: []const u8, iterations: 
     };
 }
 
-fn benchmarkRankTest(allocator: std.mem.Allocator, data: []const u8, iterations: u32) !BenchmarkResult {
+fn benchmarkRankTest(io: std.Io, allocator: std.mem.Allocator, data: []const u8, iterations: u32) !BenchmarkResult {
     // Rank test needs sufficient data (32x32 matrices)
     if (data.len < 32 * 32) {
         return BenchmarkResult{
@@ -183,6 +187,7 @@ fn benchmarkRankTest(allocator: std.mem.Allocator, data: []const u8, iterations:
     var min_time: u64 = std.math.maxInt(u64);
     var max_time: u64 = 0;
     var total_time: u64 = 0;
+    const clock = std.Io.Clock.awake;
 
     for (0..iterations) |_| {
         const bits = zsts.io.BitInputStream.fromAscii(allocator, data);
@@ -197,10 +202,10 @@ fn benchmarkRankTest(allocator: std.mem.Allocator, data: []const u8, iterations:
         const stat = try zsts.rank.rankDetectStatDetect(allocator, param);
         defer stat.destroy();
 
-        const start = time.nanoTimestamp();
+        const start = std.Io.Clock.now(clock, io).toNanoseconds();
         stat.init(&param);
         _ = stat.iterate(&bits);
-        const end = time.nanoTimestamp();
+        const end = std.Io.Clock.now(clock, io).toNanoseconds();
 
         const duration = @as(u64, @intCast(end - start));
         total_time += duration;
@@ -243,7 +248,7 @@ fn printBenchmarkResult(result: BenchmarkResult) void {
     print(" │ {d:>8.2} MB/s │\n", .{result.throughput_mbps});
 }
 
-pub fn runPerformanceBenchmark(allocator: std.mem.Allocator) !void {
+pub fn runPerformanceBenchmark(io: std.Io, allocator: std.mem.Allocator) !void {
     const config = BenchmarkConfig{};
 
     print("\n🔥 STS-Zig Performance Benchmark Suite\n", .{});
@@ -265,23 +270,23 @@ pub fn runPerformanceBenchmark(allocator: std.mem.Allocator) !void {
 
     for (config.data_sizes) |data_size| {
         // Generate test data
-        const test_data = try generateTestData(allocator, data_size, 42);
+        const test_data = try generateTestData(io, allocator, data_size, 42);
         defer allocator.free(test_data);
 
         // Benchmark frequency test
-        const freq_result = try benchmarkFrequencyTest(allocator, test_data, config.iterations);
+        const freq_result = try benchmarkFrequencyTest(io, allocator, test_data, config.iterations);
         printBenchmarkResult(freq_result);
 
         // Benchmark runs test
-        const runs_result = try benchmarkRunsTest(allocator, test_data, config.iterations);
+        const runs_result = try benchmarkRunsTest(io, allocator, test_data, config.iterations);
         printBenchmarkResult(runs_result);
 
         // Benchmark DFT test
-        const dft_result = try benchmarkDftTest(allocator, test_data, config.iterations);
+        const dft_result = try benchmarkDftTest(io, allocator, test_data, config.iterations);
         printBenchmarkResult(dft_result);
 
         // Benchmark rank test
-        const rank_result = try benchmarkRankTest(allocator, test_data, config.iterations);
+        const rank_result = try benchmarkRankTest(io, allocator, test_data, config.iterations);
         if (rank_result.avg_time_ns > 0) {
             printBenchmarkResult(rank_result);
         }
@@ -305,10 +310,8 @@ pub fn runPerformanceBenchmark(allocator: std.mem.Allocator) !void {
 }
 
 // Test runner entry point
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+pub fn main(init: std.process.Init) !void {
+    const allocator = init.gpa;
 
-    try runPerformanceBenchmark(allocator);
+    try runPerformanceBenchmark(init.io, allocator);
 }

@@ -42,6 +42,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
 
     if (n < 10) {
         return detect.DetectResult{
+            .type = .Serial,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -54,6 +55,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
     const arr = bits.bits();
     if (arr.len != n) {
         return detect.DetectResult{
+            .type = .Serial,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -64,6 +66,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
     }
     const psi2_m = psi2(self, arr, n, m) catch |err| {
         return detect.DetectResult{
+            .type = .Serial,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -75,6 +78,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
 
     const psi2_m1 = psi2(self, arr, n, m - 1) catch |err| {
         return detect.DetectResult{
+            .type = .Serial,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -86,6 +90,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
 
     const psi2_m2 = psi2(self, arr, n, m - 2) catch |err| {
         return detect.DetectResult{
+            .type = .Serial,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -103,6 +108,7 @@ fn serial_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) dete
     const passed = p_value1 > 0.01 and p_value2 > 0.01;
 
     return detect.DetectResult{
+        .type = .Serial,
         .passed = passed,
         .v_value = delta1,
         .p_value = p_value1,

@@ -62,6 +62,7 @@ fn block_frequency_iterate(self: *detect.StatDetect, bits: *const io.BitInputStr
 
     const passed = P > 0.01;
     return detect.DetectResult{
+        .type = .BlockFrequency,
         .passed = passed,
         .v_value = V,
         .p_value = P,

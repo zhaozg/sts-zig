@@ -19,7 +19,7 @@ pub fn compute_r2c_fft(
     if (fft_m.len < out_len) return error.BufferTooSmall;
 
     // 2. 使用 fft-zig 的 fftR2C 函数执行实数到复数 FFT
-    try fft.fftR2C(self.allocator, x, fft_out, fft_m);
+    try fft.fftR2C(f64, self.allocator, x, fft_out, fft_m);
 }
 
 fn dft_init(self: *detect.StatDetect, param: *const detect.DetectParam) void {
@@ -32,6 +32,7 @@ fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.
 
     var x = self.allocator.alloc(f64, n) catch |err| {
         return detect.DetectResult{
+            .type = .Dft,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -49,6 +50,7 @@ fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.
     // 申请实数存储空间
     const fft_out = self.allocator.alloc(f64, 2 * n + 1) catch |err| {
         return detect.DetectResult{
+            .type = .Dft,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -62,6 +64,7 @@ fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.
     // 幅值谱存储空间
     const fft_m = self.allocator.alloc(f64, n) catch |err| {
         return detect.DetectResult{
+            .type = .Dft,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -75,6 +78,7 @@ fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.
     // 执行 FFT
     compute_r2c_fft(self, x, fft_out, fft_m) catch |err| {
         return detect.DetectResult{
+            .type = .Dft,
             .passed = false,
             .v_value = 0.0,
             .p_value = 0.0,
@@ -106,6 +110,7 @@ fn dft_iterate(self: *detect.StatDetect, bits: *const io.BitInputStream) detect.
     const passed = P >= 0.01;
 
     return detect.DetectResult{
+        .type = .Dft,
         .passed = passed,
         .v_value = d,
         .p_value = P,
