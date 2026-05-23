@@ -15,6 +15,17 @@ pub fn build(b: *std.Build) void {
         .root_source_file = fft_dep.path("src/fft.zig"),
     });
 
+    // 获取 zbench 依赖
+    const zbench_dep = b.dependency("zbench", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // 创建 zbench 模块
+    const zbench_module = b.createModule(.{
+        .root_source_file = zbench_dep.path("src/zbench.zig"),
+    });
+
     const main_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
@@ -131,4 +142,23 @@ pub fn build(b: *std.Build) void {
     }
     datagen_step.dependOn(&run_datagen.step);
     b.installArtifact(datagen_exe);
+
+    // zbench 基准测试工具
+    const bench_mod = b.createModule(.{
+        .root_source_file = b.path("tools/bench.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    bench_mod.addImport("zbench", zbench_module);
+    bench_mod.addImport("zsts", zsts_module);
+
+    const bench_exe = b.addExecutable(.{
+        .name = "bench",
+        .root_module = bench_mod,
+    });
+
+    const bench_step = b.step("bench", "Run zbench benchmarks for statistical tests");
+    const run_bench = b.addRunArtifact(bench_exe);
+    bench_step.dependOn(&run_bench.step);
+    b.installArtifact(bench_exe);
 }

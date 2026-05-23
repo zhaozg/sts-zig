@@ -1,0 +1,82 @@
+
+  ╔══════════════════════════════════════════════════════════════╗
+  ║         zbench - ZSTS Statistical Tests Benchmark           ║
+  ╚══════════════════════════════════════════════════════════════╝
+
+  System Info:
+    OS:   macos x86_64
+    CPU:  Intel(R) Core(TM) i7-1068NG7 CPU @ 2.30GHz
+    Cores: 4
+    Memory: 16.000GiB
+
+  -─ Data Size: 1,000 bits ────────────────────────────────-
+benchmark             runs     total time     time/run (avg ± σ)    (min ... max)              p75        p99        p995      
+--------------------------------------------------------------------------------------------------------------------------------
+Frequency             100000   180.056ms      1.8us ± 1.02us        (1.608us ... 209.604us)    1.768us    3.052us    3.161us    
+Runs                  100000   314.62ms       3.146us ± 1.166us     (3.023us ... 100.131us)    3.057us    5.211us    5.869us    
+BlockFrequency        100000   249.025ms      2.49us ± 3.574us      (1.768us ... 682.97us)     2.625us    3.765us    7.399us    
+Poker                 100000   399.921ms      3.999us ± 1.378us     (3.663us ... 93.392us)     3.812us    6.564us    7.293us    
+BinaryDerivative      100000   470.059ms      4.7us ± 2.279us       (3.993us ... 311.412us)    4.552us    7.78us     12.407us   
+RunDistribution       100000   346.401ms      3.464us ± 1.902us     (3.09us ... 118.782us)     3.397us    5.796us    6.892us    
+OverlappingSequency   100000   1.014s         10.149us ± 4.528us    (9.008us ... 804.461us)    9.229us    20.708us   29.604us   
+CumulativeSums        100000   635.66ms       6.356us ± 2.105us     (5.474us ... 193.43us)     6.512us    8.015us    9.306us    
+Serial                100000   524.813ms      5.248us ± 2.264us     (4.418us ... 494.423us)    5.3us      5.632us    7.287us    
+ApproxEntropy         100000   1.303s         13.037us ± 19.629us   (10.05us ... 2.63ms)       11.834us   30.402us   41.565us   
+DFT                   1134     2.242s         1.977ms ± 1.652ms     (1.602ms ... 52.011ms)     1.864ms    4.158ms    5.699ms    
+LongestRun            100000   533.023ms      5.33us ± 8.06us       (3.92us ... 645.944us)     6.2us      15.33us    27.983us   
+Autocorrelation       100000   322.051ms      3.22us ± 1.181us      (2.776us ... 130.996us)    3.284us    4.361us    5.283us    
+
+  -─ Data Size: 10,000 bits ────────────────────────────────-
+benchmark             runs     total time     time/run (avg ± σ)    (min ... max)              p75        p99        p995      
+--------------------------------------------------------------------------------------------------------------------------------
+Frequency             100000   1.666s         16.662us ± 4.265us    (15.922us ... 361.08us)    16.024us   33.622us   41.823us   
+Runs                  60335    1.868s         30.976us ± 12.875us   (28.105us ... 1.017ms)     28.256us   76.243us   97.458us   
+BlockFrequency        89399    1.961s         21.942us ± 9.078us    (19.279us ... 1.159ms)     20.539us   51.643us   64.542us   
+Poker                 51280    1.884s         36.749us ± 8.145us    (33.574us ... 413.974us)   38.054us   70.571us   82.254us   
+BinaryDerivative      47588    2.081s         43.747us ± 17.364us   (36.429us ... 2.578ms)     41.485us   79.862us   102.274us  
+RunDistribution       28620    2.011s         70.298us ± 18.572us   (54.904us ... 1.128ms)     68.437us   141.579us  159.138us  
+OverlappingSequency   21076    1.996s         94.716us ± 19.746us   (85.386us ... 398.41us)    91.409us   179.45us   193.358us  
+CumulativeSums        40000    2.042s         51.062us ± 107.058us  (39.999us ... 13.745ms)    45.822us   109.084us  132.592us  
+Serial                40064    2.033s         50.753us ± 8.565us    (44.797us ... 317.635us)   49.196us   90.959us   108.303us  
+ApproxEntropy         17480    2.014s         115.253us ± 18.672us  (105.77us ... 528.574us)   110.034us  186.605us  204.697us  
+DFT                   534      1.94s          3.633ms ± 1.663ms     (3.057ms ... 40.019ms)     3.688ms    4.742ms    6.705ms    
+LongestRun            22250    1.985s         89.224us ± 14.734us   (77.39us ... 1.111ms)      88.27us    142.307us  158.439us  
+Autocorrelation       64717    1.97s          30.45us ± 6.119us     (23.934us ... 340.367us)   29.993us   52.137us   64.067us   
+
+  -─ Data Size: 100,000 bits ────────────────────────────────-
+benchmark             runs     total time     time/run (avg ± σ)    (min ... max)              p75        p99        p995      
+--------------------------------------------------------------------------------------------------------------------------------
+Frequency             12585    2.026s         161.012us ± 19.327us  (146.618us ... 901.792us)  159.441us  238.879us  265.433us  
+Runs                  6983     2.052s         293.96us ± 64.289us   (257.907us ... 2.599ms)    280.056us  554.83us   625.436us  
+BlockFrequency        9748     1.941s         199.187us ± 19.137us  (179.665us ... 760.199us)  199.489us  274.021us  300.029us  
+Poker                 5655     2.054s         363.358us ± 418.879us (308.061us ... 30.53ms)    359.975us  566.95us   707.533us  
+BinaryDerivative      4700     2.026s         431.232us ± 70.994us  (367.738us ... 1.909ms)    418.799us  687.963us  760.078us  
+RunDistribution       2302     1.99s          864.636us ± 45.558us  (795.987us ... 1.576ms)    864.58us   1.035ms    1.105ms    
+OverlappingSequency   2279     2.319s         1.017ms ± 886.358us   (805.486us ... 38.715ms)   1.007ms    2.198ms    2.866ms    
+CumulativeSums        4251     1.97s          463.561us ± 538.445us (416.076us ... 34.087ms)   459.075us  639.027us  672.22us   
+Serial                3816     1.944s         509.513us ± 63.777us  (475.533us ... 3.071ms)    512.079us  674.68us   712.329us  
+ApproxEntropy         1709     2.023s         1.184ms ± 853.911us   (1.081ms ... 34.466ms)     1.148ms    1.726ms    2.044ms    
+DFT                   36       2.001s         55.592ms ± 5.605ms    (51.028ms ... 85.075ms)    56.375ms   85.075ms   85.075ms   
+LongestRun            1983     2.081s         1.049ms ± 772.271us   (956.222us ... 32.957ms)   1.018ms    1.515ms    1.883ms    
+Autocorrelation       6114     1.895s         310.051us ± 73.786us  (286.348us ... 3.708ms)    311.458us  426.418us  470.497us  
+
+  -─ Data Size: 1,000,000 bits ────────────────────────────────-
+benchmark             runs     total time     time/run (avg ± σ)    (min ... max)              p75        p99        p995      
+--------------------------------------------------------------------------------------------------------------------------------
+Frequency             1194     2.092s         1.752ms ± 214.282us   (1.589ms ... 4.239ms)      1.817ms    2.624ms    2.932ms    
+Runs                  628      1.938s         3.087ms ± 447.239us   (2.792ms ... 5.647ms)      3.144ms    5.154ms    5.301ms    
+BlockFrequency        940      2.092s         2.225ms ± 272.21us    (1.956ms ... 5.641ms)      2.353ms    2.821ms    3.057ms    
+Poker                 514      2.061s         4.009ms ± 965.579us   (3.336ms ... 13.355ms)     4.14ms     7.316ms    10.889ms   
+BinaryDerivative      427      1.972s         4.62ms ± 420.655us    (4.15ms ... 8.124ms)       4.794ms    5.855ms    7.358ms    
+RunDistribution       209      1.995s         9.546ms ± 333.344us   (8.894ms ... 11.924ms)     9.666ms    10.852ms   10.919ms   
+OverlappingSequency   200      1.972s         9.862ms ± 943.295us   (8.726ms ... 15.189ms)     9.973ms    15.039ms   15.189ms   
+CumulativeSums        419      1.965s         4.69ms ± 366.725us    (3.937ms ... 6.819ms)      4.897ms    5.536ms    5.709ms    
+Serial                397      1.989s         5.01ms ± 477.749us    (4.384ms ... 8.356ms)      5.033ms    6.867ms    7.386ms    
+ApproxEntropy         168      2s             11.91ms ± 828.766us   (9.716ms ... 16.066ms)     12.276ms   14.894ms   16.066ms   
+DFT                   3        1.789s         596.557ms ± 10.49ms   (588.847ms ... 608.504ms)  608.504ms  608.504ms  608.504ms  
+LongestRun            194      2.021s         10.418ms ± 705.241us  (8.875ms ... 13.087ms)     10.766ms   12.792ms   13.087ms   
+Autocorrelation       651      2.077s         3.191ms ± 279.121us   (2.587ms ... 5.069ms)      3.385ms    3.889ms    3.901ms    
+
+
+  ✅ Benchmark completed!
+
